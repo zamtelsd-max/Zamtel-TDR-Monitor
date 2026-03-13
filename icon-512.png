@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background with Zamtel gradient -->
+  <defs>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00A651;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E91E8C;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" rx="85" fill="url(#grad2)"/>
+  
+  <!-- Signal Icon (Zamtel representation) - larger -->
+  <g transform="translate(256, 256)">
+    <!-- Signal bars -->
+    <rect x="-135" y="55" width="48" height="65" fill="white" rx="8"/>
+    <rect x="-67" y="15" width="48" height="105" fill="white" rx="8"/>
+    <rect x="1" y="-25" width="48" height="145" fill="white" rx="8"/>
+    <rect x="69" y="-65" width="48" height="185" fill="white" rx="8"/>
+  </g>
+  
+  <!-- Location pin overlay -->
+  <g transform="translate(390, 390)">
+    <circle cx="0" cy="0" r="58" fill="#E91E8C"/>
+    <path d="M 0,-32 c -11.7,0 -21.3,9.6 -21.3,21.3 c 0,16 21.3,32 21.3,32 s 21.3,-16 21.3,-32 c 0,-11.7 -9.6,-21.3 -21.3,-21.3 z" fill="white"/>
+    <circle cx="0" cy="-10.7" r="8" fill="#E91E8C"/>
+  </g>
+  
+  <!-- Slogan text -->
+  <text x="256" y="455" font-family="Arial, sans-serif" font-size="28" fill="white" text-anchor="middle" font-style="italic" opacity="0.9" font-weight="300">Create your World</text>
+</svg>

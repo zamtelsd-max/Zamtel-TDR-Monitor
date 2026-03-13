@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Icon Converter - Zamtel TDR</title>
+</head>
+<body>
+    <h1>Zamtel TDR Icon Converter</h1>
+    <p>Open this file in a browser to generate PNG icons from SVG.</p>
+    
+    <h2>Instructions:</h2>
+    <ol>
+        <li>Right-click on each image below</li>
+        <li>Select "Save image as..." or "Download image"</li>
+        <li>Save as icon-192.png and icon-512.png respectively</li>
+    </ol>
+
+    <h3>192x192 Icon:</h3>
+    <canvas id="canvas192" width="192" height="192"></canvas>
+    
+    <h3>512x512 Icon:</h3>
+    <canvas id="canvas512" width="512" height="512"></canvas>
+
+    <script>
+        // 192x192 Icon
+        const canvas192 = document.getElementById('canvas192');
+        const ctx192 = canvas192.getContext('2d');
+        
+        // Create gradient
+        const grad192 = ctx192.createLinearGradient(0, 0, 192, 192);
+        grad192.addColorStop(0, '#00A651');
+        grad192.addColorStop(1, '#E91E8C');
+        
+        // Background with rounded corners
+        ctx192.fillStyle = grad192;
+        roundRect(ctx192, 0, 0, 192, 192, 32);
+        ctx192.fill();
+        
+        // Signal bars
+        ctx192.fillStyle = 'white';
+        roundRect(ctx192, 46, 116, 18, 25, 3);
+        ctx192.fill();
+        roundRect(ctx192, 71, 101, 18, 40, 3);
+        ctx192.fill();
+        roundRect(ctx192, 96, 86, 18, 55, 3);
+        ctx192.fill();
+        roundRect(ctx192, 121, 71, 18, 70, 3);
+        ctx192.fill();
+        
+        // Location pin
+        ctx192.fillStyle = '#E91E8C';
+        ctx192.beginPath();
+        ctx192.arc(145, 145, 22, 0, 2 * Math.PI);
+        ctx192.fill();
+        
+        ctx192.fillStyle = 'white';
+        ctx192.beginPath();
+        ctx192.moveTo(145, 133);
+        ctx192.bezierCurveTo(140.6, 133, 137, 136.6, 137, 141);
+        ctx192.bezierCurveTo(137, 147, 145, 153, 145, 153);
+        ctx192.bezierCurveTo(145, 153, 153, 147, 153, 141);
+        ctx192.bezierCurveTo(153, 136.6, 149.4, 133, 145, 133);
+        ctx192.closePath();
+        ctx192.fill();
+        
+        ctx192.fillStyle = '#E91E8C';
+        ctx192.beginPath();
+        ctx192.arc(145, 141, 3, 0, 2 * Math.PI);
+        ctx192.fill();
+        
+        // Text
+        ctx192.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx192.font = 'italic 10px Arial';
+        ctx192.textAlign = 'center';
+        ctx192.fillText('Create your World', 96, 170);
+
+        // 512x512 Icon
+        const canvas512 = document.getElementById('canvas512');
+        const ctx512 = canvas512.getContext('2d');
+        
+        // Create gradient
+        const grad512 = ctx512.createLinearGradient(0, 0, 512, 512);
+        grad512.addColorStop(0, '#00A651');
+        grad512.addColorStop(1, '#E91E8C');
+        
+        // Background with rounded corners
+        ctx512.fillStyle = grad512;
+        roundRect(ctx512, 0, 0, 512, 512, 85);
+        ctx512.fill();
+        
+        // Signal bars
+        ctx512.fillStyle = 'white';
+        roundRect(ctx512, 121, 311, 48, 65, 8);
+        ctx512.fill();
+        roundRect(ctx512, 189, 271, 48, 105, 8);
+        ctx512.fill();
+        roundRect(ctx512, 257, 231, 48, 145, 8);
+        ctx512.fill();
+        roundRect(ctx512, 325, 191, 48, 185, 8);
+        ctx512.fill();
+        
+        // Location pin
+        ctx512.fillStyle = '#E91E8C';
+        ctx512.beginPath();
+        ctx512.arc(390, 390, 58, 0, 2 * Math.PI);
+        ctx512.fill();
+        
+        ctx512.fillStyle = 'white';
+        ctx512.beginPath();
+        ctx512.moveTo(390, 358);
+        ctx512.bezierCurveTo(378.3, 358, 368.7, 367.6, 368.7, 379.3);
+        ctx512.bezierCurveTo(368.7, 395.3, 390, 411.3, 390, 411.3);
+        ctx512.bezierCurveTo(390, 411.3, 411.3, 395.3, 411.3, 379.3);
+        ctx512.bezierCurveTo(411.3, 367.6, 401.7, 358, 390, 358);
+        ctx512.closePath();
+        ctx512.fill();
+        
+        ctx512.fillStyle = '#E91E8C';
+        ctx512.beginPath();
+        ctx512.arc(390, 379.3, 8, 0, 2 * Math.PI);
+        ctx512.fill();
+        
+        // Text
+        ctx512.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx512.font = 'italic 300 28px Arial';
+        ctx512.textAlign = 'center';
+        ctx512.fillText('Create your World', 256, 455);
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Auto-download images
+        setTimeout(() => {
+            // Download 192x192
+            const link192 = document.createElement('a');
+            link192.download = 'icon-192.png';
+            link192.href = canvas192.toDataURL('image/png');
+            
+            // Download 512x512
+            const link512 = document.createElement('a');
+            link512.download = 'icon-512.png';
+            link512.href = canvas512.toDataURL('image/png');
+            
+            console.log('Icons generated. Right-click on canvases to save as PNG.');
+        }, 100);
+    </script>
+</body>
+</html>

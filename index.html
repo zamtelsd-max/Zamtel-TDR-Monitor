@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#00A651">
+    <meta name="description" content="Zamtel TDR Field Monitor - Track outlet visits and float status">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Zamtel TDR">
+    <title>Zamtel TDR Field Monitor</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --zamtel-green: #00A651;
+            --zamtel-pink: #E91E8C;
+            --zamtel-white: #FFFFFF;
+            --text-dark: #1a1a1a;
+            --text-gray: #666;
+            --bg-light: #f5f5f5;
+            --red-critical: #dc2626;
+            --yellow-low: #fbbf24;
+            --green-ok: #00A651;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            overflow-x: hidden;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Loading Screen */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--zamtel-green), var(--zamtel-pink));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-logo {
+            font-size: 3rem;
+            color: white;
+            margin-bottom: 1rem;
+            animation: pulse 1.5s infinite;
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-slogan {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Login Screen */
+        #loginScreen {
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--zamtel-green), var(--zamtel-pink));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-logo {
+            font-size: 4rem;
+            color: var(--zamtel-green);
+            margin-bottom: 1rem;
+        }
+
+        .login-title {
+            font-size: 1.5rem;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .login-slogan {
+            color: var(--zamtel-pink);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--zamtel-green);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--zamtel-green);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #008d44;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,166,81,0.3);
+        }
+
+        .btn-secondary {
+            background: var(--zamtel-pink);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #d11a7b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(233,30,140,0.3);
+        }
+
+        /* Main App Container */
+        #appContainer {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header */
+        .app-header {
+            background: linear-gradient(135deg, var(--zamtel-green), var(--zamtel-pink));
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        /* Content Area */
+        .app-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            padding-bottom: 5rem;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 0.5rem 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            color: var(--text-gray);
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            text-decoration: none;
+        }
+
+        .nav-item.active {
+            color: var(--zamtel-green);
+        }
+
+        .nav-item i {
+            font-size: 1.5rem;
+        }
+
+        .nav-item span {
+            font-size: 0.7rem;
+        }
+
+        /* Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--text-gray);
+            font-size: 0.9rem;
+        }
+
+        .target-progress {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar-container {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--zamtel-green), var(--zamtel-pink));
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Visit List */
+        .visit-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1rem;
+        }
+
+        .visit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+        }
+
+        .visit-outlet {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .visit-date {
+            color: var(--text-gray);
+            font-size: 0.85rem;
+        }
+
+        .float-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .float-critical {
+            background: var(--red-critical);
+        }
+
+        .float-low {
+            background: var(--yellow-low);
+            color: #1a1a1a;
+        }
+
+        .float-ok {
+            background: var(--green-ok);
+        }
+
+        .visit-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .visit-detail {
+            font-size: 0.85rem;
+        }
+
+        .visit-detail-label {
+            color: var(--text-gray);
+            margin-bottom: 0.2rem;
+        }
+
+        .visit-detail-value {
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .location-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: var(--zamtel-green);
+            text-decoration: none;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Leaderboard */
+        .leaderboard-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .rank-badge {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .rank-1 {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #1a1a1a;
+        }
+
+        .rank-2 {
+            background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+            color: #1a1a1a;
+        }
+
+        .rank-3 {
+            background: linear-gradient(135deg, #cd7f32, #daa520);
+        }
+
+        .rank-other {
+            background: var(--zamtel-green);
+        }
+
+        .leaderboard-info {
+            flex: 1;
+        }
+
+        .tdr-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .tdr-zone {
+            color: var(--text-gray);
+            font-size: 0.85rem;
+        }
+
+        .tdr-stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .tdr-stat {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.85rem;
+        }
+
+        /* Form */
+        .form-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .gps-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 1rem;
+            background: var(--zamtel-pink);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1rem;
+        }
+
+        .gps-button:hover {
+            background: #d11a7b;
+        }
+
+        .gps-button.active {
+            background: var(--zamtel-green);
+        }
+
+        .gps-status {
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .gps-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .gps-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .gps-loading {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Settings */
+        .setting-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1rem;
+        }
+
+        .setting-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .setting-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .setting-description {
+            color: var(--text-gray);
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .sync-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--zamtel-green);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .sync-status {
+            padding: 0.5rem;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            background: white;
+            padding: 1rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1rem;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        /* Reports */
+        .report-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .report-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-export {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: var(--zamtel-green);
+            color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .visit-details {
+                grid-template-columns: 1fr;
+            }
+
+            .header-title {
+                font-size: 1rem;
+            }
+
+            .user-badge {
+                display: none;
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            color: var(--text-gray);
+            margin-bottom: 1rem;
+        }
+
+        .empty-text {
+            color: var(--text-gray);
+            font-size: 1rem;
+        }
+
+        /* Animation */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="loading-logo">
+            <i class="fas fa-signal"></i>
+        </div>
+        <div class="loading-text">Zamtel TDR Monitor</div>
+        <div class="loading-slogan">Create your World</div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="hidden">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-logo">
+                    <i class="fas fa-signal"></i>
+                </div>
+                <h1 class="login-title">Zamtel TDR Monitor</h1>
+                <p class="login-slogan">Create your World</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="tdrName">TDR Name</label>
+                    <select id="tdrName" required>
+                        <option value="">Select your name</option>
+                        <option value="John Mwanza">John Mwanza</option>
+                        <option value="Mary Banda">Mary Banda</option>
+                        <option value="Peter Phiri">Peter Phiri</option>
+                        <option value="Grace Lungu">Grace Lungu</option>
+                        <option value="James Sakala">James Sakala</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="loginZone">Zone</label>
+                    <select id="loginZone" required>
+                        <option value="">Select zone</option>
+                        <option value="Lusaka Central">Lusaka Central</option>
+                        <option value="Lusaka East">Lusaka East</option>
+                        <option value="Lusaka West">Lusaka West</option>
+                        <option value="Copperbelt">Copperbelt</option>
+                        <option value="Southern">Southern</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="appContainer" class="hidden">
+        <!-- Header -->
+        <div class="app-header">
+            <div class="header-left">
+                <i class="fas fa-signal"></i>
+                <span class="header-title">Zamtel TDR</span>
+            </div>
+            <div class="header-right">
+                <div class="user-badge">
+                    <i class="fas fa-user"></i>
+                    <span id="currentUser">User</span>
+                </div>
+                <button class="logout-btn" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="app-content">
+            <!-- Dashboard Screen -->
+            <div id="dashboardScreen" class="screen">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: var(--zamtel-green);">
+                            <i class="fas fa-store"></i>
+                        </div>
+                        <div class="stat-value" id="totalVisits">0</div>
+                        <div class="stat-label">Outlets Visited</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: var(--zamtel-pink);">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <div class="stat-value" id="targetValue">50</div>
+                        <div class="stat-label">Monthly Target</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: var(--green-ok);">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-value" id="floatOk">0</div>
+                        <div class="stat-label">Float OK</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: var(--red-critical);">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-value" id="floatCritical">0</div>
+                        <div class="stat-label">Critical Float</div>
+                    </div>
+                </div>
+
+                <div class="target-progress">
+                    <div class="progress-header">
+                        <div>
+                            <h3>Target Progress</h3>
+                            <p style="color: var(--text-gray); font-size: 0.85rem;">This month</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.5rem; font-weight: bold;" id="progressPercentage">0%</div>
+                            <p style="color: var(--text-gray); font-size: 0.85rem;">Complete</p>
+                        </div>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar" style="width: 0%;">
+                            <span id="progressText">0 / 50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Float Status Overview
+                </div>
+                <div class="chart-container">
+                    <canvas id="floatChart" style="max-height: 300px;"></canvas>
+                </div>
+
+                <div class="section-title">
+                    <i class="fas fa-calendar-week"></i>
+                    Weekly Activity
+                </div>
+                <div class="chart-container">
+                    <canvas id="weeklyChart" style="max-height: 250px;"></canvas>
+                </div>
+            </div>
+
+            <!-- New Visit Form Screen -->
+            <div id="newVisitScreen" class="screen hidden">
+                <div class="form-container slide-up">
+                    <h2 class="section-title">
+                        <i class="fas fa-plus-circle"></i>
+                        Record New Visit
+                    </h2>
+
+                    <button type="button" class="gps-button" id="gpsButton" onclick="getLocation()">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="gpsButtonText">Get GPS Location</span>
+                    </button>
+
+                    <div id="gpsStatus" class="hidden"></div>
+
+                    <form id="visitForm">
+                        <input type="hidden" id="latitude" name="latitude">
+                        <input type="hidden" id="longitude" name="longitude">
+                        <input type="hidden" id="formTdrName" name="tdrName">
+                        <input type="hidden" id="formZone" name="zone">
+
+                        <div class="form-group">
+                            <label for="zbmName">ZBM Name</label>
+                            <input type="text" id="zbmName" name="zbmName" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="outletName">Outlet Name</label>
+                            <input type="text" id="outletName" name="outletName" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="contactNumber">Contact Number</label>
+                            <input type="tel" id="contactNumber" name="contactNumber" 
+                                   pattern="^(09|07)[0-9]{8}$"
+                                   placeholder="e.g., 0977123456" required>
+                            <small style="color: var(--text-gray); font-size: 0.8rem;">Format: 09XXXXXXXX or 07XXXXXXXX</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="agentCode">Agent Code</label>
+                            <input type="text" id="agentCode" name="agentCode" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="town">Town</label>
+                            <input type="text" id="town" name="town" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="clusterName">Cluster Name</label>
+                            <input type="text" id="clusterName" name="clusterName" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="marketName">Market Name</label>
+                            <input type="text" id="marketName" name="marketName" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="floatAmount">Float Amount (ZMW)</label>
+                            <input type="number" id="floatAmount" name="floatAmount" step="0.01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Has Float?</label>
+                            <select id="hasFloat" name="hasFloat" required>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Visit
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Visits List Screen -->
+            <div id="visitsScreen" class="screen hidden">
+                <div class="filter-bar">
+                    <div class="filter-row">
+                        <select id="filterFloat" style="flex: 1;">
+                            <option value="all">All Float Status</option>
+                            <option value="ok">OK (Green)</option>
+                            <option value="low">Low (Yellow)</option>
+                            <option value="critical">Critical (Red)</option>
+                        </select>
+                        <select id="filterZone" style="flex: 1;">
+                            <option value="all">All Zones</option>
+                            <option value="Lusaka Central">Lusaka Central</option>
+                            <option value="Lusaka East">Lusaka East</option>
+                            <option value="Lusaka West">Lusaka West</option>
+                            <option value="Copperbelt">Copperbelt</option>
+                            <option value="Southern">Southern</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="visitsList"></div>
+
+                <div id="emptyVisits" class="empty-state hidden">
+                    <div class="empty-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="empty-text">No visits recorded yet</div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Screen -->
+            <div id="leaderboardScreen" class="screen hidden">
+                <div class="section-title">
+                    <i class="fas fa-trophy"></i>
+                    Top Performers This Month
+                </div>
+                <div id="leaderboardList"></div>
+            </div>
+
+            <!-- Reports Screen -->
+            <div id="reportsScreen" class="screen hidden">
+                <div class="report-card">
+                    <div class="report-title">
+                        <i class="fas fa-download"></i>
+                        Export Reports
+                    </div>
+                    <div class="export-buttons">
+                        <button class="btn-export" onclick="exportToCSV()">
+                            <i class="fas fa-file-csv"></i> Export CSV
+                        </button>
+                        <button class="btn-export" onclick="viewGoogleSheet()">
+                            <i class="fas fa-table"></i> View Sheet
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Zone Performance
+                </div>
+                <div class="chart-container">
+                    <canvas id="zoneChart" style="max-height: 300px;"></canvas>
+                </div>
+
+                <div class="section-title">
+                    <i class="fas fa-chart-line"></i>
+                    Monthly Trend
+                </div>
+                <div class="chart-container">
+                    <canvas id="trendChart" style="max-height: 300px;"></canvas>
+                </div>
+
+                <div class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    Summary Statistics
+                </div>
+                <div class="report-card">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.25rem;">Total Outlets</div>
+                            <div style="font-size: 1.5rem; font-weight: bold;" id="reportTotalOutlets">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.25rem;">Active TDRs</div>
+                            <div style="font-size: 1.5rem; font-weight: bold;" id="reportActiveTDRs">5</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.25rem;">Avg. Visits/TDR</div>
+                            <div style="font-size: 1.5rem; font-weight: bold;" id="reportAvgVisits">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.25rem;">Critical Float</div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: var(--red-critical);" id="reportCritical">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Screen -->
+            <div id="settingsScreen" class="screen hidden">
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <div class="setting-title">
+                            <i class="fas fa-sync"></i>
+                            Google Sheets Sync
+                        </div>
+                    </div>
+                    <div class="setting-description">
+                        Connect to Google Sheets for automatic data backup and reporting.
+                    </div>
+                    <div class="form-group">
+                        <label for="googleSheetUrl">Google Sheet URL</label>
+                        <input type="url" id="googleSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+                    </div>
+                    <button class="sync-button" onclick="syncToGoogle()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        Sync Now
+                    </button>
+                    <div id="syncStatus" class="hidden"></div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <div class="setting-title">
+                            <i class="fas fa-bullseye"></i>
+                            Monthly Target
+                        </div>
+                    </div>
+                    <div class="setting-description">
+                        Set your monthly outlet visit target.
+                    </div>
+                    <div class="form-group">
+                        <label for="monthlyTarget">Target Outlets</label>
+                        <input type="number" id="monthlyTarget" value="50" min="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveTarget()">
+                        <i class="fas fa-save"></i> Save Target
+                    </button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <div class="setting-title">
+                            <i class="fas fa-sliders-h"></i>
+                            Float Thresholds
+                        </div>
+                    </div>
+                    <div class="setting-description">
+                        Set thresholds for float status indicators.
+                    </div>
+                    <div class="form-group">
+                        <label for="criticalThreshold">Critical (RED) - Below (ZMW)</label>
+                        <input type="number" id="criticalThreshold" value="500" step="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="lowThreshold">Low (YELLOW) - Below (ZMW)</label>
+                        <input type="number" id="lowThreshold" value="1000" step="100">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveThresholds()">
+                        <i class="fas fa-save"></i> Save Thresholds
+                    </button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <div class="setting-title">
+                            <i class="fas fa-database"></i>
+                            Data Management
+                        </div>
+                    </div>
+                    <div class="setting-description">
+                        Manage your local data storage.
+                    </div>
+                    <button class="btn btn-secondary" onclick="clearLocalData()">
+                        <i class="fas fa-trash"></i> Clear All Local Data
+                    </button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <div class="setting-title">
+                            <i class="fas fa-info-circle"></i>
+                            About
+                        </div>
+                    </div>
+                    <div style="color: var(--text-gray); font-size: 0.9rem; line-height: 1.6;">
+                        <p><strong>Zamtel TDR Field Monitor</strong></p>
+                        <p>Version 1.0.0</p>
+                        <p style="margin-top: 0.5rem; font-style: italic; color: var(--zamtel-pink);">Create your World</p>
+                        <p style="margin-top: 1rem;">Contact: zamtel.sd@gmail.com</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item active" data-screen="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" data-screen="newVisit">
+                <i class="fas fa-plus-circle"></i>
+                <span>New Visit</span>
+            </div>
+            <div class="nav-item" data-screen="visits">
+                <i class="fas fa-list"></i>
+                <span>Visits</span>
+            </div>
+            <div class="nav-item" data-screen="leaderboard">
+                <i class="fas fa-trophy"></i>
+                <span>Leaderboard</span>
+            </div>
+            <div class="nav-item" data-screen="reports">
+                <i class="fas fa-chart-bar"></i>
+                <span>Reports</span>
+            </div>
+            <div class="nav-item" data-screen="settings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Variables
+        let currentUser = null;
+        let currentZone = null;
+        let visits = [];
+        let charts = {};
+        let settings = {
+            monthlyTarget: 50,
+            criticalThreshold: 500,
+            lowThreshold: 1000,
+            googleSheetUrl: ''
+        };
+
+        // Initialize App
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                checkLogin();
+            }, 1500);
+
+            // Load data from localStorage
+            loadFromStorage();
+
+            // Setup event listeners
+            setupEventListeners();
+
+            // Register service worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            }
+        });
+
+        function checkLogin() {
+            const user = localStorage.getItem('currentUser');
+            const zone = localStorage.getItem('currentZone');
+            
+            if (user && zone) {
+                currentUser = user;
+                currentZone = zone;
+                showApp();
+            } else {
+                document.getElementById('loginScreen').classList.remove('hidden');
+            }
+        }
+
+        function setupEventListeners() {
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const tdrName = document.getElementById('tdrName').value;
+                const zone = document.getElementById('loginZone').value;
+                
+                currentUser = tdrName;
+                currentZone = zone;
+                
+                localStorage.setItem('currentUser', tdrName);
+                localStorage.setItem('currentZone', zone);
+                
+                document.getElementById('loginScreen').classList.add('hidden');
+                showApp();
+            });
+
+            // Visit form
+            document.getElementById('visitForm').addEventListener('submit', handleVisitSubmit);
+
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const screen = item.dataset.screen;
+                    switchScreen(screen);
+                });
+            });
+
+            // Filters
+            document.getElementById('filterFloat').addEventListener('change', filterVisits);
+            document.getElementById('filterZone').addEventListener('change', filterVisits);
+        }
+
+        function showApp() {
+            document.getElementById('currentUser').textContent = currentUser;
+            document.getElementById('appContainer').classList.remove('hidden');
+            
+            // Set form values
+            document.getElementById('formTdrName').value = currentUser;
+            document.getElementById('formZone').value = currentZone;
+            
+            loadSampleData();
+            updateDashboard();
+            updateCharts();
+            renderVisits();
+            renderLeaderboard();
+        }
+
+        function switchScreen(screenName) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+
+            // Show selected screen
+            const screenMap = {
+                'dashboard': 'dashboardScreen',
+                'newVisit': 'newVisitScreen',
+                'visits': 'visitsScreen',
+                'leaderboard': 'leaderboardScreen',
+                'reports': 'reportsScreen',
+                'settings': 'settingsScreen'
+            };
+
+            document.getElementById(screenMap[screenName]).classList.remove('hidden');
+
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.screen === screenName) {
+                    item.classList.add('active');
+                }
+            });
+
+            // Update content for specific screens
+            if (screenName === 'reports') {
+                updateReports();
+            }
+        }
+
+        function getLocation() {
+            const button = document.getElementById('gpsButton');
+            const status = document.getElementById('gpsStatus');
+            
+            button.disabled = true;
+            status.className = 'gps-status gps-loading';
+            status.textContent = 'Getting your location...';
+            status.classList.remove('hidden');
+
+            if (!navigator.geolocation) {
+                status.className = 'gps-status gps-error';
+                status.textContent = '❌ Geolocation is not supported by your device';
+                button.disabled = false;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude.toFixed(6);
+                    const lng = position.coords.longitude.toFixed(6);
+                    
+                    document.getElementById('latitude').value = lat;
+                    document.getElementById('longitude').value = lng;
+                    
+                    status.className = 'gps-status gps-success';
+                    status.innerHTML = `✓ Location captured: ${lat}, ${lng}`;
+                    
+                    button.classList.add('active');
+                    document.getElementById('gpsButtonText').textContent = 'Location Captured';
+                    button.disabled = false;
+                },
+                (error) => {
+                    status.className = 'gps-status gps-error';
+                    status.textContent = `❌ Error: ${error.message}. Please enable location services.`;
+                    button.disabled = false;
+                }
+            );
+        }
+
+        function handleVisitSubmit(e) {
+            e.preventDefault();
+            
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+            
+            if (!latitude || !longitude) {
+                alert('Please capture GPS location first!');
+                return;
+            }
+
+            const visit = {
+                id: Date.now(),
+                tdrName: document.getElementById('formTdrName').value,
+                zone: document.getElementById('formZone').value,
+                zbmName: document.getElementById('zbmName').value,
+                date: new Date().toISOString(),
+                outletName: document.getElementById('outletName').value,
+                contactNumber: document.getElementById('contactNumber').value,
+                agentCode: document.getElementById('agentCode').value,
+                town: document.getElementById('town').value,
+                clusterName: document.getElementById('clusterName').value,
+                marketName: document.getElementById('marketName').value,
+                floatAmount: parseFloat(document.getElementById('floatAmount').value),
+                hasFloat: document.getElementById('hasFloat').value,
+                latitude: latitude,
+                longitude: longitude
+            };
+
+            visits.push(visit);
+            saveToStorage();
+            
+            // Submit to Google Sheets (placeholder)
+            submitToGoogleSheets(visit);
+
+            // Reset form
+            e.target.reset();
+            document.getElementById('gpsStatus').classList.add('hidden');
+            document.getElementById('gpsButton').classList.remove('active');
+            document.getElementById('gpsButtonText').textContent = 'Get GPS Location';
+
+            alert('Visit recorded successfully!');
+            
+            updateDashboard();
+            updateCharts();
+            renderVisits();
+            renderLeaderboard();
+            
+            switchScreen('dashboard');
+        }
+
+        function getFloatStatus(amount) {
+            if (amount < settings.criticalThreshold) return 'critical';
+            if (amount < settings.lowThreshold) return 'low';
+            return 'ok';
+        }
+
+        function getFloatBadgeClass(status) {
+            return `float-badge float-${status}`;
+        }
+
+        function getFloatLabel(status) {
+            const labels = {
+                'critical': 'CRITICAL',
+                'low': 'LOW',
+                'ok': 'OK'
+            };
+            return labels[status];
+        }
+
+        function updateDashboard() {
+            const userVisits = visits.filter(v => v.tdrName === currentUser);
+            
+            const totalVisits = userVisits.length;
+            const floatOk = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'ok').length;
+            const floatCritical = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'critical').length;
+            
+            document.getElementById('totalVisits').textContent = totalVisits;
+            document.getElementById('floatOk').textContent = floatOk;
+            document.getElementById('floatCritical').textContent = floatCritical;
+            document.getElementById('targetValue').textContent = settings.monthlyTarget;
+
+            // Progress
+            const progress = Math.min((totalVisits / settings.monthlyTarget) * 100, 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressPercentage').textContent = Math.round(progress) + '%';
+            document.getElementById('progressText').textContent = `${totalVisits} / ${settings.monthlyTarget}`;
+        }
+
+        function updateCharts() {
+            updateFloatChart();
+            updateWeeklyChart();
+        }
+
+        function updateFloatChart() {
+            const ctx = document.getElementById('floatChart');
+            
+            if (charts.floatChart) {
+                charts.floatChart.destroy();
+            }
+
+            const userVisits = visits.filter(v => v.tdrName === currentUser);
+            const critical = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'critical').length;
+            const low = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'low').length;
+            const ok = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'ok').length;
+
+            charts.floatChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical (RED)', 'Low (YELLOW)', 'OK (GREEN)'],
+                    datasets: [{
+                        data: [critical, low, ok],
+                        backgroundColor: ['#dc2626', '#fbbf24', '#00A651'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateWeeklyChart() {
+            const ctx = document.getElementById('weeklyChart');
+            
+            if (charts.weeklyChart) {
+                charts.weeklyChart.destroy();
+            }
+
+            // Get last 7 days
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const data = new Array(7).fill(0);
+            
+            const userVisits = visits.filter(v => v.tdrName === currentUser);
+            userVisits.forEach(visit => {
+                const date = new Date(visit.date);
+                const dayIndex = date.getDay();
+                data[dayIndex]++;
+            });
+
+            charts.weeklyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Visits',
+                        data: data,
+                        backgroundColor: '#00A651',
+                        borderRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderVisits() {
+            const container = document.getElementById('visitsList');
+            const emptyState = document.getElementById('emptyVisits');
+            
+            const userVisits = visits.filter(v => v.tdrName === currentUser);
+            
+            if (userVisits.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            
+            container.innerHTML = userVisits.map(visit => {
+                const status = getFloatStatus(visit.floatAmount);
+                const date = new Date(visit.date);
+                
+                return `
+                    <div class="visit-card slide-up">
+                        <div class="visit-header">
+                            <div>
+                                <div class="visit-outlet">${visit.outletName}</div>
+                                <div class="visit-date">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
+                            </div>
+                            <div class="${getFloatBadgeClass(status)}">
+                                ${getFloatLabel(status)}
+                            </div>
+                        </div>
+                        <div class="visit-details">
+                            <div class="visit-detail">
+                                <div class="visit-detail-label">Agent Code</div>
+                                <div class="visit-detail-value">${visit.agentCode}</div>
+                            </div>
+                            <div class="visit-detail">
+                                <div class="visit-detail-label">Float Amount</div>
+                                <div class="visit-detail-value">K ${visit.floatAmount.toFixed(2)}</div>
+                            </div>
+                            <div class="visit-detail">
+                                <div class="visit-detail-label">Town</div>
+                                <div class="visit-detail-value">${visit.town}</div>
+                            </div>
+                            <div class="visit-detail">
+                                <div class="visit-detail-label">Contact</div>
+                                <div class="visit-detail-value">${visit.contactNumber}</div>
+                            </div>
+                            <div class="visit-detail">
+                                <div class="visit-detail-label">Market</div>
+                                <div class="visit-detail-value">${visit.marketName}</div>
+                            </div>
+                            <div class="visit-detail">
+                                <div class="visit-detail-label">ZBM</div>
+                                <div class="visit-detail-value">${visit.zbmName}</div>
+                            </div>
+                        </div>
+                        <a href="https://www.google.com/maps?q=${visit.latitude},${visit.longitude}" 
+                           target="_blank" class="location-link">
+                            <i class="fas fa-map-marker-alt"></i>
+                            View Location on Map
+                        </a>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterVisits() {
+            const floatFilter = document.getElementById('filterFloat').value;
+            const zoneFilter = document.getElementById('filterZone').value;
+            
+            let filtered = visits.filter(v => v.tdrName === currentUser);
+            
+            if (floatFilter !== 'all') {
+                filtered = filtered.filter(v => getFloatStatus(v.floatAmount) === floatFilter);
+            }
+            
+            if (zoneFilter !== 'all') {
+                filtered = filtered.filter(v => v.zone === zoneFilter);
+            }
+            
+            // Re-render with filtered data
+            const container = document.getElementById('visitsList');
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-filter"></i></div><div class="empty-text">No visits match the selected filters</div></div>';
+            } else {
+                container.innerHTML = filtered.map(visit => {
+                    const status = getFloatStatus(visit.floatAmount);
+                    const date = new Date(visit.date);
+                    
+                    return `
+                        <div class="visit-card slide-up">
+                            <div class="visit-header">
+                                <div>
+                                    <div class="visit-outlet">${visit.outletName}</div>
+                                    <div class="visit-date">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
+                                </div>
+                                <div class="${getFloatBadgeClass(status)}">
+                                    ${getFloatLabel(status)}
+                                </div>
+                            </div>
+                            <div class="visit-details">
+                                <div class="visit-detail">
+                                    <div class="visit-detail-label">Agent Code</div>
+                                    <div class="visit-detail-value">${visit.agentCode}</div>
+                                </div>
+                                <div class="visit-detail">
+                                    <div class="visit-detail-label">Float Amount</div>
+                                    <div class="visit-detail-value">K ${visit.floatAmount.toFixed(2)}</div>
+                                </div>
+                                <div class="visit-detail">
+                                    <div class="visit-detail-label">Town</div>
+                                    <div class="visit-detail-value">${visit.town}</div>
+                                </div>
+                                <div class="visit-detail">
+                                    <div class="visit-detail-label">Contact</div>
+                                    <div class="visit-detail-value">${visit.contactNumber}</div>
+                                </div>
+                            </div>
+                            <a href="https://www.google.com/maps?q=${visit.latitude},${visit.longitude}" 
+                               target="_blank" class="location-link">
+                                <i class="fas fa-map-marker-alt"></i>
+                                View Location on Map
+                            </a>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function renderLeaderboard() {
+            const container = document.getElementById('leaderboardList');
+            
+            // Group visits by TDR
+            const tdrStats = {};
+            visits.forEach(visit => {
+                if (!tdrStats[visit.tdrName]) {
+                    tdrStats[visit.tdrName] = {
+                        name: visit.tdrName,
+                        zone: visit.zone,
+                        visits: 0,
+                        critical: 0
+                    };
+                }
+                tdrStats[visit.tdrName].visits++;
+                if (getFloatStatus(visit.floatAmount) === 'critical') {
+                    tdrStats[visit.tdrName].critical++;
+                }
+            });
+
+            // Convert to array and sort
+            const leaderboard = Object.values(tdrStats).sort((a, b) => b.visits - a.visits);
+
+            container.innerHTML = leaderboard.map((tdr, index) => {
+                const rank = index + 1;
+                const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
+                const progress = Math.round((tdr.visits / settings.monthlyTarget) * 100);
+                
+                return `
+                    <div class="leaderboard-item slide-up" style="animation-delay: ${index * 0.1}s;">
+                        <div class="rank-badge ${rankClass}">
+                            ${rank <= 3 ? (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉') : rank}
+                        </div>
+                        <div class="leaderboard-info">
+                            <div class="tdr-name">${tdr.name}</div>
+                            <div class="tdr-zone">${tdr.zone}</div>
+                            <div class="tdr-stats">
+                                <div class="tdr-stat">
+                                    <i class="fas fa-store" style="color: var(--zamtel-green);"></i>
+                                    <span>${tdr.visits} visits</span>
+                                </div>
+                                <div class="tdr-stat">
+                                    <i class="fas fa-chart-line" style="color: var(--zamtel-pink);"></i>
+                                    <span>${progress}% of target</span>
+                                </div>
+                                ${tdr.critical > 0 ? `
+                                    <div class="tdr-stat">
+                                        <i class="fas fa-exclamation-triangle" style="color: var(--red-critical);"></i>
+                                        <span>${tdr.critical} critical</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateReports() {
+            // Summary stats
+            document.getElementById('reportTotalOutlets').textContent = visits.length;
+            document.getElementById('reportActiveTDRs').textContent = new Set(visits.map(v => v.tdrName)).size;
+            const avgVisits = visits.length / Math.max(new Set(visits.map(v => v.tdrName)).size, 1);
+            document.getElementById('reportAvgVisits').textContent = avgVisits.toFixed(1);
+            document.getElementById('reportCritical').textContent = visits.filter(v => getFloatStatus(v.floatAmount) === 'critical').length;
+
+            // Zone chart
+            updateZoneChart();
+            
+            // Trend chart
+            updateTrendChart();
+        }
+
+        function updateZoneChart() {
+            const ctx = document.getElementById('zoneChart');
+            
+            if (charts.zoneChart) {
+                charts.zoneChart.destroy();
+            }
+
+            const zones = {};
+            visits.forEach(visit => {
+                zones[visit.zone] = (zones[visit.zone] || 0) + 1;
+            });
+
+            charts.zoneChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(zones),
+                    datasets: [{
+                        label: 'Visits by Zone',
+                        data: Object.values(zones),
+                        backgroundColor: '#00A651',
+                        borderRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTrendChart() {
+            const ctx = document.getElementById('trendChart');
+            
+            if (charts.trendChart) {
+                charts.trendChart.destroy();
+            }
+
+            // Get last 30 days
+            const days = [];
+            const data = [];
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                
+                const dayVisits = visits.filter(v => {
+                    const visitDate = new Date(v.date);
+                    return visitDate.toDateString() === date.toDateString();
+                }).length;
+                
+                data.push(dayVisits);
+            }
+
+            charts.trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Daily Visits',
+                        data: data,
+                        borderColor: '#E91E8C',
+                        backgroundColor: 'rgba(233, 30, 140, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function exportToCSV() {
+            const headers = ['TDR Name', 'Zone', 'ZBM Name', 'Date', 'Outlet Name', 'Contact', 'Agent Code', 'Town', 'Cluster', 'Market', 'Float Amount', 'Has Float', 'Float Status', 'Latitude', 'Longitude'];
+            
+            const rows = visits.map(v => [
+                v.tdrName,
+                v.zone,
+                v.zbmName,
+                new Date(v.date).toLocaleString(),
+                v.outletName,
+                v.contactNumber,
+                v.agentCode,
+                v.town,
+                v.clusterName,
+                v.marketName,
+                v.floatAmount,
+                v.hasFloat,
+                getFloatLabel(getFloatStatus(v.floatAmount)),
+                v.latitude,
+                v.longitude
+            ]);
+
+            let csv = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `zamtel-tdr-visits-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        function viewGoogleSheet() {
+            const url = settings.googleSheetUrl || 'https://docs.google.com/spreadsheets/';
+            window.open(url, '_blank');
+        }
+
+        function submitToGoogleSheets(visit) {
+            // Placeholder for Google Sheets submission
+            // In production, this would send data to a Google Apps Script web app
+            console.log('Submitting to Google Sheets:', visit);
+            
+            // Example endpoint (to be configured):
+            // const url = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
+            // fetch(url, {
+            //     method: 'POST',
+            //     body: JSON.stringify(visit),
+            //     headers: { 'Content-Type': 'application/json' }
+            // });
+        }
+
+        function syncToGoogle() {
+            const button = event.target;
+            const status = document.getElementById('syncStatus');
+            
+            button.disabled = true;
+            status.className = 'sync-status gps-loading';
+            status.textContent = 'Syncing...';
+            status.classList.remove('hidden');
+
+            // Simulate sync
+            setTimeout(() => {
+                status.className = 'sync-status gps-success';
+                status.textContent = `✓ Successfully synced ${visits.length} visits`;
+                button.disabled = false;
+            }, 2000);
+        }
+
+        function saveTarget() {
+            const target = parseInt(document.getElementById('monthlyTarget').value);
+            settings.monthlyTarget = target;
+            saveToStorage();
+            updateDashboard();
+            alert('Monthly target updated successfully!');
+        }
+
+        function saveThresholds() {
+            settings.criticalThreshold = parseInt(document.getElementById('criticalThreshold').value);
+            settings.lowThreshold = parseInt(document.getElementById('lowThreshold').value);
+            saveToStorage();
+            updateCharts();
+            renderVisits();
+            alert('Float thresholds updated successfully!');
+        }
+
+        function clearLocalData() {
+            if (confirm('Are you sure you want to clear all local data? This cannot be undone.')) {
+                visits = [];
+                saveToStorage();
+                updateDashboard();
+                updateCharts();
+                renderVisits();
+                renderLeaderboard();
+                alert('All local data has been cleared.');
+            }
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('currentZone');
+                location.reload();
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('visits', JSON.stringify(visits));
+            localStorage.setItem('settings', JSON.stringify(settings));
+        }
+
+        function loadFromStorage() {
+            const storedVisits = localStorage.getItem('visits');
+            const storedSettings = localStorage.getItem('settings');
+            
+            if (storedVisits) {
+                visits = JSON.parse(storedVisits);
+            }
+            
+            if (storedSettings) {
+                settings = JSON.parse(storedSettings);
+                document.getElementById('monthlyTarget').value = settings.monthlyTarget;
+                document.getElementById('criticalThreshold').value = settings.criticalThreshold;
+                document.getElementById('lowThreshold').value = settings.lowThreshold;
+                document.getElementById('googleSheetUrl').value = settings.googleSheetUrl || '';
+            }
+        }
+
+        function loadSampleData() {
+            // Only load sample data if no data exists
+            if (visits.length === 0) {
+                const sampleVisits = [
+                    {
+                        id: 1,
+                        tdrName: 'John Mwanza',
+                        zone: 'Lusaka Central',
+                        zbmName: 'Charles Tembo',
+                        date: new Date(Date.now() - 86400000).toISOString(),
+                        outletName: 'City Market Kiosk',
+                        contactNumber: '0977123456',
+                        agentCode: 'AG001',
+                        town: 'Lusaka',
+                        clusterName: 'Central Business District',
+                        marketName: 'City Market',
+                        floatAmount: 1500,
+                        hasFloat: 'Yes',
+                        latitude: '-15.4167',
+                        longitude: '28.2833'
+                    },
+                    {
+                        id: 2,
+                        tdrName: 'Mary Banda',
+                        zone: 'Lusaka East',
+                        zbmName: 'Ruth Mulenga',
+                        date: new Date(Date.now() - 172800000).toISOString(),
+                        outletName: 'Kabulonga Shop',
+                        contactNumber: '0966987654',
+                        agentCode: 'AG002',
+                        town: 'Lusaka',
+                        clusterName: 'Kabulonga',
+                        marketName: 'Kabulonga Market',
+                        floatAmount: 400,
+                        hasFloat: 'Yes',
+                        latitude: '-15.3875',
+                        longitude: '28.3228'
+                    },
+                    {
+                        id: 3,
+                        tdrName: currentUser,
+                        zone: currentZone,
+                        zbmName: 'Joseph Banda',
+                        date: new Date().toISOString(),
+                        outletName: 'Chilenje Market Stand',
+                        contactNumber: '0955555555',
+                        agentCode: 'AG003',
+                        town: 'Lusaka',
+                        clusterName: 'Chilenje',
+                        marketName: 'Chilenje Market',
+                        floatAmount: 800,
+                        hasFloat: 'Yes',
+                        latitude: '-15.4339',
+                        longitude: '28.3120'
+                    }
+                ];
+
+                visits = sampleVisits;
+                saveToStorage();
+            }
+        }
+    </script>
+</body>
+</html>
