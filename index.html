@@ -49,204 +49,176 @@
             display: none !important;
         }
 
-        /* Loading Screen */
-        #loadingScreen {
-            position: fixed;
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--zamtel-green) 0%, var(--zamtel-pink) 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
             top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--zamtel-green), var(--zamtel-pink));
+            z-index: 1000;
+        }
+
+        .header-content {
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            z-index: 9999;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
-        .loading-logo {
-            font-size: 3rem;
-            color: white;
-            margin-bottom: 1rem;
-            animation: pulse 1.5s infinite;
+        .logo-section h1 {
+            font-size: 1.5rem;
+            margin: 0;
         }
 
-        .loading-text {
-            color: white;
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .loading-slogan {
-            color: rgba(255,255,255,0.8);
-            font-size: 0.9rem;
+        .slogan {
+            font-size: 0.75rem;
+            opacity: 0.9;
             font-style: italic;
         }
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+        .user-info {
+            text-align: right;
+            font-size: 0.9rem;
+        }
+
+        .role-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin-left: 5px;
+            font-weight: bold;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 5px;
+            font-size: 0.85rem;
         }
 
         /* Login Screen */
-        #loginScreen {
-            min-height: 100vh;
-            background: linear-gradient(135deg, var(--zamtel-green), var(--zamtel-pink));
+        .login-screen {
             display: flex;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            padding: 2rem;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--zamtel-green) 0%, var(--zamtel-pink) 100%);
+            padding: 20px;
         }
 
-        .login-container {
+        .login-card {
             background: white;
+            padding: 40px 30px;
             border-radius: 20px;
-            padding: 2rem;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             max-width: 400px;
             width: 100%;
-        }
-
-        .login-header {
             text-align: center;
-            margin-bottom: 2rem;
         }
 
         .login-logo {
-            font-size: 4rem;
-            color: var(--zamtel-green);
-            margin-bottom: 1rem;
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--zamtel-green), var(--zamtel-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .login-title {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
             color: var(--text-dark);
-            margin-bottom: 0.5rem;
         }
 
         .login-slogan {
-            color: var(--zamtel-pink);
+            color: var(--text-gray);
+            margin-bottom: 30px;
             font-style: italic;
-            font-size: 0.9rem;
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 20px;
+            text-align: left;
         }
 
-        label {
+        .form-group label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 8px;
             color: var(--text-dark);
             font-weight: 500;
         }
 
-        input, select, textarea {
+        .form-group select,
+        .form-group input {
             width: 100%;
-            padding: 0.75rem;
+            padding: 12px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             font-size: 1rem;
             transition: border-color 0.3s;
         }
 
-        input:focus, select:focus, textarea:focus {
+        .form-group select:focus,
+        .form-group input:focus {
             outline: none;
             border-color: var(--zamtel-green);
         }
 
+        .form-group optgroup {
+            font-weight: bold;
+            color: var(--text-dark);
+            font-style: normal;
+        }
+
+        .form-group option {
+            padding: 5px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .checkbox-group input {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            font-weight: normal;
+        }
+
         .btn {
             width: 100%;
-            padding: 1rem;
+            padding: 14px;
             border: none;
             border-radius: 10px;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .btn-primary {
-            background: var(--zamtel-green);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #008d44;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,166,81,0.3);
-        }
-
-        .btn-secondary {
-            background: var(--zamtel-pink);
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #d11a7b;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(233,30,140,0.3);
-        }
-
-        /* Main App Container */
-        #appContainer {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        /* Header */
-        .app-header {
             background: linear-gradient(135deg, var(--zamtel-green), var(--zamtel-pink));
             color: white;
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .header-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .user-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-        }
-
-        .logout-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-
-        /* Content Area */
-        .app-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem;
-            padding-bottom: 5rem;
+        .btn-primary:active {
+            transform: scale(0.98);
         }
 
         /* Bottom Navigation */
@@ -256,24 +228,24 @@
             left: 0;
             right: 0;
             background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-around;
-            padding: 0.5rem 0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            z-index: 100;
+            padding: 10px 0;
+            z-index: 999;
         }
 
         .nav-item {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.25rem;
-            padding: 0.5rem;
-            color: var(--text-gray);
+            padding: 5px 15px;
             cursor: pointer;
-            transition: all 0.3s;
+            color: var(--text-gray);
+            transition: color 0.3s;
+            border: none;
+            background: none;
             flex: 1;
-            text-decoration: none;
         }
 
         .nav-item.active {
@@ -282,699 +254,805 @@
 
         .nav-item i {
             font-size: 1.5rem;
+            margin-bottom: 3px;
         }
 
         .nav-item span {
             font-size: 0.7rem;
         }
 
-        /* Dashboard */
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px 20px 80px 20px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: var(--zamtel-green);
+        }
+
+        /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .stat-card {
             background: white;
-            padding: 1.5rem;
             border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            position: relative;
+            overflow: hidden;
         }
 
-        .stat-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--zamtel-green), var(--zamtel-pink));
         }
 
-        .stat-value {
-            font-size: 2rem;
+        .stat-card.red::before {
+            background: var(--red-critical);
+        }
+
+        .stat-card.yellow::before {
+            background: var(--yellow-low);
+        }
+
+        .stat-card.green::before {
+            background: var(--green-ok);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
             font-weight: bold;
-            margin-bottom: 0.25rem;
+            color: var(--text-dark);
         }
 
         .stat-label {
-            color: var(--text-gray);
             font-size: 0.9rem;
+            color: var(--text-gray);
+            margin-top: 5px;
         }
 
-        .target-progress {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 1.5rem;
-        }
-
-        .progress-header {
+        /* Progress Ring */
+        .progress-ring-container {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-        }
-
-        .progress-bar-container {
-            background: #e0e0e0;
-            height: 30px;
-            border-radius: 15px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--zamtel-green), var(--zamtel-pink));
-            transition: width 0.5s;
-            display: flex;
-            align-items: center;
             justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 0.85rem;
-        }
-
-        .section-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
             align-items: center;
-            gap: 0.5rem;
+            margin: 20px 0;
         }
 
+        .progress-ring {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+
+        .progress-ring svg {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-circle {
+            fill: none;
+            stroke: #e0e0e0;
+            stroke-width: 12;
+        }
+
+        .progress-ring-circle-progress {
+            fill: none;
+            stroke: url(#gradient);
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .progress-ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .progress-ring-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        .progress-ring-label {
+            font-size: 0.9rem;
+            color: var(--text-gray);
+        }
+
+        /* Chart Container */
         .chart-container {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 1.5rem;
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
         }
 
         /* Visit List */
-        .visit-card {
+        .visit-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .visit-item {
             background: white;
-            padding: 1rem;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 1rem;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid var(--zamtel-green);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .visit-item:active {
+            transform: scale(0.98);
+        }
+
+        .visit-item.red {
+            border-left-color: var(--red-critical);
+        }
+
+        .visit-item.yellow {
+            border-left-color: var(--yellow-low);
+        }
+
+        .visit-item.green {
+            border-left-color: var(--green-ok);
         }
 
         .visit-header {
             display: flex;
             justify-content: space-between;
-            align-items: start;
-            margin-bottom: 0.75rem;
+            align-items: flex-start;
+            margin-bottom: 10px;
         }
 
-        .visit-outlet {
-            font-size: 1.1rem;
+        .outlet-name {
             font-weight: 600;
+            font-size: 1.1rem;
             color: var(--text-dark);
         }
 
-        .visit-date {
-            color: var(--text-gray);
-            font-size: 0.85rem;
-        }
-
         .float-badge {
-            padding: 0.25rem 0.75rem;
+            padding: 4px 12px;
             border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
+            font-size: 0.75rem;
+            font-weight: bold;
             color: white;
         }
 
-        .float-critical {
+        .float-badge.red {
             background: var(--red-critical);
         }
 
-        .float-low {
+        .float-badge.yellow {
             background: var(--yellow-low);
-            color: #1a1a1a;
         }
 
-        .float-ok {
+        .float-badge.green {
             background: var(--green-ok);
         }
 
         .visit-details {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid #e0e0e0;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-gray);
         }
 
         .visit-detail {
-            font-size: 0.85rem;
-        }
-
-        .visit-detail-label {
-            color: var(--text-gray);
-            margin-bottom: 0.2rem;
-        }
-
-        .visit-detail-value {
-            color: var(--text-dark);
-            font-weight: 500;
-        }
-
-        .location-link {
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 0.25rem;
+            gap: 5px;
+        }
+
+        .visit-detail i {
             color: var(--zamtel-green);
-            text-decoration: none;
-            font-size: 0.85rem;
-            margin-top: 0.5rem;
+            width: 16px;
         }
 
         /* Leaderboard */
         .leaderboard-item {
-            background: white;
-            padding: 1rem;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 1rem;
             display: flex;
             align-items: center;
-            gap: 1rem;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
 
-        .rank-badge {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .leaderboard-rank {
             font-size: 1.5rem;
             font-weight: bold;
-            color: white;
+            width: 50px;
+            text-align: center;
         }
 
-        .rank-1 {
-            background: linear-gradient(135deg, #ffd700, #ffed4e);
-            color: #1a1a1a;
-        }
-
-        .rank-2 {
-            background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
-            color: #1a1a1a;
-        }
-
-        .rank-3 {
-            background: linear-gradient(135deg, #cd7f32, #daa520);
-        }
-
-        .rank-other {
-            background: var(--zamtel-green);
-        }
+        .rank-1 { color: #FFD700; }
+        .rank-2 { color: #C0C0C0; }
+        .rank-3 { color: #CD7F32; }
 
         .leaderboard-info {
             flex: 1;
+            margin-left: 15px;
         }
 
-        .tdr-name {
-            font-size: 1.1rem;
+        .leaderboard-name {
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            font-size: 1.05rem;
+            margin-bottom: 5px;
         }
 
-        .tdr-zone {
+        .leaderboard-stats {
+            font-size: 0.85rem;
             color: var(--text-gray);
-            font-size: 0.85rem;
         }
 
-        .tdr-stats {
-            display: flex;
-            gap: 1rem;
-            margin-top: 0.5rem;
+        .leaderboard-score {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--zamtel-green);
         }
 
-        .tdr-stat {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            font-size: 0.85rem;
-        }
-
-        /* Form */
+        /* Form Styles */
         .form-container {
             background: white;
-            padding: 1.5rem;
             border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        .gps-button {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            width: 100%;
-            padding: 1rem;
-            background: var(--zamtel-pink);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 1rem;
-        }
-
-        .gps-button:hover {
-            background: #d11a7b;
-        }
-
-        .gps-button.active {
-            background: var(--zamtel-green);
+            padding: 20px;
         }
 
         .gps-status {
-            text-align: center;
-            padding: 0.75rem;
-            border-radius: 10px;
-            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #f0f9f4;
+            border-radius: 8px;
+            margin-bottom: 15px;
             font-size: 0.9rem;
         }
 
-        .gps-success {
-            background: #d1fae5;
-            color: #065f46;
+        .gps-status.loading {
+            background: #fff3cd;
         }
 
-        .gps-error {
-            background: #fee2e2;
-            color: #991b1b;
+        .gps-status.success {
+            background: #d4edda;
+            color: #155724;
         }
 
-        .gps-loading {
-            background: #fef3c7;
-            color: #92400e;
+        .gps-status.error {
+            background: #f8d7da;
+            color: #721c24;
         }
 
-        /* Settings */
-        .setting-item {
-            background: white;
-            padding: 1rem;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 1rem;
+        .gps-icon {
+            font-size: 1.2rem;
         }
 
-        .setting-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
+        .coordinates {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
         }
 
-        .setting-title {
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        .coord-box {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
         }
 
-        .setting-description {
+        .coord-label {
+            font-size: 0.75rem;
             color: var(--text-gray);
-            font-size: 0.85rem;
-            margin-bottom: 0.75rem;
+            margin-bottom: 3px;
         }
 
-        .sync-button {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--zamtel-green);
-            color: white;
-            border: none;
-            border-radius: 10px;
+        .coord-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
             font-size: 0.9rem;
-            cursor: pointer;
+            color: var(--text-dark);
         }
 
-        .sync-status {
-            padding: 0.5rem;
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
             border-radius: 10px;
-            text-align: center;
-            font-size: 0.85rem;
-            margin-top: 0.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
         }
 
         /* Filter Bar */
         .filter-bar {
-            background: white;
-            padding: 1rem;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 1rem;
-        }
-
-        .filter-row {
             display: flex;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
-        .filter-row:last-child {
-            margin-bottom: 0;
-        }
-
-        /* Alert Messages */
-        .alert {
-            padding: 1rem;
-            border-radius: 10px;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .alert-info {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        /* Reports */
-        .report-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 1.5rem;
-        }
-
-        .report-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .export-buttons {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .btn-export {
+        .filter-bar input,
+        .filter-bar select {
             flex: 1;
-            padding: 0.75rem;
+            min-width: 150px;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+        }
+
+        .btn-secondary {
+            background: var(--zamtel-green);
+            color: white;
+            padding: 10px 20px;
             border: none;
             border-radius: 10px;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 0.9rem;
-            display: flex;
+            display: inline-flex;
             align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary:active {
+            transform: scale(0.98);
+        }
+
+        /* Period Selector */
+        .period-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
             justify-content: center;
-            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .period-btn {
+            padding: 8px 20px;
+            border: 2px solid var(--zamtel-green);
+            background: white;
+            color: var(--zamtel-green);
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .period-btn.active {
             background: var(--zamtel-green);
             color: white;
         }
 
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--green-ok);
+        }
+
+        .toast.error {
+            background: var(--red-critical);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--zamtel-green);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Settings */
+        .settings-item {
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .settings-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+        }
+
+        .settings-value {
+            font-size: 0.9rem;
+            color: var(--text-gray);
+        }
+
+        .install-instructions {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .install-instructions h4 {
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        .install-instructions ol {
+            margin-left: 20px;
+        }
+
+        .install-instructions li {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
         /* Responsive */
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
             .stats-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr);
             }
-
-            .visit-details {
-                grid-template-columns: 1fr;
+            
+            .filter-bar {
+                flex-direction: column;
             }
-
-            .header-title {
-                font-size: 1rem;
-            }
-
-            .user-badge {
-                display: none;
+            
+            .filter-bar input,
+            .filter-bar select {
+                width: 100%;
             }
         }
 
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1rem;
+        /* Expanded Visit Details */
+        .visit-expanded {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+            display: none;
         }
 
-        .empty-icon {
-            font-size: 4rem;
+        .visit-expanded.show {
+            display: block;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 0.9rem;
+        }
+
+        .detail-label {
             color: var(--text-gray);
-            margin-bottom: 1rem;
+            font-weight: 500;
         }
 
-        .empty-text {
-            color: var(--text-gray);
-            font-size: 1rem;
-        }
-
-        /* Animation */
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .slide-up {
-            animation: slideUp 0.3s ease-out;
+        .detail-value {
+            color: var(--text-dark);
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loadingScreen">
-        <div class="loading-logo">
-            <i class="fas fa-signal"></i>
-        </div>
-        <div class="loading-text">Zamtel TDR Monitor</div>
-        <div class="loading-slogan">Create your World</div>
-    </div>
-
     <!-- Login Screen -->
-    <div id="loginScreen" class="hidden">
-        <div class="login-container">
-            <div class="login-header">
-                <div class="login-logo">
-                    <i class="fas fa-signal"></i>
-                </div>
-                <h1 class="login-title">Zamtel TDR Monitor</h1>
-                <p class="login-slogan">Create your World</p>
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <div class="login-logo">📱</div>
+            <h2 class="login-title">Zamtel TDR</h2>
+            <p class="login-slogan">Create your World</p>
+            
+            <div class="form-group">
+                <label for="tdrSelect">Select Your Name</label>
+                <select id="tdrSelect">
+                    <option value="">-- Select TDR Name --</option>
+                    <optgroup label="--- TDRs ---">
+                        <option value="Abel Mumba">Abel Mumba</option>
+                        <option value="Abigail Matyola">Abigail Matyola</option>
+                        <option value="Agness Matimba">Agness Matimba</option>
+                        <option value="Albert Kapapa">Albert Kapapa</option>
+                        <option value="Angel Chishimba">Angel Chishimba</option>
+                        <option value="Angela Chinjenge">Angela Chinjenge</option>
+                        <option value="Angela Mwamba">Angela Mwamba</option>
+                        <option value="Beatrice Mkandawire">Beatrice Mkandawire</option>
+                        <option value="Catherine Kapika">Catherine Kapika</option>
+                        <option value="Chama Mulubwa">Chama Mulubwa</option>
+                        <option value="Chileshe Chileshe">Chileshe Chileshe</option>
+                        <option value="Chota Chibesa">Chota Chibesa</option>
+                        <option value="Chrispine Mambwe">Chrispine Mambwe</option>
+                        <option value="Collins Hachoose">Collins Hachoose</option>
+                        <option value="David Musonda">David Musonda</option>
+                        <option value="Deborah Mfune">Deborah Mfune</option>
+                        <option value="Duncan Mubanga">Duncan Mubanga</option>
+                        <option value="Edina Mwamba">Edina Mwamba</option>
+                        <option value="Esther Gausi">Esther Gausi</option>
+                        <option value="Eunice Muyunda">Eunice Muyunda</option>
+                        <option value="Gerald Simwanza">Gerald Simwanza</option>
+                        <option value="Graham Phiri">Graham Phiri</option>
+                        <option value="Hellen Mushili">Hellen Mushili</option>
+                        <option value="Ireen Mbao Kasumba">Ireen Mbao Kasumba</option>
+                        <option value="Jeremiah Phiri">Jeremiah Phiri</option>
+                        <option value="Jonathan Nguni">Jonathan Nguni</option>
+                        <option value="Monica Mulenga">Monica Mulenga</option>
+                        <option value="Moses Mumba Musonda">Moses Mumba Musonda</option>
+                        <option value="Moses Nguni">Moses Nguni</option>
+                        <option value="Nosilku Mubita">Nosilku Mubita</option>
+                        <option value="Nsungwe Machaliwa">Nsungwe Machaliwa</option>
+                        <option value="Ntombi Katebe">Ntombi Katebe</option>
+                        <option value="Pheobby Kapotwe">Pheobby Kapotwe</option>
+                        <option value="Presiley Kanenge">Presiley Kanenge</option>
+                        <option value="Samaria Tembo">Samaria Tembo</option>
+                        <option value="Woodward Kabwe">Woodward Kabwe</option>
+                        <option value="Yvonne Mulenga">Yvonne Mulenga</option>
+                    </optgroup>
+                    <optgroup label="--- HSD ---">
+                        <option value="John Nkhoma (HSD)">John Nkhoma (HSD)</option>
+                    </optgroup>
+                    <optgroup label="--- ZBM (Managers) ---">
+                        <option value="Chileshe Ira Ivor (ZBM)">Chileshe Ira Ivor (ZBM)</option>
+                        <option value="Daniel Chimbili (ZBM)">Daniel Chimbili (ZBM)</option>
+                        <option value="Muchele Mwazembe (ZBM)">Muchele Mwazembe (ZBM)</option>
+                        <option value="Mukuka Kapeya (ZBM)">Mukuka Kapeya (ZBM)</option>
+                        <option value="Ntamayile Munungwe (ZBM)">Ntamayile Munungwe (ZBM)</option>
+                    </optgroup>
+                </select>
             </div>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="tdrName">TDR Name</label>
-                    <select id="tdrName" required>
-                        <option value="">Select your name</option>
-                        <option value="John Mwanza">John Mwanza</option>
-                        <option value="Mary Banda">Mary Banda</option>
-                        <option value="Peter Phiri">Peter Phiri</option>
-                        <option value="Grace Lungu">Grace Lungu</option>
-                        <option value="James Sakala">James Sakala</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="loginZone">Zone</label>
-                    <select id="loginZone" required>
-                        <option value="">Select zone</option>
-                        <option value="Lusaka Central">Lusaka Central</option>
-                        <option value="Lusaka East">Lusaka East</option>
-                        <option value="Lusaka West">Lusaka West</option>
-                        <option value="Copperbelt">Copperbelt</option>
-                        <option value="Southern">Southern</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Login
-                </button>
-            </form>
+            
+            <div class="form-group">
+                <label for="pinInput">4-Digit PIN</label>
+                <input type="password" id="pinInput" maxlength="4" pattern="[0-9]{4}" placeholder="Enter your PIN">
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="rememberMe">
+                <label for="rememberMe">Remember me</label>
+            </div>
+            
+            <button class="btn btn-primary" onclick="login()">Sign In</button>
         </div>
     </div>
 
-    <!-- Main App Container -->
-    <div id="appContainer" class="hidden">
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
         <!-- Header -->
-        <div class="app-header">
-            <div class="header-left">
-                <i class="fas fa-signal"></i>
-                <span class="header-title">Zamtel TDR</span>
-            </div>
-            <div class="header-right">
-                <div class="user-badge">
-                    <i class="fas fa-user"></i>
-                    <span id="currentUser">User</span>
+        <header>
+            <div class="header-content">
+                <div class="logo-section">
+                    <h1>Zamtel TDR</h1>
+                    <div class="slogan">Create your World</div>
                 </div>
-                <button class="logout-btn" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
+                <div class="user-info">
+                    <div id="userName">Loading...</div>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
             </div>
-        </div>
+        </header>
 
-        <!-- Content Area -->
-        <div class="app-content">
+        <!-- Main Content Area -->
+        <div class="main-content">
             <!-- Dashboard Screen -->
-            <div id="dashboardScreen" class="screen">
+            <div id="dashboardScreen" class="screen active">
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon" style="color: var(--zamtel-green);">
-                            <i class="fas fa-store"></i>
-                        </div>
-                        <div class="stat-value" id="totalVisits">0</div>
-                        <div class="stat-label">Outlets Visited</div>
+                    <div class="stat-card green">
+                        <div class="stat-number" id="todayVisits">0</div>
+                        <div class="stat-label">Today's Visits</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="color: var(--zamtel-pink);">
-                            <i class="fas fa-bullseye"></i>
-                        </div>
-                        <div class="stat-value" id="targetValue">50</div>
-                        <div class="stat-label">Monthly Target</div>
+                        <div class="stat-number" id="weekVisits">0</div>
+                        <div class="stat-label">This Week</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="color: var(--green-ok);">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="stat-value" id="floatOk">0</div>
-                        <div class="stat-label">Float OK</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="color: var(--red-critical);">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <div class="stat-value" id="floatCritical">0</div>
+                    <div class="stat-card red">
+                        <div class="stat-number" id="criticalCount">0</div>
                         <div class="stat-label">Critical Float</div>
                     </div>
-                </div>
-
-                <div class="target-progress">
-                    <div class="progress-header">
-                        <div>
-                            <h3>Target Progress</h3>
-                            <p style="color: var(--text-gray); font-size: 0.85rem;">This month</p>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 1.5rem; font-weight: bold;" id="progressPercentage">0%</div>
-                            <p style="color: var(--text-gray); font-size: 0.85rem;">Complete</p>
-                        </div>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" id="progressBar" style="width: 0%;">
-                            <span id="progressText">0 / 50</span>
-                        </div>
+                    <div class="stat-card yellow">
+                        <div class="stat-number" id="lowFloatCount">0</div>
+                        <div class="stat-label">Low Float</div>
                     </div>
                 </div>
 
-                <div class="section-title">
-                    <i class="fas fa-chart-pie"></i>
-                    Float Status Overview
-                </div>
-                <div class="chart-container">
-                    <canvas id="floatChart" style="max-height: 300px;"></canvas>
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-bullseye"></i>
+                        Today's Target Progress
+                    </div>
+                    <div class="progress-ring-container">
+                        <div class="progress-ring">
+                            <svg width="200" height="200">
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#00A651;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#E91E8C;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                                <circle class="progress-ring-circle" cx="100" cy="100" r="85"></circle>
+                                <circle id="progressCircle" class="progress-ring-circle-progress" cx="100" cy="100" r="85"></circle>
+                            </svg>
+                            <div class="progress-ring-text">
+                                <div class="progress-ring-number" id="progressNumber">0/10</div>
+                                <div class="progress-ring-label">Outlets</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="section-title">
-                    <i class="fas fa-calendar-week"></i>
-                    Weekly Activity
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-chart-bar"></i>
+                        Weekly Performance
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="weeklyChart" style="max-height: 250px;"></canvas>
+
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-clock"></i>
+                        Recent Visits
+                    </div>
+                    <div id="recentVisitsList" class="visit-list">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
 
-            <!-- New Visit Form Screen -->
-            <div id="newVisitScreen" class="screen hidden">
-                <div class="form-container slide-up">
-                    <h2 class="section-title">
+            <!-- New Visit Screen -->
+            <div id="newVisitScreen" class="screen">
+                <div class="form-container">
+                    <h2 class="card-title">
                         <i class="fas fa-plus-circle"></i>
                         Record New Visit
                     </h2>
+                    
+                    <div class="gps-status" id="gpsStatus">
+                        <i class="fas fa-spinner fa-spin gps-icon"></i>
+                        <span>Getting GPS location...</span>
+                    </div>
 
-                    <button type="button" class="gps-button" id="gpsButton" onclick="getLocation()">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span id="gpsButtonText">Get GPS Location</span>
-                    </button>
-
-                    <div id="gpsStatus" class="hidden"></div>
-
-                    <form id="visitForm">
-                        <input type="hidden" id="latitude" name="latitude">
-                        <input type="hidden" id="longitude" name="longitude">
-                        <input type="hidden" id="formTdrName" name="tdrName">
-                        <input type="hidden" id="formZone" name="zone">
-
-                        <div class="form-group">
-                            <label for="zbmName">ZBM Name</label>
-                            <input type="text" id="zbmName" name="zbmName" required>
+                    <div class="coordinates">
+                        <div class="coord-box">
+                            <div class="coord-label">Latitude</div>
+                            <div class="coord-value" id="latValue">--</div>
                         </div>
-
-                        <div class="form-group">
-                            <label for="outletName">Outlet Name</label>
-                            <input type="text" id="outletName" name="outletName" required>
+                        <div class="coord-box">
+                            <div class="coord-label">Longitude</div>
+                            <div class="coord-value" id="lngValue">--</div>
                         </div>
+                    </div>
 
+                    <form id="visitForm" onsubmit="submitVisit(event)">
                         <div class="form-group">
-                            <label for="contactNumber">Contact Number</label>
-                            <input type="tel" id="contactNumber" name="contactNumber" 
-                                   pattern="^(09|07)[0-9]{8}$"
-                                   placeholder="e.g., 0977123456" required>
-                            <small style="color: var(--text-gray); font-size: 0.8rem;">Format: 09XXXXXXXX or 07XXXXXXXX</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="agentCode">Agent Code</label>
-                            <input type="text" id="agentCode" name="agentCode" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="town">Town</label>
-                            <input type="text" id="town" name="town" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="clusterName">Cluster Name</label>
-                            <input type="text" id="clusterName" name="clusterName" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="marketName">Market Name</label>
-                            <input type="text" id="marketName" name="marketName" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="floatAmount">Float Amount (ZMW)</label>
-                            <input type="number" id="floatAmount" name="floatAmount" step="0.01" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Has Float?</label>
-                            <select id="hasFloat" name="hasFloat" required>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
+                            <label for="visitZone">Zone *</label>
+                            <select id="visitZone" required>
+                                <option value="">-- Select Zone --</option>
+                                <option value="Copperbelt">Copperbelt</option>
+                                <option value="North Western">North Western</option>
+                                <option value="Luapula">Luapula</option>
+                                <option value="Muchinga">Muchinga</option>
+                                <option value="Northern">Northern</option>
+                                <option value="Lusaka North">Lusaka North</option>
+                                <option value="Lusaka South">Lusaka South</option>
+                                <option value="Lusaka Central">Lusaka Central</option>
+                                <option value="Eastern">Eastern</option>
+                                <option value="Southern">Southern</option>
+                                <option value="Western">Western</option>
+                                <option value="Central">Central</option>
                             </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="zbmName">ZBM Name *</label>
+                            <input type="text" id="zbmName" required placeholder="Zone Business Manager">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="outletName">Outlet Name *</label>
+                            <input type="text" id="outletName" required placeholder="e.g., Shop Rite Express">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="outletContact">Contact Number *</label>
+                            <input type="tel" id="outletContact" required placeholder="09X XXXX XXXX" pattern="0[6-9][0-9]{8}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="agentCode">Agent Code *</label>
+                            <input type="text" id="agentCode" required placeholder="e.g., ZMT12345">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="town">Town *</label>
+                            <input type="text" id="town" required placeholder="e.g., Lusaka, Kitwe, Ndola">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cluster">Cluster Name *</label>
+                            <input type="text" id="cluster" required placeholder="e.g., Central Cluster">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="market">Market Name *</label>
+                            <input type="text" id="market" required placeholder="e.g., Soweto Market">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="floatAmount">Float Amount (ZMW) *</label>
+                            <input type="number" id="floatAmount" required min="0" step="0.01" placeholder="e.g., 1500.00" oninput="updateFloatPreview()">
+                            <div id="floatPreview" style="margin-top: 8px;"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="notes">Notes / Observations</label>
+                            <textarea id="notes" placeholder="Any additional comments or observations..."></textarea>
                         </div>
 
                         <button type="submit" class="btn btn-primary">
@@ -985,515 +1063,893 @@
             </div>
 
             <!-- Visits List Screen -->
-            <div id="visitsScreen" class="screen hidden">
-                <div class="filter-bar">
-                    <div class="filter-row">
-                        <select id="filterFloat" style="flex: 1;">
-                            <option value="all">All Float Status</option>
-                            <option value="ok">OK (Green)</option>
-                            <option value="low">Low (Yellow)</option>
-                            <option value="critical">Critical (Red)</option>
-                        </select>
-                        <select id="filterZone" style="flex: 1;">
-                            <option value="all">All Zones</option>
-                            <option value="Lusaka Central">Lusaka Central</option>
-                            <option value="Lusaka East">Lusaka East</option>
-                            <option value="Lusaka West">Lusaka West</option>
-                            <option value="Copperbelt">Copperbelt</option>
-                            <option value="Southern">Southern</option>
-                        </select>
+            <div id="visitsScreen" class="screen">
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-list"></i>
+                        My Visits
                     </div>
-                </div>
 
-                <div id="visitsList"></div>
-
-                <div id="emptyVisits" class="empty-state hidden">
-                    <div class="empty-icon">
-                        <i class="fas fa-clipboard-list"></i>
+                    <div class="filter-bar">
+                        <input type="text" id="searchVisits" placeholder="Search outlet..." oninput="filterVisits()">
+                        <select id="filterStatus" onchange="filterVisits()">
+                            <option value="all">All Status</option>
+                            <option value="critical">Critical</option>
+                            <option value="low">Low</option>
+                            <option value="ok">OK</option>
+                        </select>
+                        <button class="btn-secondary" onclick="exportVisits()">
+                            <i class="fas fa-download"></i> Export CSV
+                        </button>
                     </div>
-                    <div class="empty-text">No visits recorded yet</div>
+
+                    <div id="visitsList" class="visit-list">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
 
             <!-- Leaderboard Screen -->
-            <div id="leaderboardScreen" class="screen hidden">
-                <div class="section-title">
-                    <i class="fas fa-trophy"></i>
-                    Top Performers This Month
+            <div id="leaderboardScreen" class="screen">
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-trophy"></i>
+                        Leaderboard
+                    </div>
+
+                    <div class="period-selector">
+                        <button class="period-btn active" onclick="changePeriod('today')">Today</button>
+                        <button class="period-btn" onclick="changePeriod('week')">This Week</button>
+                        <button class="period-btn" onclick="changePeriod('month')">This Month</button>
+                    </div>
+
+                    <div id="leaderboardList">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
-                <div id="leaderboardList"></div>
             </div>
 
-            <!-- Reports Screen -->
-            <div id="reportsScreen" class="screen hidden">
-                <div class="report-card">
-                    <div class="report-title">
-                        <i class="fas fa-download"></i>
-                        Export Reports
+            <!-- Reports Screen (Admin Only) -->
+            <div id="reportsScreen" class="screen">
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-chart-pie"></i>
+                        Reports & Analytics
                     </div>
-                    <div class="export-buttons">
-                        <button class="btn-export" onclick="exportToCSV()">
-                            <i class="fas fa-file-csv"></i> Export CSV
-                        </button>
-                        <button class="btn-export" onclick="viewGoogleSheet()">
-                            <i class="fas fa-table"></i> View Sheet
+
+                    <div class="filter-bar">
+                        <select id="reportZoneFilter" onchange="updateReports()">
+                            <option value="all">All Zones</option>
+                            <option value="Copperbelt">Copperbelt</option>
+                            <option value="North Western">North Western</option>
+                            <option value="Luapula">Luapula</option>
+                            <option value="Muchinga">Muchinga</option>
+                            <option value="Northern">Northern</option>
+                            <option value="Lusaka North">Lusaka North</option>
+                            <option value="Lusaka South">Lusaka South</option>
+                            <option value="Lusaka Central">Lusaka Central</option>
+                            <option value="Eastern">Eastern</option>
+                            <option value="Southern">Southern</option>
+                            <option value="Western">Western</option>
+                            <option value="Central">Central</option>
+                        </select>
+                        <button class="btn-secondary" onclick="exportAllData()">
+                            <i class="fas fa-file-excel"></i> Export All
                         </button>
                     </div>
-                </div>
 
-                <div class="section-title">
-                    <i class="fas fa-chart-bar"></i>
-                    Zone Performance
-                </div>
-                <div class="chart-container">
-                    <canvas id="zoneChart" style="max-height: 300px;"></canvas>
-                </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number" id="totalOutlets">0</div>
+                            <div class="stat-label">Total Outlets</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="activeTDRs">0</div>
+                            <div class="stat-label">Active TDRs</div>
+                        </div>
+                        <div class="stat-card red">
+                            <div class="stat-number" id="criticalOutlets">0</div>
+                            <div class="stat-label">Critical</div>
+                        </div>
+                        <div class="stat-card yellow">
+                            <div class="stat-number" id="lowOutlets">0</div>
+                            <div class="stat-label">Low Float</div>
+                        </div>
+                    </div>
 
-                <div class="section-title">
-                    <i class="fas fa-chart-line"></i>
-                    Monthly Trend
-                </div>
-                <div class="chart-container">
-                    <canvas id="trendChart" style="max-height: 300px;"></canvas>
-                </div>
+                    <div class="card">
+                        <div class="card-title">Visits by TDR</div>
+                        <div class="chart-container">
+                            <canvas id="tdrChart"></canvas>
+                        </div>
+                    </div>
 
-                <div class="section-title">
-                    <i class="fas fa-info-circle"></i>
-                    Summary Statistics
-                </div>
-                <div class="report-card">
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.25rem;">Total Outlets</div>
-                            <div style="font-size: 1.5rem; font-weight: bold;" id="reportTotalOutlets">0</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.25rem;">Active TDRs</div>
-                            <div style="font-size: 1.5rem; font-weight: bold;" id="reportActiveTDRs">5</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.25rem;">Avg. Visits/TDR</div>
-                            <div style="font-size: 1.5rem; font-weight: bold;" id="reportAvgVisits">0</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.25rem;">Critical Float</div>
-                            <div style="font-size: 1.5rem; font-weight: bold; color: var(--red-critical);" id="reportCritical">0</div>
+                    <div class="card">
+                        <div class="card-title">Float Status Distribution</div>
+                        <div class="chart-container">
+                            <canvas id="floatChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Settings Screen -->
-            <div id="settingsScreen" class="screen hidden">
-                <div class="setting-item">
-                    <div class="setting-header">
-                        <div class="setting-title">
-                            <i class="fas fa-sync"></i>
-                            Google Sheets Sync
-                        </div>
+            <div id="settingsScreen" class="screen">
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-cog"></i>
+                        Settings
                     </div>
-                    <div class="setting-description">
-                        Connect to Google Sheets for automatic data backup and reporting.
-                    </div>
-                    <div class="form-group">
-                        <label for="googleSheetUrl">Google Sheet URL</label>
-                        <input type="url" id="googleSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
-                    </div>
-                    <button class="sync-button" onclick="syncToGoogle()">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        Sync Now
-                    </button>
-                    <div id="syncStatus" class="hidden"></div>
-                </div>
 
-                <div class="setting-item">
-                    <div class="setting-header">
-                        <div class="setting-title">
-                            <i class="fas fa-bullseye"></i>
-                            Monthly Target
+                    <div class="settings-item">
+                        <div class="settings-label">Daily Target</div>
+                        <div class="form-group">
+                            <input type="number" id="dailyTarget" value="10" min="1" max="100" onchange="saveDailyTarget()">
                         </div>
                     </div>
-                    <div class="setting-description">
-                        Set your monthly outlet visit target.
-                    </div>
-                    <div class="form-group">
-                        <label for="monthlyTarget">Target Outlets</label>
-                        <input type="number" id="monthlyTarget" value="50" min="1">
-                    </div>
-                    <button class="btn btn-primary" onclick="saveTarget()">
-                        <i class="fas fa-save"></i> Save Target
-                    </button>
-                </div>
 
-                <div class="setting-item">
-                    <div class="setting-header">
-                        <div class="setting-title">
-                            <i class="fas fa-sliders-h"></i>
-                            Float Thresholds
+                    <div class="settings-item">
+                        <div class="settings-label">Google Sheets Sync URL</div>
+                        <div class="form-group">
+                            <input type="url" id="syncUrl" placeholder="https://script.google.com/macros/s/..." onchange="saveSyncUrl()">
                         </div>
+                        <div class="settings-value">Connect to Google Sheets for backend storage</div>
                     </div>
-                    <div class="setting-description">
-                        Set thresholds for float status indicators.
-                    </div>
-                    <div class="form-group">
-                        <label for="criticalThreshold">Critical (RED) - Below (ZMW)</label>
-                        <input type="number" id="criticalThreshold" value="500" step="100">
-                    </div>
-                    <div class="form-group">
-                        <label for="lowThreshold">Low (YELLOW) - Below (ZMW)</label>
-                        <input type="number" id="lowThreshold" value="1000" step="100">
-                    </div>
-                    <button class="btn btn-primary" onclick="saveThresholds()">
-                        <i class="fas fa-save"></i> Save Thresholds
-                    </button>
-                </div>
 
-                <div class="setting-item">
-                    <div class="setting-header">
-                        <div class="setting-title">
-                            <i class="fas fa-database"></i>
-                            Data Management
+                    <div class="settings-item">
+                        <div class="settings-label">Installation</div>
+                        <div class="install-instructions">
+                            <h4><i class="fab fa-android"></i> Android (Chrome)</h4>
+                            <ol>
+                                <li>Open this app in Chrome</li>
+                                <li>Tap the menu (⋮) → "Add to Home Screen"</li>
+                                <li>Tap "Add"</li>
+                            </ol>
+                            
+                            <h4 style="margin-top: 15px;"><i class="fab fa-apple"></i> iOS (Safari)</h4>
+                            <ol>
+                                <li>Open this app in Safari</li>
+                                <li>Tap the Share button (□↑)</li>
+                                <li>Scroll and tap "Add to Home Screen"</li>
+                                <li>Tap "Add"</li>
+                            </ol>
                         </div>
                     </div>
-                    <div class="setting-description">
-                        Manage your local data storage.
-                    </div>
-                    <button class="btn btn-secondary" onclick="clearLocalData()">
-                        <i class="fas fa-trash"></i> Clear All Local Data
-                    </button>
-                </div>
 
-                <div class="setting-item">
-                    <div class="setting-header">
-                        <div class="setting-title">
-                            <i class="fas fa-info-circle"></i>
-                            About
-                        </div>
-                    </div>
-                    <div style="color: var(--text-gray); font-size: 0.9rem; line-height: 1.6;">
-                        <p><strong>Zamtel TDR Field Monitor</strong></p>
-                        <p>Version 1.0.0</p>
-                        <p style="margin-top: 0.5rem; font-style: italic; color: var(--zamtel-pink);">Create your World</p>
-                        <p style="margin-top: 1rem;">Contact: zamtel.sd@gmail.com</p>
+                    <div class="settings-item">
+                        <div class="settings-label">App Version</div>
+                        <div class="settings-value">v2.0.0 - Updated TDR List</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Bottom Navigation -->
-        <div class="bottom-nav">
-            <div class="nav-item active" data-screen="dashboard">
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="showScreen('dashboard')">
                 <i class="fas fa-home"></i>
-                <span>Dashboard</span>
-            </div>
-            <div class="nav-item" data-screen="newVisit">
+                <span>Home</span>
+            </button>
+            <button class="nav-item" onclick="showScreen('newVisit')">
                 <i class="fas fa-plus-circle"></i>
                 <span>New Visit</span>
-            </div>
-            <div class="nav-item" data-screen="visits">
+            </button>
+            <button class="nav-item" onclick="showScreen('visits')">
                 <i class="fas fa-list"></i>
                 <span>Visits</span>
-            </div>
-            <div class="nav-item" data-screen="leaderboard">
+            </button>
+            <button class="nav-item" onclick="showScreen('leaderboard')">
                 <i class="fas fa-trophy"></i>
-                <span>Leaderboard</span>
-            </div>
-            <div class="nav-item" data-screen="reports">
+                <span>Leaders</span>
+            </button>
+            <button class="nav-item" id="reportsNavItem" onclick="showScreen('reports')" style="display: none;">
                 <i class="fas fa-chart-bar"></i>
                 <span>Reports</span>
-            </div>
-            <div class="nav-item" data-screen="settings">
+            </button>
+            <button class="nav-item" onclick="showScreen('settings')">
                 <i class="fas fa-cog"></i>
                 <span>Settings</span>
-            </div>
-        </div>
+            </button>
+        </nav>
     </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
 
     <script>
         // Global Variables
         let currentUser = null;
-        let currentZone = null;
+        let userRole = 'TDR'; // 'TDR', 'ZBM', or 'HSD'
         let visits = [];
-        let charts = {};
-        let settings = {
-            monthlyTarget: 50,
-            criticalThreshold: 500,
-            lowThreshold: 1000,
-            googleSheetUrl: ''
-        };
+        let currentLat = null;
+        let currentLng = null;
+        let weeklyChart = null;
+        let tdrChart = null;
+        let floatChart = null;
+
+        // Admin users list
+        const adminUsers = [
+            'John Nkhoma (HSD)',
+            'Ntamayile Munungwe (ZBM)',
+            'Daniel Chimbili (ZBM)',
+            'Chileshe Ira Ivor (ZBM)',
+            'Mukuka Kapeya (ZBM)',
+            'Muchele Mwazembe (ZBM)'
+        ];
 
         // Initialize App
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                document.getElementById('loadingScreen').classList.add('hidden');
-                checkLogin();
-            }, 1500);
-
-            // Load data from localStorage
-            loadFromStorage();
-
-            // Setup event listeners
-            setupEventListeners();
-
-            // Register service worker
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(reg => console.log('Service Worker registered'))
-                    .catch(err => console.log('Service Worker registration failed'));
-            }
-        });
-
-        function checkLogin() {
-            const user = localStorage.getItem('currentUser');
-            const zone = localStorage.getItem('currentZone');
+        function initApp() {
+            loadVisits();
+            checkRememberedUser();
             
-            if (user && zone) {
-                currentUser = user;
-                currentZone = zone;
-                showApp();
-            } else {
-                document.getElementById('loginScreen').classList.remove('hidden');
+            // Load daily target
+            const savedTarget = localStorage.getItem('dailyTarget');
+            if (savedTarget) {
+                document.getElementById('dailyTarget').value = savedTarget;
+            }
+            
+            // Load sync URL
+            const savedUrl = localStorage.getItem('syncUrl');
+            if (savedUrl) {
+                document.getElementById('syncUrl').value = savedUrl;
             }
         }
 
-        function setupEventListeners() {
-            // Login form
-            document.getElementById('loginForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const tdrName = document.getElementById('tdrName').value;
-                const zone = document.getElementById('loginZone').value;
-                
-                currentUser = tdrName;
-                currentZone = zone;
-                
-                localStorage.setItem('currentUser', tdrName);
-                localStorage.setItem('currentZone', zone);
-                
-                document.getElementById('loginScreen').classList.add('hidden');
-                showApp();
-            });
-
-            // Visit form
-            document.getElementById('visitForm').addEventListener('submit', handleVisitSubmit);
-
-            // Navigation
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const screen = item.dataset.screen;
-                    switchScreen(screen);
-                });
-            });
-
-            // Filters
-            document.getElementById('filterFloat').addEventListener('change', filterVisits);
-            document.getElementById('filterZone').addEventListener('change', filterVisits);
-        }
-
-        function showApp() {
-            document.getElementById('currentUser').textContent = currentUser;
-            document.getElementById('appContainer').classList.remove('hidden');
-            
-            // Set form values
-            document.getElementById('formTdrName').value = currentUser;
-            document.getElementById('formZone').value = currentZone;
-            
-            loadSampleData();
-            updateDashboard();
-            updateCharts();
-            renderVisits();
-            renderLeaderboard();
-        }
-
-        function switchScreen(screenName) {
-            // Hide all screens
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.add('hidden');
-            });
-
-            // Show selected screen
-            const screenMap = {
-                'dashboard': 'dashboardScreen',
-                'newVisit': 'newVisitScreen',
-                'visits': 'visitsScreen',
-                'leaderboard': 'leaderboardScreen',
-                'reports': 'reportsScreen',
-                'settings': 'settingsScreen'
-            };
-
-            document.getElementById(screenMap[screenName]).classList.remove('hidden');
-
-            // Update navigation
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.dataset.screen === screenName) {
-                    item.classList.add('active');
-                }
-            });
-
-            // Update content for specific screens
-            if (screenName === 'reports') {
-                updateReports();
+        // Check for remembered user
+        function checkRememberedUser() {
+            const remembered = localStorage.getItem('rememberedUser');
+            if (remembered) {
+                const userData = JSON.parse(remembered);
+                document.getElementById('tdrSelect').value = userData.name;
+                document.getElementById('pinInput').value = userData.pin;
+                document.getElementById('rememberMe').checked = true;
             }
         }
 
-        function getLocation() {
-            const button = document.getElementById('gpsButton');
-            const status = document.getElementById('gpsStatus');
-            
-            button.disabled = true;
-            status.className = 'gps-status gps-loading';
-            status.textContent = 'Getting your location...';
-            status.classList.remove('hidden');
+        // Login
+        function login() {
+            const tdrName = document.getElementById('tdrSelect').value;
+            const pin = document.getElementById('pinInput').value;
+            const remember = document.getElementById('rememberMe').checked;
 
-            if (!navigator.geolocation) {
-                status.className = 'gps-status gps-error';
-                status.textContent = '❌ Geolocation is not supported by your device';
-                button.disabled = false;
+            if (!tdrName) {
+                showToast('Please select your name', 'error');
                 return;
             }
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude.toFixed(6);
-                    const lng = position.coords.longitude.toFixed(6);
-                    
-                    document.getElementById('latitude').value = lat;
-                    document.getElementById('longitude').value = lng;
-                    
-                    status.className = 'gps-status gps-success';
-                    status.innerHTML = `✓ Location captured: ${lat}, ${lng}`;
-                    
-                    button.classList.add('active');
-                    document.getElementById('gpsButtonText').textContent = 'Location Captured';
-                    button.disabled = false;
-                },
-                (error) => {
-                    status.className = 'gps-status gps-error';
-                    status.textContent = `❌ Error: ${error.message}. Please enable location services.`;
-                    button.disabled = false;
-                }
-            );
+            if (!pin || pin.length !== 4) {
+                showToast('Please enter a 4-digit PIN', 'error');
+                return;
+            }
+
+            currentUser = tdrName;
+            
+            // Determine user role
+            if (adminUsers.includes(tdrName)) {
+                userRole = tdrName.includes('ZBM') ? 'ZBM' : 'HSD';
+            } else {
+                userRole = 'TDR';
+            }
+
+            if (remember) {
+                localStorage.setItem('rememberedUser', JSON.stringify({name: tdrName, pin: pin}));
+            } else {
+                localStorage.removeItem('rememberedUser');
+            }
+
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            updateUserInfo();
+            setupDashboard();
+            getGPSLocation();
+            
+            showToast('Welcome, ' + tdrName + '!', 'success');
         }
 
-        function handleVisitSubmit(e) {
-            e.preventDefault();
+        // Update user info display
+        function updateUserInfo() {
+            const userNameDiv = document.getElementById('userName');
+            let badge = '';
             
-            const latitude = document.getElementById('latitude').value;
-            const longitude = document.getElementById('longitude').value;
+            if (userRole === 'ZBM') {
+                badge = '<span class="role-badge">👨‍💼 MANAGER</span>';
+                document.getElementById('reportsNavItem').style.display = 'flex';
+            } else if (userRole === 'HSD') {
+                badge = '<span class="role-badge">⭐ HSD</span>';
+                document.getElementById('reportsNavItem').style.display = 'flex';
+            } else {
+                document.getElementById('reportsNavItem').style.display = 'none';
+            }
             
-            if (!latitude || !longitude) {
-                alert('Please capture GPS location first!');
+            userNameDiv.innerHTML = currentUser + badge;
+        }
+
+        // Logout
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                currentUser = null;
+                userRole = 'TDR';
+                document.getElementById('mainApp').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('pinInput').value = '';
+                showScreen('dashboard');
+            }
+        }
+
+        // Show Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Navigation
+        function showScreen(screenName) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            
+            // Show selected screen
+            document.getElementById(screenName + 'Screen').classList.add('active');
+            
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            // Initialize screen-specific functions
+            if (screenName === 'dashboard') {
+                setupDashboard();
+            } else if (screenName === 'newVisit') {
+                getGPSLocation();
+            } else if (screenName === 'visits') {
+                displayVisitsList();
+            } else if (screenName === 'leaderboard') {
+                displayLeaderboard('today');
+            } else if (screenName === 'reports') {
+                setupReports();
+            }
+        }
+
+        // GPS Location
+        function getGPSLocation() {
+            const statusDiv = document.getElementById('gpsStatus');
+            statusDiv.className = 'gps-status loading';
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin gps-icon"></i><span>Getting GPS location...</span>';
+
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLat = position.coords.latitude;
+                        currentLng = position.coords.longitude;
+                        
+                        document.getElementById('latValue').textContent = currentLat.toFixed(6);
+                        document.getElementById('lngValue').textContent = currentLng.toFixed(6);
+                        
+                        statusDiv.className = 'gps-status success';
+                        statusDiv.innerHTML = '<i class="fas fa-check-circle gps-icon"></i><span>Location acquired ✓ (±' + Math.round(position.coords.accuracy) + 'm)</span>';
+                    },
+                    (error) => {
+                        statusDiv.className = 'gps-status error';
+                        statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle gps-icon"></i><span>GPS unavailable. Please enable location.</span>';
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                statusDiv.className = 'gps-status error';
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle gps-icon"></i><span>GPS not supported on this device</span>';
+            }
+        }
+
+        // Update float preview
+        function updateFloatPreview() {
+            const amount = parseFloat(document.getElementById('floatAmount').value) || 0;
+            const preview = document.getElementById('floatPreview');
+            let badge = '';
+            
+            if (amount < 500) {
+                badge = '<span class="float-badge red">🔴 CRITICALLY LOW</span>';
+            } else if (amount < 2000) {
+                badge = '<span class="float-badge yellow">🟡 LOW FLOAT</span>';
+            } else {
+                badge = '<span class="float-badge green">🟢 FLOAT OK</span>';
+            }
+            
+            preview.innerHTML = badge;
+        }
+
+        // Submit Visit
+        function submitVisit(event) {
+            event.preventDefault();
+
+            if (!currentLat || !currentLng) {
+                showToast('Please wait for GPS location', 'error');
                 return;
             }
 
             const visit = {
-                id: Date.now(),
-                tdrName: document.getElementById('formTdrName').value,
-                zone: document.getElementById('formZone').value,
+                id: 'V' + Date.now(),
+                tdrName: currentUser,
+                zone: document.getElementById('visitZone').value,
                 zbmName: document.getElementById('zbmName').value,
                 date: new Date().toISOString(),
                 outletName: document.getElementById('outletName').value,
-                contactNumber: document.getElementById('contactNumber').value,
+                contact: document.getElementById('outletContact').value,
                 agentCode: document.getElementById('agentCode').value,
                 town: document.getElementById('town').value,
-                clusterName: document.getElementById('clusterName').value,
-                marketName: document.getElementById('marketName').value,
+                cluster: document.getElementById('cluster').value,
+                market: document.getElementById('market').value,
                 floatAmount: parseFloat(document.getElementById('floatAmount').value),
-                hasFloat: document.getElementById('hasFloat').value,
-                latitude: latitude,
-                longitude: longitude
+                latitude: currentLat,
+                longitude: currentLng,
+                notes: document.getElementById('notes').value
             };
 
             visits.push(visit);
-            saveToStorage();
-            
-            // Submit to Google Sheets (placeholder)
-            submitToGoogleSheets(visit);
+            saveVisits();
 
-            // Reset form
-            e.target.reset();
-            document.getElementById('gpsStatus').classList.add('hidden');
-            document.getElementById('gpsButton').classList.remove('active');
-            document.getElementById('gpsButtonText').textContent = 'Get GPS Location';
+            // Sync to Google Sheets if configured
+            syncToGoogleSheets(visit);
 
-            alert('Visit recorded successfully!');
-            
-            updateDashboard();
-            updateCharts();
-            renderVisits();
-            renderLeaderboard();
-            
-            switchScreen('dashboard');
+            showToast('Visit recorded successfully!', 'success');
+            document.getElementById('visitForm').reset();
+            document.getElementById('floatPreview').innerHTML = '';
+            getGPSLocation();
+            showScreen('dashboard');
         }
 
-        function getFloatStatus(amount) {
-            if (amount < settings.criticalThreshold) return 'critical';
-            if (amount < settings.lowThreshold) return 'low';
-            return 'ok';
+        // Save visits to localStorage
+        function saveVisits() {
+            localStorage.setItem('visits', JSON.stringify(visits));
         }
 
-        function getFloatBadgeClass(status) {
-            return `float-badge float-${status}`;
-        }
-
-        function getFloatLabel(status) {
-            const labels = {
-                'critical': 'CRITICAL',
-                'low': 'LOW',
-                'ok': 'OK'
-            };
-            return labels[status];
-        }
-
-        function updateDashboard() {
-            const userVisits = visits.filter(v => v.tdrName === currentUser);
-            
-            const totalVisits = userVisits.length;
-            const floatOk = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'ok').length;
-            const floatCritical = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'critical').length;
-            
-            document.getElementById('totalVisits').textContent = totalVisits;
-            document.getElementById('floatOk').textContent = floatOk;
-            document.getElementById('floatCritical').textContent = floatCritical;
-            document.getElementById('targetValue').textContent = settings.monthlyTarget;
-
-            // Progress
-            const progress = Math.min((totalVisits / settings.monthlyTarget) * 100, 100);
-            document.getElementById('progressBar').style.width = progress + '%';
-            document.getElementById('progressPercentage').textContent = Math.round(progress) + '%';
-            document.getElementById('progressText').textContent = `${totalVisits} / ${settings.monthlyTarget}`;
-        }
-
-        function updateCharts() {
-            updateFloatChart();
-            updateWeeklyChart();
-        }
-
-        function updateFloatChart() {
-            const ctx = document.getElementById('floatChart');
-            
-            if (charts.floatChart) {
-                charts.floatChart.destroy();
+        // Load visits from localStorage
+        function loadVisits() {
+            const saved = localStorage.getItem('visits');
+            if (saved) {
+                visits = JSON.parse(saved);
+            } else {
+                // Generate sample data
+                generateSampleData();
             }
+        }
 
-            const userVisits = visits.filter(v => v.tdrName === currentUser);
-            const critical = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'critical').length;
-            const low = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'low').length;
-            const ok = userVisits.filter(v => getFloatStatus(v.floatAmount) === 'ok').length;
+        // Generate sample data
+        function generateSampleData() {
+            const sampleTDRs = ['Collins Hachoose', 'Monica Mulenga', 'Gerald Simwanza', 'Edina Mwamba', 'Jeremiah Phiri'];
+            const sampleOutlets = ['Shoprite Express', 'Pick n Pay Mini', 'Choppies', 'Spar', 'Melissa Supermarket'];
+            const sampleTowns = ['Lusaka', 'Kitwe', 'Ndola', 'Livingstone', 'Kabwe'];
+            const sampleZones = ['Lusaka Central', 'Copperbelt', 'Southern', 'Central', 'Lusaka North'];
+            const sampleClusters = ['Central Cluster', 'North Cluster', 'South Cluster', 'East Cluster', 'West Cluster'];
+            const sampleMarkets = ['City Market', 'Soweto Market', 'Kamwala Market', 'Chisokone Market', 'Town Centre'];
 
-            charts.floatChart = new Chart(ctx, {
-                type: 'doughnut',
+            for (let i = 0; i < 30; i++) {
+                const daysAgo = Math.floor(Math.random() * 7);
+                const date = new Date();
+                date.setDate(date.getDate() - daysAgo);
+                
+                visits.push({
+                    id: 'V' + Date.now() + i,
+                    tdrName: sampleTDRs[Math.floor(Math.random() * sampleTDRs.length)],
+                    zone: sampleZones[Math.floor(Math.random() * sampleZones.length)],
+                    zbmName: 'Sample ZBM',
+                    date: date.toISOString(),
+                    outletName: sampleOutlets[Math.floor(Math.random() * sampleOutlets.length)] + ' ' + Math.floor(Math.random() * 100),
+                    contact: '0977' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
+                    agentCode: 'ZMT' + Math.floor(Math.random() * 100000),
+                    town: sampleTowns[Math.floor(Math.random() * sampleTowns.length)],
+                    cluster: sampleClusters[Math.floor(Math.random() * sampleClusters.length)],
+                    market: sampleMarkets[Math.floor(Math.random() * sampleMarkets.length)],
+                    floatAmount: Math.floor(Math.random() * 5000),
+                    latitude: -15.4 + (Math.random() * 0.1),
+                    longitude: 28.28 + (Math.random() * 0.1),
+                    notes: ''
+                });
+            }
+            saveVisits();
+        }
+
+        // Setup Dashboard
+        function setupDashboard() {
+            const today = new Date().toDateString();
+            let userVisits = visits;
+            
+            // Filter visits based on role
+            if (userRole === 'TDR') {
+                userVisits = visits.filter(v => v.tdrName === currentUser);
+            }
+            
+            const todayVisits = userVisits.filter(v => new Date(v.date).toDateString() === today);
+            const weekStart = new Date();
+            weekStart.setDate(weekStart.getDate() - 7);
+            const weekVisits = userVisits.filter(v => new Date(v.date) >= weekStart);
+            
+            document.getElementById('todayVisits').textContent = todayVisits.length;
+            document.getElementById('weekVisits').textContent = weekVisits.length;
+            
+            const critical = userVisits.filter(v => v.floatAmount < 500).length;
+            const low = userVisits.filter(v => v.floatAmount >= 500 && v.floatAmount < 2000).length;
+            
+            document.getElementById('criticalCount').textContent = critical;
+            document.getElementById('lowFloatCount').textContent = low;
+            
+            // Update progress ring
+            const target = parseInt(document.getElementById('dailyTarget').value) || 10;
+            const progress = Math.min(100, (todayVisits.length / target) * 100);
+            updateProgressRing(todayVisits.length, target, progress);
+            
+            // Weekly chart
+            updateWeeklyChart(userVisits);
+            
+            // Recent visits
+            displayRecentVisits(userVisits);
+        }
+
+        // Update Progress Ring
+        function updateProgressRing(current, target, percentage) {
+            const circle = document.getElementById('progressCircle');
+            const radius = 85;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (percentage / 100) * circumference;
+            
+            circle.style.strokeDasharray = circumference;
+            circle.style.strokeDashoffset = offset;
+            
+            document.getElementById('progressNumber').textContent = current + '/' + target;
+        }
+
+        // Update Weekly Chart
+        function updateWeeklyChart(userVisits) {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const data = new Array(7).fill(0);
+            
+            userVisits.forEach(visit => {
+                const visitDate = new Date(visit.date);
+                const daysAgo = Math.floor((new Date() - visitDate) / (1000 * 60 * 60 * 24));
+                if (daysAgo < 7) {
+                    const dayIndex = visitDate.getDay();
+                    data[dayIndex]++;
+                }
+            });
+            
+            const ctx = document.getElementById('weeklyChart');
+            if (weeklyChart) weeklyChart.destroy();
+            
+            weeklyChart = new Chart(ctx, {
+                type: 'bar',
                 data: {
-                    labels: ['Critical (RED)', 'Low (YELLOW)', 'OK (GREEN)'],
+                    labels: days,
                     datasets: [{
-                        data: [critical, low, ok],
-                        backgroundColor: ['#dc2626', '#fbbf24', '#00A651'],
-                        borderWidth: 0
+                        label: 'Visits',
+                        data: data,
+                        backgroundColor: 'rgba(0, 166, 81, 0.7)',
+                        borderColor: 'rgba(0, 166, 81, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Display Recent Visits
+        function displayRecentVisits(userVisits) {
+            const container = document.getElementById('recentVisitsList');
+            const recent = userVisits.slice(-5).reverse();
+            
+            if (recent.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--text-gray);">No visits recorded yet</p>';
+                return;
+            }
+            
+            container.innerHTML = recent.map(visit => createVisitCard(visit)).join('');
+        }
+
+        // Create Visit Card HTML
+        function createVisitCard(visit) {
+            const floatStatus = visit.floatAmount < 500 ? 'red' : (visit.floatAmount < 2000 ? 'yellow' : 'green');
+            const floatText = visit.floatAmount < 500 ? 'CRITICAL' : (visit.floatAmount < 2000 ? 'LOW' : 'OK');
+            const date = new Date(visit.date);
+            
+            return `
+                <div class="visit-item ${floatStatus}" onclick="toggleVisitDetails('${visit.id}')">
+                    <div class="visit-header">
+                        <div class="outlet-name">${visit.outletName}</div>
+                        <div class="float-badge ${floatStatus}">${floatText}</div>
+                    </div>
+                    <div class="visit-details">
+                        <div class="visit-detail">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>${visit.town}</span>
+                        </div>
+                        <div class="visit-detail">
+                            <i class="fas fa-calendar"></i>
+                            <span>${date.toLocaleDateString()}</span>
+                        </div>
+                        <div class="visit-detail">
+                            <i class="fas fa-phone"></i>
+                            <span>${visit.contact}</span>
+                        </div>
+                        <div class="visit-detail">
+                            <i class="fas fa-coins"></i>
+                            <span>K${visit.floatAmount.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div id="expanded-${visit.id}" class="visit-expanded">
+                        <div class="detail-row">
+                            <span class="detail-label">TDR:</span>
+                            <span class="detail-value">${visit.tdrName}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Zone:</span>
+                            <span class="detail-value">${visit.zone}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">ZBM:</span>
+                            <span class="detail-value">${visit.zbmName}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Agent Code:</span>
+                            <span class="detail-value">${visit.agentCode}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Cluster:</span>
+                            <span class="detail-value">${visit.cluster}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Market:</span>
+                            <span class="detail-value">${visit.market}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">GPS:</span>
+                            <span class="detail-value">${visit.latitude.toFixed(5)}, ${visit.longitude.toFixed(5)}</span>
+                        </div>
+                        ${visit.notes ? `<div class="detail-row"><span class="detail-label">Notes:</span><span class="detail-value">${visit.notes}</span></div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Toggle visit details
+        function toggleVisitDetails(visitId) {
+            const expandedDiv = document.getElementById('expanded-' + visitId);
+            expandedDiv.classList.toggle('show');
+        }
+
+        // Display Visits List
+        function displayVisitsList() {
+            let userVisits = visits;
+            
+            // Filter by user role
+            if (userRole === 'TDR') {
+                userVisits = visits.filter(v => v.tdrName === currentUser);
+            }
+            
+            const container = document.getElementById('visitsList');
+            
+            if (userVisits.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--text-gray);padding:40px;">No visits recorded yet</p>';
+                return;
+            }
+            
+            container.innerHTML = userVisits.slice().reverse().map(visit => createVisitCard(visit)).join('');
+        }
+
+        // Filter Visits
+        function filterVisits() {
+            const searchTerm = document.getElementById('searchVisits').value.toLowerCase();
+            const statusFilter = document.getElementById('filterStatus').value;
+            
+            let userVisits = visits;
+            if (userRole === 'TDR') {
+                userVisits = visits.filter(v => v.tdrName === currentUser);
+            }
+            
+            let filtered = userVisits.filter(visit => {
+                const matchesSearch = visit.outletName.toLowerCase().includes(searchTerm) || 
+                                     visit.town.toLowerCase().includes(searchTerm);
+                
+                let matchesStatus = true;
+                if (statusFilter !== 'all') {
+                    if (statusFilter === 'critical') matchesStatus = visit.floatAmount < 500;
+                    else if (statusFilter === 'low') matchesStatus = visit.floatAmount >= 500 && visit.floatAmount < 2000;
+                    else if (statusFilter === 'ok') matchesStatus = visit.floatAmount >= 2000;
+                }
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            const container = document.getElementById('visitsList');
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--text-gray);padding:40px;">No matching visits found</p>';
+            } else {
+                container.innerHTML = filtered.slice().reverse().map(visit => createVisitCard(visit)).join('');
+            }
+        }
+
+        // Display Leaderboard
+        function displayLeaderboard(period) {
+            // Update period buttons
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            let startDate = new Date();
+            if (period === 'today') {
+                startDate.setHours(0, 0, 0, 0);
+            } else if (period === 'week') {
+                startDate.setDate(startDate.getDate() - 7);
+            } else if (period === 'month') {
+                startDate.setDate(startDate.getDate() - 30);
+            }
+            
+            const periodVisits = visits.filter(v => new Date(v.date) >= startDate);
+            
+            // Count visits per TDR
+            const tdrStats = {};
+            periodVisits.forEach(visit => {
+                if (!tdrStats[visit.tdrName]) {
+                    tdrStats[visit.tdrName] = { visits: 0, floatIssues: 0 };
+                }
+                tdrStats[visit.tdrName].visits++;
+                if (visit.floatAmount < 2000) {
+                    tdrStats[visit.tdrName].floatIssues++;
+                }
+            });
+            
+            // Convert to array and sort
+            const leaderboard = Object.entries(tdrStats)
+                .map(([name, stats]) => ({ name, ...stats }))
+                .sort((a, b) => b.visits - a.visits);
+            
+            const container = document.getElementById('leaderboardList');
+            
+            if (leaderboard.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--text-gray);padding:40px;">No data for this period</p>';
+                return;
+            }
+            
+            container.innerHTML = leaderboard.map((tdr, index) => `
+                <div class="leaderboard-item">
+                    <div class="leaderboard-rank rank-${index + 1}">${index < 3 ? ['🥇', '🥈', '🥉'][index] : (index + 1)}</div>
+                    <div class="leaderboard-info">
+                        <div class="leaderboard-name">${tdr.name}</div>
+                        <div class="leaderboard-stats">${tdr.floatIssues} float issues resolved</div>
+                    </div>
+                    <div class="leaderboard-score">${tdr.visits}</div>
+                </div>
+            `).join('');
+        }
+
+        // Change Period
+        function changePeriod(period) {
+            displayLeaderboard(period);
+        }
+
+        // Setup Reports (Admin only)
+        function setupReports() {
+            if (userRole === 'TDR') {
+                showToast('Access denied', 'error');
+                return;
+            }
+            
+            updateReports();
+        }
+
+        // Update Reports
+        function updateReports() {
+            const zoneFilter = document.getElementById('reportZoneFilter').value;
+            let filteredVisits = visits;
+            
+            if (zoneFilter !== 'all') {
+                filteredVisits = visits.filter(v => v.zone === zoneFilter);
+            }
+            
+            // Update stats
+            document.getElementById('totalOutlets').textContent = filteredVisits.length;
+            
+            const uniqueTDRs = [...new Set(filteredVisits.map(v => v.tdrName))];
+            document.getElementById('activeTDRs').textContent = uniqueTDRs.length;
+            
+            const critical = filteredVisits.filter(v => v.floatAmount < 500).length;
+            const low = filteredVisits.filter(v => v.floatAmount >= 500 && v.floatAmount < 2000).length;
+            
+            document.getElementById('criticalOutlets').textContent = critical;
+            document.getElementById('lowOutlets').textContent = low;
+            
+            // TDR Chart
+            updateTDRChart(filteredVisits);
+            
+            // Float Chart
+            updateFloatChart(filteredVisits);
+        }
+
+        // Update TDR Chart
+        function updateTDRChart(filteredVisits) {
+            const tdrCounts = {};
+            filteredVisits.forEach(visit => {
+                tdrCounts[visit.tdrName] = (tdrCounts[visit.tdrName] || 0) + 1;
+            });
+            
+            const sortedTDRs = Object.entries(tdrCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            const ctx = document.getElementById('tdrChart');
+            if (tdrChart) tdrChart.destroy();
+            
+            tdrChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedTDRs.map(t => t[0]),
+                    datasets: [{
+                        label: 'Visits',
+                        data: sortedTDRs.map(t => t[1]),
+                        backgroundColor: 'rgba(233, 30, 140, 0.7)',
+                        borderColor: 'rgba(233, 30, 140, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update Float Chart
+        function updateFloatChart(filteredVisits) {
+            const critical = filteredVisits.filter(v => v.floatAmount < 500).length;
+            const low = filteredVisits.filter(v => v.floatAmount >= 500 && v.floatAmount < 2000).length;
+            const ok = filteredVisits.filter(v => v.floatAmount >= 2000).length;
+            
+            const ctx = document.getElementById('floatChart');
+            if (floatChart) floatChart.destroy();
+            
+            floatChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Critical (< K500)', 'Low (K500-K2000)', 'OK (≥ K2000)'],
+                    datasets: [{
+                        data: [critical, low, ok],
+                        backgroundColor: [
+                            'rgba(220, 38, 38, 0.8)',
+                            'rgba(251, 191, 36, 0.8)',
+                            'rgba(0, 166, 81, 0.8)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom'
@@ -1503,537 +1959,109 @@
             });
         }
 
-        function updateWeeklyChart() {
-            const ctx = document.getElementById('weeklyChart');
-            
-            if (charts.weeklyChart) {
-                charts.weeklyChart.destroy();
+        // Export Visits to CSV
+        function exportVisits() {
+            let userVisits = visits;
+            if (userRole === 'TDR') {
+                userVisits = visits.filter(v => v.tdrName === currentUser);
             }
-
-            // Get last 7 days
-            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const data = new Array(7).fill(0);
-            
-            const userVisits = visits.filter(v => v.tdrName === currentUser);
-            userVisits.forEach(visit => {
-                const date = new Date(visit.date);
-                const dayIndex = date.getDay();
-                data[dayIndex]++;
-            });
-
-            charts.weeklyChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: days,
-                    datasets: [{
-                        label: 'Visits',
-                        data: data,
-                        backgroundColor: '#00A651',
-                        borderRadius: 10
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        }
-
-        function renderVisits() {
-            const container = document.getElementById('visitsList');
-            const emptyState = document.getElementById('emptyVisits');
-            
-            const userVisits = visits.filter(v => v.tdrName === currentUser);
             
             if (userVisits.length === 0) {
-                container.innerHTML = '';
-                emptyState.classList.remove('hidden');
+                showToast('No visits to export', 'error');
                 return;
             }
-
-            emptyState.classList.add('hidden');
             
-            container.innerHTML = userVisits.map(visit => {
-                const status = getFloatStatus(visit.floatAmount);
-                const date = new Date(visit.date);
-                
-                return `
-                    <div class="visit-card slide-up">
-                        <div class="visit-header">
-                            <div>
-                                <div class="visit-outlet">${visit.outletName}</div>
-                                <div class="visit-date">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
-                            </div>
-                            <div class="${getFloatBadgeClass(status)}">
-                                ${getFloatLabel(status)}
-                            </div>
-                        </div>
-                        <div class="visit-details">
-                            <div class="visit-detail">
-                                <div class="visit-detail-label">Agent Code</div>
-                                <div class="visit-detail-value">${visit.agentCode}</div>
-                            </div>
-                            <div class="visit-detail">
-                                <div class="visit-detail-label">Float Amount</div>
-                                <div class="visit-detail-value">K ${visit.floatAmount.toFixed(2)}</div>
-                            </div>
-                            <div class="visit-detail">
-                                <div class="visit-detail-label">Town</div>
-                                <div class="visit-detail-value">${visit.town}</div>
-                            </div>
-                            <div class="visit-detail">
-                                <div class="visit-detail-label">Contact</div>
-                                <div class="visit-detail-value">${visit.contactNumber}</div>
-                            </div>
-                            <div class="visit-detail">
-                                <div class="visit-detail-label">Market</div>
-                                <div class="visit-detail-value">${visit.marketName}</div>
-                            </div>
-                            <div class="visit-detail">
-                                <div class="visit-detail-label">ZBM</div>
-                                <div class="visit-detail-value">${visit.zbmName}</div>
-                            </div>
-                        </div>
-                        <a href="https://www.google.com/maps?q=${visit.latitude},${visit.longitude}" 
-                           target="_blank" class="location-link">
-                            <i class="fas fa-map-marker-alt"></i>
-                            View Location on Map
-                        </a>
-                    </div>
-                `;
-            }).join('');
+            const csv = convertToCSV(userVisits);
+            downloadCSV(csv, 'my-visits-' + new Date().toISOString().split('T')[0] + '.csv');
+            showToast('Export successful!', 'success');
         }
 
-        function filterVisits() {
-            const floatFilter = document.getElementById('filterFloat').value;
-            const zoneFilter = document.getElementById('filterZone').value;
-            
-            let filtered = visits.filter(v => v.tdrName === currentUser);
-            
-            if (floatFilter !== 'all') {
-                filtered = filtered.filter(v => getFloatStatus(v.floatAmount) === floatFilter);
+        // Export All Data (Admin)
+        function exportAllData() {
+            if (userRole === 'TDR') {
+                showToast('Access denied', 'error');
+                return;
             }
             
-            if (zoneFilter !== 'all') {
-                filtered = filtered.filter(v => v.zone === zoneFilter);
-            }
-            
-            // Re-render with filtered data
-            const container = document.getElementById('visitsList');
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-filter"></i></div><div class="empty-text">No visits match the selected filters</div></div>';
-            } else {
-                container.innerHTML = filtered.map(visit => {
-                    const status = getFloatStatus(visit.floatAmount);
-                    const date = new Date(visit.date);
-                    
-                    return `
-                        <div class="visit-card slide-up">
-                            <div class="visit-header">
-                                <div>
-                                    <div class="visit-outlet">${visit.outletName}</div>
-                                    <div class="visit-date">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
-                                </div>
-                                <div class="${getFloatBadgeClass(status)}">
-                                    ${getFloatLabel(status)}
-                                </div>
-                            </div>
-                            <div class="visit-details">
-                                <div class="visit-detail">
-                                    <div class="visit-detail-label">Agent Code</div>
-                                    <div class="visit-detail-value">${visit.agentCode}</div>
-                                </div>
-                                <div class="visit-detail">
-                                    <div class="visit-detail-label">Float Amount</div>
-                                    <div class="visit-detail-value">K ${visit.floatAmount.toFixed(2)}</div>
-                                </div>
-                                <div class="visit-detail">
-                                    <div class="visit-detail-label">Town</div>
-                                    <div class="visit-detail-value">${visit.town}</div>
-                                </div>
-                                <div class="visit-detail">
-                                    <div class="visit-detail-label">Contact</div>
-                                    <div class="visit-detail-value">${visit.contactNumber}</div>
-                                </div>
-                            </div>
-                            <a href="https://www.google.com/maps?q=${visit.latitude},${visit.longitude}" 
-                               target="_blank" class="location-link">
-                                <i class="fas fa-map-marker-alt"></i>
-                                View Location on Map
-                            </a>
-                        </div>
-                    `;
-                }).join('');
-            }
+            const csv = convertToCSV(visits);
+            downloadCSV(csv, 'all-visits-' + new Date().toISOString().split('T')[0] + '.csv');
+            showToast('Export successful!', 'success');
         }
 
-        function renderLeaderboard() {
-            const container = document.getElementById('leaderboardList');
+        // Convert to CSV
+        function convertToCSV(data) {
+            const headers = ['ID', 'TDR Name', 'Zone', 'ZBM Name', 'Date', 'Outlet Name', 'Contact', 'Agent Code', 'Town', 'Cluster', 'Market', 'Float Amount', 'Latitude', 'Longitude', 'Notes'];
             
-            // Group visits by TDR
-            const tdrStats = {};
-            visits.forEach(visit => {
-                if (!tdrStats[visit.tdrName]) {
-                    tdrStats[visit.tdrName] = {
-                        name: visit.tdrName,
-                        zone: visit.zone,
-                        visits: 0,
-                        critical: 0
-                    };
-                }
-                tdrStats[visit.tdrName].visits++;
-                if (getFloatStatus(visit.floatAmount) === 'critical') {
-                    tdrStats[visit.tdrName].critical++;
-                }
-            });
-
-            // Convert to array and sort
-            const leaderboard = Object.values(tdrStats).sort((a, b) => b.visits - a.visits);
-
-            container.innerHTML = leaderboard.map((tdr, index) => {
-                const rank = index + 1;
-                const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-                const progress = Math.round((tdr.visits / settings.monthlyTarget) * 100);
-                
-                return `
-                    <div class="leaderboard-item slide-up" style="animation-delay: ${index * 0.1}s;">
-                        <div class="rank-badge ${rankClass}">
-                            ${rank <= 3 ? (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉') : rank}
-                        </div>
-                        <div class="leaderboard-info">
-                            <div class="tdr-name">${tdr.name}</div>
-                            <div class="tdr-zone">${tdr.zone}</div>
-                            <div class="tdr-stats">
-                                <div class="tdr-stat">
-                                    <i class="fas fa-store" style="color: var(--zamtel-green);"></i>
-                                    <span>${tdr.visits} visits</span>
-                                </div>
-                                <div class="tdr-stat">
-                                    <i class="fas fa-chart-line" style="color: var(--zamtel-pink);"></i>
-                                    <span>${progress}% of target</span>
-                                </div>
-                                ${tdr.critical > 0 ? `
-                                    <div class="tdr-stat">
-                                        <i class="fas fa-exclamation-triangle" style="color: var(--red-critical);"></i>
-                                        <span>${tdr.critical} critical</span>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function updateReports() {
-            // Summary stats
-            document.getElementById('reportTotalOutlets').textContent = visits.length;
-            document.getElementById('reportActiveTDRs').textContent = new Set(visits.map(v => v.tdrName)).size;
-            const avgVisits = visits.length / Math.max(new Set(visits.map(v => v.tdrName)).size, 1);
-            document.getElementById('reportAvgVisits').textContent = avgVisits.toFixed(1);
-            document.getElementById('reportCritical').textContent = visits.filter(v => getFloatStatus(v.floatAmount) === 'critical').length;
-
-            // Zone chart
-            updateZoneChart();
-            
-            // Trend chart
-            updateTrendChart();
-        }
-
-        function updateZoneChart() {
-            const ctx = document.getElementById('zoneChart');
-            
-            if (charts.zoneChart) {
-                charts.zoneChart.destroy();
-            }
-
-            const zones = {};
-            visits.forEach(visit => {
-                zones[visit.zone] = (zones[visit.zone] || 0) + 1;
-            });
-
-            charts.zoneChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(zones),
-                    datasets: [{
-                        label: 'Visits by Zone',
-                        data: Object.values(zones),
-                        backgroundColor: '#00A651',
-                        borderRadius: 10
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    indexAxis: 'y',
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function updateTrendChart() {
-            const ctx = document.getElementById('trendChart');
-            
-            if (charts.trendChart) {
-                charts.trendChart.destroy();
-            }
-
-            // Get last 30 days
-            const days = [];
-            const data = [];
-            
-            for (let i = 29; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                days.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                
-                const dayVisits = visits.filter(v => {
-                    const visitDate = new Date(v.date);
-                    return visitDate.toDateString() === date.toDateString();
-                }).length;
-                
-                data.push(dayVisits);
-            }
-
-            charts.trendChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: days,
-                    datasets: [{
-                        label: 'Daily Visits',
-                        data: data,
-                        borderColor: '#E91E8C',
-                        backgroundColor: 'rgba(233, 30, 140, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function exportToCSV() {
-            const headers = ['TDR Name', 'Zone', 'ZBM Name', 'Date', 'Outlet Name', 'Contact', 'Agent Code', 'Town', 'Cluster', 'Market', 'Float Amount', 'Has Float', 'Float Status', 'Latitude', 'Longitude'];
-            
-            const rows = visits.map(v => [
+            const rows = data.map(v => [
+                v.id,
                 v.tdrName,
                 v.zone,
                 v.zbmName,
                 new Date(v.date).toLocaleString(),
                 v.outletName,
-                v.contactNumber,
+                v.contact,
                 v.agentCode,
                 v.town,
-                v.clusterName,
-                v.marketName,
+                v.cluster,
+                v.market,
                 v.floatAmount,
-                v.hasFloat,
-                getFloatLabel(getFloatStatus(v.floatAmount)),
                 v.latitude,
-                v.longitude
+                v.longitude,
+                v.notes || ''
             ]);
+            
+            return [headers, ...rows].map(row => 
+                row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')
+            ).join('\n');
+        }
 
-            let csv = headers.join(',') + '\n';
-            rows.forEach(row => {
-                csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+        // Download CSV
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Sync to Google Sheets
+        function syncToGoogleSheets(visit) {
+            const syncUrl = document.getElementById('syncUrl').value;
+            if (!syncUrl) return;
+            
+            fetch(syncUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(visit)
+            }).catch(err => {
+                console.log('Sync queued for later');
             });
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `zamtel-tdr-visits-${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
         }
 
-        function viewGoogleSheet() {
-            const url = settings.googleSheetUrl || 'https://docs.google.com/spreadsheets/';
-            window.open(url, '_blank');
+        // Save Daily Target
+        function saveDailyTarget() {
+            const target = document.getElementById('dailyTarget').value;
+            localStorage.setItem('dailyTarget', target);
+            showToast('Target saved!', 'success');
+            setupDashboard();
         }
 
-        function submitToGoogleSheets(visit) {
-            // Placeholder for Google Sheets submission
-            // In production, this would send data to a Google Apps Script web app
-            console.log('Submitting to Google Sheets:', visit);
-            
-            // Example endpoint (to be configured):
-            // const url = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
-            // fetch(url, {
-            //     method: 'POST',
-            //     body: JSON.stringify(visit),
-            //     headers: { 'Content-Type': 'application/json' }
-            // });
+        // Save Sync URL
+        function saveSyncUrl() {
+            const url = document.getElementById('syncUrl').value;
+            localStorage.setItem('syncUrl', url);
+            showToast('Sync URL saved!', 'success');
         }
 
-        function syncToGoogle() {
-            const button = event.target;
-            const status = document.getElementById('syncStatus');
-            
-            button.disabled = true;
-            status.className = 'sync-status gps-loading';
-            status.textContent = 'Syncing...';
-            status.classList.remove('hidden');
-
-            // Simulate sync
-            setTimeout(() => {
-                status.className = 'sync-status gps-success';
-                status.textContent = `✓ Successfully synced ${visits.length} visits`;
-                button.disabled = false;
-            }, 2000);
-        }
-
-        function saveTarget() {
-            const target = parseInt(document.getElementById('monthlyTarget').value);
-            settings.monthlyTarget = target;
-            saveToStorage();
-            updateDashboard();
-            alert('Monthly target updated successfully!');
-        }
-
-        function saveThresholds() {
-            settings.criticalThreshold = parseInt(document.getElementById('criticalThreshold').value);
-            settings.lowThreshold = parseInt(document.getElementById('lowThreshold').value);
-            saveToStorage();
-            updateCharts();
-            renderVisits();
-            alert('Float thresholds updated successfully!');
-        }
-
-        function clearLocalData() {
-            if (confirm('Are you sure you want to clear all local data? This cannot be undone.')) {
-                visits = [];
-                saveToStorage();
-                updateDashboard();
-                updateCharts();
-                renderVisits();
-                renderLeaderboard();
-                alert('All local data has been cleared.');
-            }
-        }
-
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('currentUser');
-                localStorage.removeItem('currentZone');
-                location.reload();
-            }
-        }
-
-        function saveToStorage() {
-            localStorage.setItem('visits', JSON.stringify(visits));
-            localStorage.setItem('settings', JSON.stringify(settings));
-        }
-
-        function loadFromStorage() {
-            const storedVisits = localStorage.getItem('visits');
-            const storedSettings = localStorage.getItem('settings');
-            
-            if (storedVisits) {
-                visits = JSON.parse(storedVisits);
-            }
-            
-            if (storedSettings) {
-                settings = JSON.parse(storedSettings);
-                document.getElementById('monthlyTarget').value = settings.monthlyTarget;
-                document.getElementById('criticalThreshold').value = settings.criticalThreshold;
-                document.getElementById('lowThreshold').value = settings.lowThreshold;
-                document.getElementById('googleSheetUrl').value = settings.googleSheetUrl || '';
-            }
-        }
-
-        function loadSampleData() {
-            // Only load sample data if no data exists
-            if (visits.length === 0) {
-                const sampleVisits = [
-                    {
-                        id: 1,
-                        tdrName: 'John Mwanza',
-                        zone: 'Lusaka Central',
-                        zbmName: 'Charles Tembo',
-                        date: new Date(Date.now() - 86400000).toISOString(),
-                        outletName: 'City Market Kiosk',
-                        contactNumber: '0977123456',
-                        agentCode: 'AG001',
-                        town: 'Lusaka',
-                        clusterName: 'Central Business District',
-                        marketName: 'City Market',
-                        floatAmount: 1500,
-                        hasFloat: 'Yes',
-                        latitude: '-15.4167',
-                        longitude: '28.2833'
-                    },
-                    {
-                        id: 2,
-                        tdrName: 'Mary Banda',
-                        zone: 'Lusaka East',
-                        zbmName: 'Ruth Mulenga',
-                        date: new Date(Date.now() - 172800000).toISOString(),
-                        outletName: 'Kabulonga Shop',
-                        contactNumber: '0966987654',
-                        agentCode: 'AG002',
-                        town: 'Lusaka',
-                        clusterName: 'Kabulonga',
-                        marketName: 'Kabulonga Market',
-                        floatAmount: 400,
-                        hasFloat: 'Yes',
-                        latitude: '-15.3875',
-                        longitude: '28.3228'
-                    },
-                    {
-                        id: 3,
-                        tdrName: currentUser,
-                        zone: currentZone,
-                        zbmName: 'Joseph Banda',
-                        date: new Date().toISOString(),
-                        outletName: 'Chilenje Market Stand',
-                        contactNumber: '0955555555',
-                        agentCode: 'AG003',
-                        town: 'Lusaka',
-                        clusterName: 'Chilenje',
-                        marketName: 'Chilenje Market',
-                        floatAmount: 800,
-                        hasFloat: 'Yes',
-                        latitude: '-15.4339',
-                        longitude: '28.3120'
-                    }
-                ];
-
-                visits = sampleVisits;
-                saveToStorage();
-            }
-        }
+        // Initialize on load
+        window.addEventListener('load', initApp);
     </script>
 </body>
 </html>
