@@ -88,7 +88,7 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <BrowserRouter>
+      <BrowserRouter basename="/tdr">
         <AppRoutes />
         <Toaster
           position="top-center"

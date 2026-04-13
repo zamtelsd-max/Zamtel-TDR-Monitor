@@ -22,7 +22,7 @@ client.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('zamtel_token');
       localStorage.removeItem('zamtel_user');
-      window.location.href = '/login';
+      window.location.href = '/tdr/login';
     }
     return Promise.reject(err);
   }
