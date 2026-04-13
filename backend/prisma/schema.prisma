@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TDR
+  ZBM
+  HSD
+}
+
+enum AgentType {
+  normal
+  merchant
+}
+
+enum IssueType {
+  low_float
+  stuck_transaction
+  system_error
+  other
+}
+
+enum IssueStatus {
+  reported
+  in_progress
+  resolved
+}
+
+enum ProspectType {
+  agent
+  merchant
+}
+
+enum ProspectStatus {
+  identified
+  contacted
+  interested
+  converted
+  rejected
+}
+
+model User {
+  id        String   @id
+  name      String
+  pin       String
+  role      Role
+  zone      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agents       Agent[]
+  visits       Visit[]
+  floatIssues  FloatIssue[]
+  prospects    Prospect[]
+  targets      SalesTarget[] @relation("SetByHsd")
+
+  @@map("users")
+}
+
+model Agent {
+  id               String    @id @default(uuid())
+  tdrId            String
+  tdrName          String
+  zone             String
+  zbmName          String
+
+  agentName        String
+  agentCode        String    @unique
+  contactPhone     String
+
+  type             AgentType
+  merchantCategory String?
+
+  initialFloat     Float     @default(0)
+
+  town             String
+  address          String?
+  cluster          String?
+  market           String?
+
+  latitude         Float?
+  longitude        Float?
+
+  notes            String?
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tdr              User      @relation(fields: [tdrId], references: [id])
+
+  @@map("agents")
+}
+
+model Visit {
+  id           String   @id @default(uuid())
+  tdrId        String
+  tdrName      String
+  zone         String
+  zbmName      String
+
+  outletName   String
+  agentCode    String
+  contactPhone String
+
+  town         String
+  cluster      String?
+  market       String?
+
+  floatAmount  Float    @default(0)
+
+  latitude     Float?
+  longitude    Float?
+
+  notes        String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tdr          User     @relation(fields: [tdrId], references: [id])
+
+  @@map("visits")
+}
+
+model FloatIssue {
+  id              String      @id @default(uuid())
+  tdrId           String
+  tdrName         String
+  zone            String
+
+  agentCode       String
+  agentName       String
+  contactPhone    String
+
+  issueType       IssueType
+  reportedFloat   Float       @default(0)
+  description     String
+
+  status          IssueStatus @default(reported)
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  resolutionNotes String?
+
+  reportedAt      DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  tdr             User        @relation(fields: [tdrId], references: [id])
+
+  @@map("float_issues")
+}
+
+model Prospect {
+  id               String         @id @default(uuid())
+  tdrId            String
+  tdrName          String
+  zone             String
+
+  prospectType     ProspectType
+  businessName     String
+  ownerName        String
+  contactPhone     String
+
+  town             String
+  address          String?
+  merchantCategory String?
+  estimatedFloat   Float?
+
+  status           ProspectStatus @default(identified)
+  notes            String?
+  followUpDate     DateTime?
+  convertedAt      DateTime?
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  tdr              User           @relation(fields: [tdrId], references: [id])
+
+  @@map("prospects")
+}
+
+model SalesTarget {
+  id             String   @id @default(uuid())
+  zone           String
+  period         String   // YYYY-MM
+
+  targetAgents   Int      @default(96)
+  targetMerchants Int     @default(96)
+  targetOutlets  Int      @default(20)
+
+  setByHsdId     String
+  setByHsd       User     @relation("SetByHsd", fields: [setByHsdId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([zone, period])
+  @@map("sales_targets")
+}
