@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { zbmApi, hsdApi } from '../services/api';
+import { zbmApi } from '../services/api';
 import type { ZBMDashboard, TDRStat, FloatIssue } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button } from '../components/UI';
@@ -33,7 +33,7 @@ export const ZBMDashboardPage: React.FC = () => {
       const [dashRes, issuesRes, mapRes] = await Promise.all([
         zbmApi.dashboard(),
         zbmApi.getFloatIssues(),
-        hsdApi.getMap(),
+        zbmApi.getMap(),
       ]);
       setData(dashRes.data);
       setIssues(issuesRes.data);

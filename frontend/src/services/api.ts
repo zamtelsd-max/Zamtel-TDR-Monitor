@@ -136,6 +136,9 @@ export const zbmApi = {
 
   getProspects: () =>
     client.get<Prospect[]>('/zbm/prospects'),
+
+  getMap: () =>
+    client.get('/zbm/map'),
 };
 
 // ─── HSD ─────────────────────────────────────────────────────────────────────
