@@ -8,6 +8,11 @@ export const hsdRouter = Router();
 hsdRouter.use(requireAuth('HSD'));
 hsdRouter.use(apiRateLimit);
 
+// Shared map router — accessible by both HSD and ZBM
+export const mapRouter = Router();
+mapRouter.use(requireAuth('HSD', 'ZBM'));
+mapRouter.use(apiRateLimit);
+
 const ZONES = [
   'Lusaka', 'Copperbelt', 'Northern', 'Eastern', 'Southern',
   'Western', 'Luapula', 'Muchinga', 'North-Western', 'Central',
@@ -209,12 +214,12 @@ hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
 });
 
 // ─── GPS Map Data ──────────────────────────────────────────────────────────────
-router.get('/map', authenticate, requireRole(['HSD', 'ZBM']), async (req: Request, res: Response) => {
+mapRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { zone } = req.query
     const user = (req as any).user
 
-    // ZBM can only see their own zone
+    // ZBM can only see their own zone; HSD can filter by zone param
     const zoneFilter = user.role === 'ZBM' ? user.zone :
                        (zone && zone !== 'all' ? zone : undefined)
 

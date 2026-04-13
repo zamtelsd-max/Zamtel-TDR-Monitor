@@ -8,7 +8,7 @@ import morgan from 'morgan';
 import { authRouter }   from './routes/auth';
 import { tdrRouter }    from './routes/tdr';
 import { zbmRouter }    from './routes/zbm';
-import { hsdRouter }    from './routes/hsd';
+import { hsdRouter, mapRouter } from './routes/hsd';
 import { adminRouter }  from './routes/admin';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -34,6 +34,7 @@ app.use('/api/v1/auth',  authRouter);
 app.use('/api/v1/tdr',   tdrRouter);
 app.use('/api/v1/zbm',   zbmRouter);
 app.use('/api/v1/hsd',   hsdRouter);
+app.use('/api/v1/hsd/map', mapRouter);
 app.use('/api/v1/admin', adminRouter);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
