@@ -9,7 +9,7 @@ async function main() {
   const saltRounds = 10;
 
   const users = [
-    { id: 'hsd-001', name: 'James Banda',   pin: '9999', role: Role.HSD, zone: null },
+    { id: 'hsd-001', name: 'John Nkhoma',   pin: '9999', role: Role.HSD, zone: null },
     { id: 'zbm-001', name: 'Mary Phiri',    pin: '5678', role: Role.ZBM, zone: 'Copperbelt' },
     { id: 'zbm-002', name: 'David Mwale',   pin: '5679', role: Role.ZBM, zone: 'Lusaka' },
     { id: 'tdr-001', name: 'Abel Mumba',    pin: '1234', role: Role.TDR, zone: 'Copperbelt' },
