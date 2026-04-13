@@ -17,8 +17,8 @@ export default defineConfig({
         background_color: '#1A1A2E',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+        start_url: '/zamtel-tdr-monitor/',
+        scope: '/zamtel-tdr-monitor/',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
@@ -68,6 +68,7 @@ export default defineConfig({
       },
     },
   },
+  base: '/zamtel-tdr-monitor/',
   build: {
     outDir: 'dist',
     sourcemap: true,
