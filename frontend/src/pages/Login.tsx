@@ -73,7 +73,7 @@ export const Login: React.FC = () => {
           </div>
           <div>
             <p className="text-white font-bold text-sm leading-tight">ZAMTEL</p>
-            <p className="text-green-300 text-[10px] leading-tight">Connecting Zambia</p>
+            <p className="text-green-300 text-[10px] leading-tight">Create Your World</p>
           </div>
         </div>
         <div className="bg-zamtel-pink/20 border border-zamtel-pink/40 rounded-full px-3 py-1">

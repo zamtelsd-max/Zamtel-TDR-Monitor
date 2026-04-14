@@ -15,15 +15,24 @@ tdrRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
   const tdrId = req.user!.userId;
   const { start, end } = mtdRange();
 
-  const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits] =
+  // Today's window (midnight → now)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+
+  const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits,
+         agentsToday, merchantsToday, visitsToday] =
     await Promise.all([
-      prisma.agent.count({ where: { tdrId, type: 'normal', createdAt: { gte: start, lte: end } } }),
-      prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-      prisma.visit.count({ where: { tdrId, createdAt: { gte: start, lte: end } } }),
+      prisma.agent.count({ where: { tdrId, type: 'normal',   createdAt: { gte: start,      lte: end      } } }),
+      prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start,      lte: end      } } }),
+      prisma.visit.count({ where: { tdrId,                   createdAt: { gte: start,      lte: end      } } }),
       prisma.floatIssue.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
       prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
       prisma.agent.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
       prisma.visit.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
+      prisma.agent.count({ where: { tdrId, type: 'normal',   createdAt: { gte: todayStart, lte: todayEnd } } }),
+      prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
+      prisma.visit.count({ where: { tdrId,                   createdAt: { gte: todayStart, lte: todayEnd } } }),
     ]);
 
   const floatResolved  = floatIssues.filter(f => f.status === 'resolved').length;
@@ -50,6 +59,12 @@ tdrRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
       agents:    { count: agentsCount,    target: prorateMtdTarget(target?.targetAgents    || 96) },
       merchants: { count: merchantsCount, target: prorateMtdTarget(target?.targetMerchants || 96) },
       visits:    { count: visitsCount,    target: visitMtdTarget() },
+    },
+    today: {
+      agents:    agentsToday,
+      merchants: merchantsToday,
+      visits:    visitsToday,
+      target:    20, // 20 visits per working day
     },
     floatIssues: {
       total:    floatIssues.length,

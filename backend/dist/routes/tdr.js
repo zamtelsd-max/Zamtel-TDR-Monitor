@@ -14,7 +14,11 @@ exports.tdrRouter.use(rateLimit_1.apiRateLimit);
 exports.tdrRouter.get('/dashboard', async (req, res) => {
     const tdrId = req.user.userId;
     const { start, end } = (0, mtd_1.mtdRange)();
-    const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits] = await Promise.all([
+    // Today's window (midnight → now)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits, agentsToday, merchantsToday, visitsToday] = await Promise.all([
         prisma_1.prisma.agent.count({ where: { tdrId, type: 'normal', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: start, lte: end } } }),
@@ -22,6 +26,9 @@ exports.tdrRouter.get('/dashboard', async (req, res) => {
         prisma_1.prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
         prisma_1.prisma.agent.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
         prisma_1.prisma.visit.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
+        prisma_1.prisma.agent.count({ where: { tdrId, type: 'normal', createdAt: { gte: todayStart, lte: todayEnd } } }),
+        prisma_1.prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
+        prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: todayStart, lte: todayEnd } } }),
     ]);
     const floatResolved = floatIssues.filter(f => f.status === 'resolved').length;
     const floatPending = floatIssues.filter(f => f.status !== 'resolved').length;
@@ -41,6 +48,12 @@ exports.tdrRouter.get('/dashboard', async (req, res) => {
             agents: { count: agentsCount, target: (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96) },
             merchants: { count: merchantsCount, target: (0, mtd_1.prorateMtdTarget)(target?.targetMerchants || 96) },
             visits: { count: visitsCount, target: (0, mtd_1.visitMtdTarget)() },
+        },
+        today: {
+            agents: agentsToday,
+            merchants: merchantsToday,
+            visits: visitsToday,
+            target: 20, // 20 visits per working day
         },
         floatIssues: {
             total: floatIssues.length,

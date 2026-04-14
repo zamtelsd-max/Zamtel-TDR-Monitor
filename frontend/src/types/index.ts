@@ -114,10 +114,17 @@ export interface Prospect {
 export interface TDRDashboard {
   tdr: { id: string; name: string; zone: string | null };
   month: string;
+  mtd?: { workingDaysElapsed: number; workingDaysTotal: number };
   stats: {
     agents:    { count: number; target: number };
     merchants: { count: number; target: number };
     visits:    { count: number; target: number };
+  };
+  today: {
+    agents:    number;
+    merchants: number;
+    visits:    number;
+    target:    number;  // 20 visits/day
   };
   floatIssues: { total: number; resolved: number; pending: number };
   prospects:   { total: number; converted: number; pending: number };

@@ -143,15 +143,95 @@ export const TDRDashboardPage: React.FC = () => {
         subtitle={`${data?.tdr.zone || ''} · ${format(new Date(), 'MMMM yyyy')}`}
       />
 
-      {/* MTD progress chip */}
-      <div className="flex items-center justify-between mb-2 px-1">
-        <span className="text-xs text-gray-500 font-medium">
-          📅 MTD — Working day <span className="font-bold text-gray-700">{elapsed}</span> of <span className="font-bold text-gray-700">{total}</span>
-        </span>
-        <span className="text-xs font-semibold text-gray-600">{mtdPct}% of month</span>
-      </div>
-      <div className="h-1.5 bg-gray-100 rounded-full mb-3">
-        <div className="h-1.5 rounded-full bg-gray-400 transition-all" style={{ width: `${mtdPct}%` }} />
+      {/* ── TODAY'S PROGRESS ─────────────────────────────────────── */}
+      <div className="rounded-2xl mb-4 overflow-hidden shadow-sm border border-gray-100">
+        {/* Header bar */}
+        <div className="zamtel-gradient px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚡</span>
+            <span className="text-white font-bold text-sm">Today's Progress</span>
+          </div>
+          <span className="text-white/70 text-[11px]">
+            {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+          </span>
+        </div>
+        {/* Stats row */}
+        <div className="grid grid-cols-3 divide-x divide-gray-100 bg-white">
+          {/* Visits */}
+          {(() => {
+            const count  = data?.today.visits    ?? 0;
+            const target = data?.today.target    ?? 20;
+            const pct    = Math.min(Math.round(count / target * 100), 100);
+            const band   = getBand(pct);
+            return (
+              <div className="flex flex-col items-center py-4 px-2 relative">
+                <p className="text-3xl font-black" style={{ color: band.textHex }}>
+                  {loading && !data ? '—' : count}
+                </p>
+                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">Visits</p>
+                <p className="text-[10px] text-gray-400">target {target}</p>
+                <div className="mt-2 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: band.ring }} />
+                </div>
+                <span className={`mt-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${band.bg} ${band.color}`}>
+                  {pct}%
+                </span>
+              </div>
+            );
+          })()}
+          {/* Agents */}
+          {(() => {
+            const count = data?.today.agents ?? 0;
+            const band  = count >= 4 ? getBand(100) : count >= 2 ? getBand(60) : count >= 1 ? getBand(40) : getBand(0);
+            return (
+              <div className="flex flex-col items-center py-4 px-2">
+                <p className="text-3xl font-black" style={{ color: band.textHex }}>
+                  {loading && !data ? '—' : count}
+                </p>
+                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">Agents</p>
+                <p className="text-[10px] text-gray-400">recruited today</p>
+                <div className="mt-2 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.min(count/4*100,100)}%`, background: band.ring }} />
+                </div>
+                <span className={`mt-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${band.bg} ${band.color}`}>
+                  today
+                </span>
+              </div>
+            );
+          })()}
+          {/* Merchants */}
+          {(() => {
+            const count = data?.today.merchants ?? 0;
+            const band  = count >= 4 ? getBand(100) : count >= 2 ? getBand(60) : count >= 1 ? getBand(40) : getBand(0);
+            return (
+              <div className="flex flex-col items-center py-4 px-2">
+                <p className="text-3xl font-black" style={{ color: band.textHex }}>
+                  {loading && !data ? '—' : count}
+                </p>
+                <p className="text-[10px] font-semibold text-gray-500 mt-0.5">Merchants</p>
+                <p className="text-[10px] text-gray-400">recruited today</p>
+                <div className="mt-2 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.min(count/4*100,100)}%`, background: band.ring }} />
+                </div>
+                <span className={`mt-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${band.bg} ${band.color}`}>
+                  today
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+        {/* MTD day chip */}
+        <div className="bg-gray-50 border-t border-gray-100 px-4 py-2 flex items-center justify-between">
+          <span className="text-[11px] text-gray-500">
+            📅 Working day <strong className="text-gray-700">{elapsed}</strong> of <strong className="text-gray-700">{total}</strong>
+          </span>
+          <div className="flex items-center gap-2">
+            <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-1.5 rounded-full bg-zamtel-green transition-all" style={{ width: `${mtdPct}%` }} />
+            </div>
+            <span className="text-[11px] font-semibold text-gray-600">{mtdPct}%</span>
+          </div>
+        </div>
       </div>
 
       {/* Composite score banner */}
