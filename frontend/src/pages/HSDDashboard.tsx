@@ -9,6 +9,8 @@ import { Card, Skeleton, Badge, Button, StatCard } from '../components/UI';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format, differenceInHours } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
+import { useAppSelector } from '../hooks/useAppDispatch';
+import { getUserTitle } from '../utils/userTitle';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs';
 type SortDir = 'asc' | 'desc';
@@ -32,6 +34,7 @@ function monthOptions() {
 }
 
 export const HSDDashboardPage: React.FC = () => {
+  const authUser = useAppSelector(s => s.auth.user);
   const [dashboard, setDashboard] = useState<HSDDashboard | null>(null);
   const [zones,     setZones]     = useState<ZoneStat[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -129,7 +132,7 @@ export const HSDDashboardPage: React.FC = () => {
 
   return (
     <Layout
-      title="National Dashboard"
+      title={authUser ? `${getUserTitle(authUser.id, authUser.role)} — Dashboard` : 'National Dashboard'}
       actions={
         <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}>
           <Download className="w-3.5 h-3.5 mr-1" /> Export

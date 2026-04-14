@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { getUserTitle, getShortTitle } from '../utils/userTitle';
 import { Layout } from '../components/Layout';
 import { Button, Input, Select, Card, Badge } from '../components/UI';
 import { useAppSelector } from '../hooks/useAppDispatch';
@@ -445,7 +446,9 @@ export const AdminPanel: React.FC = () => {
                 <p className="text-green-200 text-xs">User & Account Management</p>
               </div>
             </div>
-            <span className="bg-zamtel-pink text-white text-xs px-3 py-1 rounded-full font-bold">{user?.role}</span>
+            <span className="bg-zamtel-pink text-white text-xs px-3 py-1 rounded-full font-bold">
+              {user ? getShortTitle(user.id, user.role) : ''}
+            </span>
           </div>
           {/* Stats row */}
           <div className="flex gap-3 flex-wrap">

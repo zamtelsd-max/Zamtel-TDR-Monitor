@@ -4,6 +4,7 @@ import { LogOut, Wifi, WifiOff, Settings } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
 import { logout } from '../store/authSlice';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { getUserTitle, getShortTitle } from '../utils/userTitle';
 
 interface LayoutProps {
   children:  React.ReactNode;
@@ -47,12 +48,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, backT
               <div className="flex items-center gap-1.5">
                 <h1 className="font-bold text-sm truncate">{title || 'TDR Monitor'}</h1>
                 <span className="hidden sm:inline-block text-[10px] bg-zamtel-pink text-white px-1.5 py-0.5 rounded-full font-semibold">
-                  ZAMTEL
+                  {user ? getShortTitle(user.id, user.role) : 'ZAMTEL'}
                 </span>
               </div>
               {user && (
                 <p className="text-xs text-green-200 truncate">
-                  {user.name} · {user.role}{user.zone ? ` · ${user.zone}` : ''}
+                  {user.name} · {getUserTitle(user.id, user.role)}{user.zone ? ` · ${user.zone}` : ''}
                 </p>
               )}
             </div>
