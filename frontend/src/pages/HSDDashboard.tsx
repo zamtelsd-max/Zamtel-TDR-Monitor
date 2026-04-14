@@ -11,14 +11,26 @@ import { format, differenceInHours } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
 import { useAppSelector } from '../hooks/useAppDispatch';
 import { getUserTitle } from '../utils/userTitle';
+import { getBand, calcWeightedScore, floatResolutionPct } from '../utils/performance';
 
-type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs';
+type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
 
 function pctColor(pct: number) {
-  if (pct >= 80) return 'text-green-700 bg-green-100';
-  if (pct >= 50) return 'text-amber-700 bg-amber-100';
-  return 'text-red-700 bg-red-100';
+  const b = getBand(pct);
+  return `${b.color} ${b.bg}`;
+}
+
+function zoneScore(z: { agents: number; merchants: number; visits: number; floatIssues: number; targets?: { agents: number; merchants: number; visits: number } }): number {
+  const ta = z.targets?.agents    ?? 96;
+  const tm = z.targets?.merchants ?? 96;
+  const tv = z.targets?.visits    ?? 20;
+  return calcWeightedScore({
+    agentPct:    Math.min(Math.round(z.agents    / ta * 100), 100),
+    merchantPct: Math.min(Math.round(z.merchants / tm * 100), 100),
+    floatPct:    floatResolutionPct(0, z.floatIssues), // pending = unresolved
+    visitPct:    Math.min(Math.round(z.visits    / tv * 100), 100),
+  });
 }
 
 function monthOptions() {
@@ -84,8 +96,8 @@ export const HSDDashboardPage: React.FC = () => {
   };
 
   const sortedZones = [...zones].sort((a, b) => {
-    const av = (a as unknown as Record<string, number>)[sortKey];
-    const bv = (b as unknown as Record<string, number>)[sortKey];
+    const av = sortKey === 'score' ? zoneScore(a) : (a as unknown as Record<string, number>)[sortKey];
+    const bv = sortKey === 'score' ? zoneScore(b) : (b as unknown as Record<string, number>)[sortKey];
     return sortDir === 'asc' ? av - bv : bv - av;
   });
 
@@ -227,35 +239,52 @@ export const HSDDashboardPage: React.FC = () => {
                   Visits <SortIcon col="visits" />
                 </th>
                 <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('floatIssues')}>
-                  Issues <SortIcon col="floatIssues" />
+                  Float <SortIcon col="floatIssues" />
                 </th>
-                <th className="text-right py-2 pl-2 font-medium cursor-pointer" onClick={() => handleSort('pct')}>
-                  % <SortIcon col="pct" />
+                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('pct')}>
+                  Raw% <SortIcon col="pct" />
+                </th>
+                <th className="text-right py-2 pl-2 font-medium cursor-pointer" onClick={() => handleSort('score')}>
+                  Score <SortIcon col="score" />
                 </th>
               </tr>
             </thead>
             <tbody>
-              {sortedZones.map((z: ZoneStat) => (
+              {sortedZones.map((z: ZoneStat) => {
+                const sc = zoneScore(z);
+                const b  = getBand(sc);
+                return (
                 <tr key={z.zone} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-2.5 pr-3 font-semibold text-gray-800">{z.zone}</td>
-                  <td className="py-2.5 pr-3 text-gray-600 truncate max-w-[80px]">{z.zbm}</td>
-                  <td className="text-right py-2.5 px-2 text-gray-700">{z.tdrs}</td>
-                  <td className="text-right py-2.5 px-2 text-gray-700">{z.agents}</td>
-                  <td className="text-right py-2.5 px-2 text-gray-700">{z.merchants}</td>
-                  <td className="text-right py-2.5 px-2 text-gray-700">{z.visits}</td>
-                  <td className="text-right py-2.5 px-2">
+                  <td className="py-2.5 pr-3 text-gray-600 truncate max-w-[70px]">{z.zbm}</td>
+                  <td className="text-right py-2.5 px-2 text-gray-700 text-xs">{z.tdrs}</td>
+                  <td className="text-right py-2.5 px-2 text-xs">
+                    <span className={getBand(Math.min(Math.round(z.agents/96*100),100)).color}>{z.agents}</span>
+                  </td>
+                  <td className="text-right py-2.5 px-2 text-xs">
+                    <span className={getBand(Math.min(Math.round(z.merchants/96*100),100)).color}>{z.merchants}</span>
+                  </td>
+                  <td className="text-right py-2.5 px-2 text-xs">
+                    <span className={getBand(Math.min(Math.round(z.visits/20*100),100)).color}>{z.visits}</span>
+                  </td>
+                  <td className="text-right py-2.5 px-2 text-xs">
                     {z.floatIssues > 0
                       ? <span className="text-red-600 font-semibold">{z.floatIssues}</span>
-                      : <span className="text-gray-400">0</span>
-                    }
+                      : <span className="text-gray-400">0</span>}
                   </td>
-                  <td className="text-right py-2.5 pl-2">
-                    <span className={clsx('px-2 py-0.5 rounded-full font-semibold text-xs', pctColor(z.pct))}>
+                  <td className="text-right py-2.5 px-2">
+                    <span className={clsx('px-1.5 py-0.5 rounded-full font-semibold text-xs', pctColor(z.pct))}>
                       {z.pct}%
                     </span>
                   </td>
+                  <td className="text-right py-2.5 pl-2">
+                    <span className={clsx('px-2 py-0.5 rounded-full font-bold text-xs', b.bg, b.color)}>
+                      {sc}%
+                    </span>
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

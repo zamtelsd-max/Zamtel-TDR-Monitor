@@ -9,14 +9,27 @@ import { Card, Skeleton, Badge, Button } from '../components/UI';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
+import { getBand, calcWeightedScore, floatResolutionPct, WEIGHT_PCT } from '../utils/performance';
 
-type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct';
+type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'score';
 type SortDir = 'asc' | 'desc';
 
 function pctColor(pct: number) {
-  if (pct >= 80) return 'text-green-700 bg-green-100';
-  if (pct >= 50) return 'text-amber-700 bg-amber-100';
-  return 'text-red-700 bg-red-100';
+  const b = getBand(pct);
+  return `${b.color} ${b.bg}`;
+}
+
+function tdrScore(row: TDRStat): number {
+  const floatPct = floatResolutionPct(
+    (row as any).floatResolved ?? 0,
+    (row as any).floatTotal ?? row.floatIssues ?? 0
+  );
+  return calcWeightedScore({
+    agentPct:    Math.min(Math.round((row.agents    / 96)  * 100), 100),
+    merchantPct: Math.min(Math.round((row.merchants / 96)  * 100), 100),
+    floatPct,
+    visitPct:    Math.min(Math.round((row.visits    / 20)  * 100), 100),
+  });
 }
 
 export const ZBMDashboardPage: React.FC = () => {
@@ -57,9 +70,9 @@ export const ZBMDashboardPage: React.FC = () => {
 
   const sortedTDRs = data
     ? [...data.tdrStats].sort((a, b) => {
-        const av = a[sortKey] as number;
-        const bv = b[sortKey] as number;
-        return sortDir === 'asc' ? av - bv : bv - av;
+        const av = sortKey === 'score' ? tdrScore(a) : a[sortKey as keyof TDRStat] as number;
+        const bv = sortKey === 'score' ? tdrScore(b) : b[sortKey as keyof TDRStat] as number;
+        return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
       })
     : [];
 
@@ -169,34 +182,50 @@ export const ZBMDashboardPage: React.FC = () => {
                   Visits <SortIcon col="visits" />
                 </th>
                 <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('floatIssues')}>
-                  Issues <SortIcon col="floatIssues" />
+                  Float <SortIcon col="floatIssues" />
                 </th>
-                <th className="text-right py-2 pl-2 font-medium cursor-pointer" onClick={() => handleSort('pct')}>
-                  % <SortIcon col="pct" />
+                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('pct')}>
+                  Raw% <SortIcon col="pct" />
+                </th>
+                <th className="text-right py-2 pl-2 font-medium cursor-pointer" onClick={() => handleSort('score')}>
+                  Score <SortIcon col="score" />
                 </th>
               </tr>
             </thead>
             <tbody>
-              {sortedTDRs.map((row: TDRStat) => (
+              {sortedTDRs.map((row: TDRStat) => {
+                const sc = tdrScore(row);
+                const b  = getBand(sc);
+                return (
                 <tr key={row.tdr.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="py-2.5 pr-3 font-medium text-gray-800 truncate max-w-[100px]">{row.tdr.name}</td>
-                  <td className="text-right py-2.5 px-2 text-gray-700">{row.agents}</td>
-                  <td className="text-right py-2.5 px-2 text-gray-700">{row.merchants}</td>
-                  <td className="text-right py-2.5 px-2 text-gray-700">{row.visits}</td>
+                  <td className="py-2.5 pr-3 font-medium text-gray-800 truncate max-w-[90px]">{row.tdr.name}</td>
                   <td className="text-right py-2.5 px-2">
-                    {row.floatIssues > 0 ? (
-                      <span className="text-red-600 font-semibold">{row.floatIssues}</span>
-                    ) : (
-                      <span className="text-gray-400">0</span>
-                    )}
+                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.agents/96*100),100)).color)}>{row.agents}</span>
                   </td>
-                  <td className="text-right py-2.5 pl-2">
-                    <span className={clsx('px-2 py-0.5 rounded-full font-semibold text-xs', pctColor(row.pct))}>
+                  <td className="text-right py-2.5 px-2">
+                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.merchants/96*100),100)).color)}>{row.merchants}</span>
+                  </td>
+                  <td className="text-right py-2.5 px-2">
+                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.visits/20*100),100)).color)}>{row.visits}</span>
+                  </td>
+                  <td className="text-right py-2.5 px-2">
+                    {row.floatIssues > 0
+                      ? <span className="text-red-600 font-semibold text-xs">{row.floatIssues}</span>
+                      : <span className="text-gray-400 text-xs">0</span>}
+                  </td>
+                  <td className="text-right py-2.5 px-2">
+                    <span className={clsx('px-1.5 py-0.5 rounded-full font-semibold text-xs', pctColor(row.pct))}>
                       {row.pct}%
                     </span>
                   </td>
+                  <td className="text-right py-2.5 pl-2">
+                    <span className={clsx('px-2 py-0.5 rounded-full font-bold text-xs', b.bg, b.color)}>
+                      {sc}%
+                    </span>
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
               {sortedTDRs.length === 0 && (
                 <tr><td colSpan={6} className="text-center py-6 text-gray-400">No TDRs in this zone</td></tr>
               )}
