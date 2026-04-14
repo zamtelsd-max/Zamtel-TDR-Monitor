@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 export default defineConfig({
-  base: '/zamtel-tdr-monitor/',
+  base: '/Zamtel-TDR-Monitor/',
   plugins: [
     react(),
     VitePWA({
@@ -17,8 +17,8 @@ export default defineConfig({
         background_color: '#0D1B12',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/zamtel-tdr-monitor/',
-        scope: '/zamtel-tdr-monitor/',
+        start_url: '/Zamtel-TDR-Monitor/',
+        scope: '/Zamtel-TDR-Monitor/',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
