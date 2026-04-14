@@ -22,7 +22,7 @@ client.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('zamtel_token');
       localStorage.removeItem('zamtel_user');
-      window.location.href = '/tdr/login';
+      window.location.href = (import.meta.env.VITE_BASE_PATH || '/tdr') + '/login';
     }
     return Promise.reject(err);
   }
@@ -178,4 +178,10 @@ export const adminApi = {
 
   deleteUser: (userId: string) =>
     client.delete(`/admin/users/${userId}`),
+
+  listZones: () =>
+    client.get<string[]>('/admin/zones'),
+
+  createZone: (name: string) =>
+    client.post('/admin/zones', { name }),
 };

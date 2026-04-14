@@ -96,7 +96,7 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <BrowserRouter basename="/tdr">
+      <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/tdr'}>
         <AppRoutes />
         <Toaster
           position="top-center"

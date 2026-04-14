@@ -149,3 +149,37 @@ adminRouter.delete('/users/:id', async (req: Request, res: Response): Promise<vo
     res.status(500).json({ error: 'User not found or could not be deleted' });
   }
 });
+
+// ─── GET /admin/zones — List all zones ────────────────────────────────────────
+adminRouter.get('/zones', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    // Return distinct zones from agents + users tables
+    const [agentZones, userZones] = await Promise.all([
+      prisma.agent.findMany({ select: { zone: true }, distinct: ['zone'] }),
+      prisma.user.findMany({ where: { zone: { not: null } }, select: { zone: true }, distinct: ['zone'] }),
+    ]);
+    const all = [...new Set([
+      ...agentZones.map(a => a.zone).filter(Boolean),
+      ...userZones.map(u => u.zone).filter(Boolean),
+      // Always include Zambia's 10 provinces as baseline
+      'Copperbelt','Lusaka','Northern','Southern','Eastern',
+      'Western','Luapula','Muchinga','North-Western','Central',
+    ])] as string[];
+    all.sort();
+    res.json(all);
+  } catch {
+    res.status(500).json({ error: 'Failed to list zones' });
+  }
+});
+
+// ─── POST /admin/zones — Add a custom zone (HSD only) ─────────────────────────
+adminRouter.post('/zones', async (req: Request, res: Response): Promise<void> => {
+  const requester = (req as any).user;
+  if (requester.role !== 'HSD') {
+    res.status(403).json({ error: 'Only HSD can add zones' }); return;
+  }
+  const { name } = req.body as { name: string };
+  if (!name?.trim()) { res.status(400).json({ error: 'Zone name is required' }); return; }
+  // Zones are stored implicitly via users/agents; we just confirm and echo back
+  res.status(201).json({ name: name.trim(), message: `Zone "${name.trim()}" registered. Assign TDRs/ZBMs to activate it.` });
+});
