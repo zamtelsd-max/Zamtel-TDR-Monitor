@@ -29,11 +29,13 @@ function currentMonthRange() {
 
 // ─── GET /zbm/dashboard ───────────────────────────────────────────────────────
 zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
-  const zone = req.user!.zone!;
+  const zone = req.user!.zone || null; // null = no zone filter (e.g. zbm-kuzanga sees all)
   const { start, end } = currentMonthRange();
 
-  // All TDRs in this zone
-  const tdrs = await prisma.user.findMany({ where: { role: 'TDR', zone, active: true } });
+  // All TDRs in this zone (or all if zone is null)
+  const tdrs = await prisma.user.findMany({
+    where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
+  });
 
   // Per-TDR stats
   const tdrStats = await Promise.all(tdrs.map(async (tdr) => {
@@ -52,21 +54,25 @@ zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
     return { tdr, agents, merchants, visits, floatIssues, pct };
   }));
 
+  const zoneWhere = zone ? { zone } : {};
+
   // Zone totals
   const [totalAgents, totalMerchants, totalVisits, floatIssuesPending, prospects] = await Promise.all([
-    prisma.agent.count({ where: { zone, type: 'normal',   createdAt: { gte: start, lte: end } } }),
-    prisma.agent.count({ where: { zone, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-    prisma.visit.count({ where: { zone, createdAt: { gte: start, lte: end } } }),
-    prisma.floatIssue.count({ where: { zone, status: { not: 'resolved' } } }),
+    prisma.agent.count({ where: { ...zoneWhere, type: 'normal',   createdAt: { gte: start, lte: end } } }),
+    prisma.agent.count({ where: { ...zoneWhere, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+    prisma.visit.count({ where: { ...zoneWhere, createdAt: { gte: start, lte: end } } }),
+    prisma.floatIssue.count({ where: { ...zoneWhere, status: { not: 'resolved' } } }),
     prisma.prospect.groupBy({
       by: ['status'],
-      where: { zone },
+      where: zoneWhere,
       _count: true,
     }),
   ]);
 
   const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-  const target = await prisma.salesTarget.findUnique({ where: { zone_period: { zone, period } } });
+  const target = zone
+    ? await prisma.salesTarget.findUnique({ where: { zone_period: { zone, period } } })
+    : null;
 
   res.json({
     zbm:  { id: req.user!.userId, name: req.user!.name, zone },
@@ -145,12 +151,12 @@ zbmRouter.get('/prospects', async (req: Request, res: Response): Promise<void> =
 zbmRouter.get('/map', async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user!;
-    const zoneFilter = user.zone; // ZBM always sees only their zone
+    const zoneFilter = user.zone || null; // null zone (e.g. zbm-kuzanga) → all zones
 
     const [agents, visits] = await Promise.all([
       prisma.agent.findMany({
         where: {
-          zone: zoneFilter as string,
+          ...(zoneFilter ? { zone: zoneFilter } : {}),
           latitude: { not: null },
           longitude: { not: null },
         },
@@ -165,7 +171,7 @@ zbmRouter.get('/map', async (req: Request, res: Response): Promise<void> => {
       }),
       prisma.visit.findMany({
         where: {
-          zone: zoneFilter as string,
+          ...(zoneFilter ? { zone: zoneFilter } : {}),
           latitude: { not: null },
           longitude: { not: null },
         },
@@ -191,5 +197,101 @@ zbmRouter.get('/map', async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to fetch map data' });
+  }
+});
+
+// ─── GET /zbm/export  ─────────────────────────────────────────────────────────
+// Zone-scoped Excel export. null zone (e.g. zbm-kuzanga) → all zones.
+zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const XLSX = await import('xlsx');
+    const zone = req.user!.zone || null;
+    const period = (req.query.period as string) ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+    const [y, m] = period.split('-').map(Number);
+    const start = new Date(y, m - 1, 1);
+    const end   = new Date(y, m, 0, 23, 59, 59, 999);
+
+    const zoneWhere = zone ? { zone } : {};
+
+    const [agents, visits, floatIssues, prospects] = await Promise.all([
+      prisma.agent.findMany({
+        where: { ...zoneWhere, createdAt: { gte: start, lte: end } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.visit.findMany({
+        where: { ...zoneWhere, createdAt: { gte: start, lte: end } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.floatIssue.findMany({
+        where: zoneWhere,
+        orderBy: { reportedAt: 'desc' },
+      }),
+      prisma.prospect.findMany({
+        where: zoneWhere,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Agents
+    const agentRows = agents.map(a => ({
+      'TDR ID': a.tdrId, 'TDR Name': a.tdrName, 'Zone': a.zone, 'ZBM': a.zbmName,
+      'Agent Name': a.agentName, 'Agent Code': a.agentCode, 'Phone': a.contactPhone,
+      'Type': a.type, 'Category': a.merchantCategory || '',
+      'Initial Float': a.initialFloat, 'Town': a.town, 'Address': a.address || '',
+      'Cluster': a.cluster || '', 'Market': a.market || '',
+      'Latitude': a.latitude || '', 'Longitude': a.longitude || '',
+      'Notes': a.notes || '', 'Date': a.createdAt.toISOString().split('T')[0],
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(agentRows), 'Agents');
+
+    // Sheet 2: Visits
+    const visitRows = visits.map(v => ({
+      'TDR ID': v.tdrId, 'TDR Name': v.tdrName, 'Zone': v.zone, 'ZBM': v.zbmName,
+      'Outlet Name': v.outletName, 'Agent Code': v.agentCode, 'Phone': v.contactPhone,
+      'Town': v.town, 'Cluster': v.cluster || '', 'Market': v.market || '',
+      'Float Amount': v.floatAmount,
+      'Latitude': v.latitude || '', 'Longitude': v.longitude || '',
+      'Notes': v.notes || '', 'Date': v.createdAt.toISOString().split('T')[0],
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(visitRows), 'Visits');
+
+    // Sheet 3: Float Issues
+    const issueRows = floatIssues.map(f => ({
+      'TDR ID': f.tdrId, 'TDR Name': f.tdrName, 'Zone': f.zone,
+      'Agent Code': f.agentCode, 'Agent Name': f.agentName, 'Phone': f.contactPhone,
+      'Issue Type': f.issueType, 'Float Amount': f.reportedFloat,
+      'Description': f.description, 'Status': f.status,
+      'Resolved At': f.resolvedAt?.toISOString().split('T')[0] || '',
+      'Resolved By': f.resolvedBy || '', 'Resolution Notes': f.resolutionNotes || '',
+      'Reported At': f.reportedAt.toISOString().split('T')[0],
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(issueRows), 'Float Issues');
+
+    // Sheet 4: Prospects
+    const prospectRows = prospects.map(p => ({
+      'TDR ID': p.tdrId, 'TDR Name': p.tdrName, 'Zone': p.zone,
+      'Prospect Type': p.prospectType, 'Business Name': p.businessName,
+      'Owner Name': p.ownerName, 'Phone': p.contactPhone,
+      'Town': p.town, 'Address': p.address || '',
+      'Category': p.merchantCategory || '', 'Est. Float': p.estimatedFloat || '',
+      'Status': p.status,
+      'Follow-up Date': p.followUpDate?.toISOString().split('T')[0] || '',
+      'Converted At': p.convertedAt?.toISOString().split('T')[0] || '',
+      'Notes': p.notes || '', 'Date': p.createdAt.toISOString().split('T')[0],
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospectRows), 'Prospects');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const scope = zone || 'ALL-ZONES';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="zamtel-tdr-${scope}-${period}.xlsx"`);
+    res.send(buf);
+  } catch (err) {
+    console.error('Export error:', err);
+    res.status(500).json({ error: 'Export failed' });
   }
 });

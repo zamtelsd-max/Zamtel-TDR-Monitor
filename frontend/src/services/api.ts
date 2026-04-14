@@ -139,6 +139,12 @@ export const zbmApi = {
 
   getMap: () =>
     client.get('/zbm/map'),
+
+  export: (period?: string) =>
+    client.get('/zbm/export', {
+      params: period ? { period } : {},
+      responseType: 'blob',
+    }),
 };
 
 // ─── HSD ─────────────────────────────────────────────────────────────────────

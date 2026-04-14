@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { zbmApi } from '../services/api';
 import type { ZBMDashboard, TDRStat, FloatIssue } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
@@ -39,7 +39,8 @@ export const ZBMDashboardPage: React.FC = () => {
   const [sortKey,    setSortKey]    = useState<SortKey>('pct');
   const [sortDir,    setSortDir]    = useState<SortDir>('desc');
   const [resolving,  setResolving]  = useState<string | null>(null);
-  const [mapData,   setMapData]   = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
+  const [mapData,    setMapData]    = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
+  const [exporting,  setExporting]  = useState(false);
 
   const fetchData = async () => {
     try {
@@ -97,15 +98,43 @@ export const ZBMDashboardPage: React.FC = () => {
     return sortDir === 'asc' ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />;
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+      const res = await zbmApi.export(period);
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `zamtel-tdr-export-${period}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Excel downloaded');
+    } catch {
+      toast.error('Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const progress = (count: number, target: number) =>
     Math.min(Math.round(count / Math.max(target, 1) * 100), 100);
 
   return (
     <Layout title="ZBM Dashboard">
       <PageHeader
-        title={data ? `${data.zbm.zone} Zone` : 'Loading...'}
+        title={data ? (data.zbm.zone ? `${data.zbm.zone} Zone` : 'All Zones') : 'Loading...'}
         subtitle={data ? `${data.zbm.name} · ${format(new Date(), 'MMMM yyyy')}` : ''}
       />
+
+      {/* Export button */}
+      <div className="flex justify-end mb-3">
+        <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}
+          className="flex items-center gap-1.5">
+          <Download className="w-3.5 h-3.5" />
+          Export Excel
+        </Button>
+      </div>
 
       {/* Zone KPIs */}
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -292,20 +321,28 @@ export const ZBMDashboardPage: React.FC = () => {
           </div>
         </Card>
       )}
-      {/* GPS Field Map — zone scoped */}
-      {mapData.agents.length > 0 && (
-        <Card className="mb-4">
-          <h3 className="font-semibold text-sm mb-3" style={{ color: '#00843D' }}>
-            📍 Zone Field Map — Agents, Merchants & Visits
-          </h3>
+      {/* GPS Field Map */}
+      <Card className="mb-4">
+        <h3 className="font-semibold text-sm mb-3" style={{ color: '#00843D' }}>
+          📍 {data?.zbm.zone ? `${data.zbm.zone} Zone` : 'National'} Field Map — Agents, Merchants & Visits
+        </h3>
+        {loading && !mapData.agents.length ? (
+          <div className="h-64 flex items-center justify-center text-gray-400 text-sm">
+            Loading map data…
+          </div>
+        ) : mapData.agents.length > 0 || mapData.visits.length > 0 ? (
           <GeoMap
             agents={mapData.agents}
             visits={mapData.visits}
-            height="420px"
+            height="460px"
             showVisits={true}
           />
-        </Card>
-      )}
+        ) : (
+          <div className="h-32 flex items-center justify-center text-gray-400 text-sm">
+            No GPS data available yet
+          </div>
+        )}
+      </Card>
     </Layout>
   );
 };
