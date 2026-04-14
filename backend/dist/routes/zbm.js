@@ -117,4 +117,55 @@ exports.zbmRouter.get('/prospects', async (req, res) => {
     });
     res.json(prospects);
 });
+// ─── GPS Map Data (ZBM — zone-scoped) ─────────────────────────────────────────
+exports.zbmRouter.get('/map', async (req, res) => {
+    try {
+        const user = req.user;
+        const zoneFilter = user.zone; // ZBM always sees only their zone
+        const [agents, visits] = await Promise.all([
+            prisma_1.prisma.agent.findMany({
+                where: {
+                    zone: zoneFilter,
+                    latitude: { not: null },
+                    longitude: { not: null },
+                },
+                select: {
+                    id: true, agentName: true, agentCode: true, type: true,
+                    tdrName: true, zone: true, town: true, cluster: true,
+                    latitude: true, longitude: true, initialFloat: true,
+                    merchantCategory: true, createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 2000,
+            }),
+            prisma_1.prisma.visit.findMany({
+                where: {
+                    zone: zoneFilter,
+                    latitude: { not: null },
+                    longitude: { not: null },
+                },
+                select: {
+                    id: true, outletName: true, agentCode: true,
+                    tdrName: true, zone: true, town: true,
+                    latitude: true, longitude: true, floatAmount: true,
+                    createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 2000,
+            }),
+        ]);
+        res.json({
+            success: true,
+            data: { agents, visits },
+            summary: {
+                totalAgents: agents.length,
+                totalVisits: visits.length,
+                zones: [zoneFilter].filter(Boolean),
+            }
+        });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: 'Failed to fetch map data' });
+    }
+});
 //# sourceMappingURL=zbm.js.map

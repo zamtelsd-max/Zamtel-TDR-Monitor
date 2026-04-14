@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hsdRouter = void 0;
+exports.mapRouter = exports.hsdRouter = void 0;
 const express_1 = require("express");
 const zod_1 = require("zod");
 const prisma_1 = require("../prisma");
@@ -9,6 +9,10 @@ const rateLimit_1 = require("../middleware/rateLimit");
 exports.hsdRouter = (0, express_1.Router)();
 exports.hsdRouter.use((0, auth_1.requireAuth)('HSD'));
 exports.hsdRouter.use(rateLimit_1.apiRateLimit);
+// Shared map router — accessible by both HSD and ZBM
+exports.mapRouter = (0, express_1.Router)();
+exports.mapRouter.use((0, auth_1.requireAuth)('HSD', 'ZBM'));
+exports.mapRouter.use(rateLimit_1.apiRateLimit);
 const ZONES = [
     'Lusaka', 'Copperbelt', 'Northern', 'Eastern', 'Southern',
     'Western', 'Luapula', 'Muchinga', 'North-Western', 'Central',
@@ -182,5 +186,59 @@ exports.hsdRouter.get('/export', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="zamtel-tdr-export-${period}.csv"`);
     res.send(lines.join('\n'));
+});
+// ─── GPS Map Data ──────────────────────────────────────────────────────────────
+exports.mapRouter.get('/', async (req, res) => {
+    try {
+        const { zone } = req.query;
+        const user = req.user;
+        // ZBM can only see their own zone; HSD can filter by zone param
+        const zoneFilter = user.role === 'ZBM' ? user.zone :
+            (zone && zone !== 'all' ? zone : undefined);
+        const [agents, visits] = await Promise.all([
+            prisma_1.prisma.agent.findMany({
+                where: {
+                    ...(zoneFilter ? { zone: zoneFilter } : {}),
+                    latitude: { not: null },
+                    longitude: { not: null },
+                },
+                select: {
+                    id: true, agentName: true, agentCode: true, type: true,
+                    tdrName: true, zone: true, town: true, cluster: true,
+                    latitude: true, longitude: true, initialFloat: true,
+                    merchantCategory: true, createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 2000,
+            }),
+            prisma_1.prisma.visit.findMany({
+                where: {
+                    ...(zoneFilter ? { zone: zoneFilter } : {}),
+                    latitude: { not: null },
+                    longitude: { not: null },
+                },
+                select: {
+                    id: true, outletName: true, agentCode: true,
+                    tdrName: true, zone: true, town: true,
+                    latitude: true, longitude: true, floatAmount: true,
+                    createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 2000,
+            }),
+        ]);
+        res.json({
+            success: true,
+            data: { agents, visits },
+            summary: {
+                totalAgents: agents.length,
+                totalVisits: visits.length,
+                zones: [...new Set([...agents.map(a => a.zone), ...visits.map(v => v.zone)])].filter(Boolean),
+            }
+        });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: 'Failed to fetch map data' });
+    }
 });
 //# sourceMappingURL=hsd.js.map

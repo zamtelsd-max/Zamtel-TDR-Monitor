@@ -179,9 +179,15 @@ export const adminApi = {
   deleteUser: (userId: string) =>
     client.delete(`/admin/users/${userId}`),
 
+  updateUser: (userId: string, data: { name?: string; zone?: string; role?: string; active?: boolean }) =>
+    client.patch(`/admin/users/${userId}`, data),
+
   listZones: () =>
     client.get<string[]>('/admin/zones'),
 
   createZone: (name: string) =>
     client.post('/admin/zones', { name }),
+
+  deleteZone: (name: string) =>
+    client.delete(`/admin/zones/${encodeURIComponent(name)}`),
 };

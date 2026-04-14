@@ -183,3 +183,48 @@ adminRouter.post('/zones', async (req: Request, res: Response): Promise<void> =>
   // Zones are stored implicitly via users/agents; we just confirm and echo back
   res.status(201).json({ name: name.trim(), message: `Zone "${name.trim()}" registered. Assign TDRs/ZBMs to activate it.` });
 });
+
+// ─── PATCH /admin/users/:id — Update user profile (name, zone, role, active) ──
+adminRouter.patch('/users/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, zone, role, active } = req.body as {
+      name?: string; zone?: string; role?: string; active?: boolean;
+    };
+    const requester = (req as any).user;
+    // ZBM can only update TDRs in their own zone
+    if (requester.role === 'ZBM') {
+      const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+      if (!target || target.role !== 'TDR' || target.zone !== requester.zone) {
+        res.status(403).json({ error: 'ZBM can only update TDRs in their own zone' }); return;
+      }
+    }
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data: {
+        ...(name    !== undefined && { name }),
+        ...(zone    !== undefined && { zone }),
+        ...(role    !== undefined && { role: role as 'TDR'|'ZBM'|'HSD' }),
+        ...(active  !== undefined && { active }),
+      },
+      select: { id: true, name: true, role: true, zone: true, active: true },
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// ─── DELETE /admin/zones/:name — Remove a zone (HSD only) ─────────────────────
+adminRouter.delete('/zones/:name', async (req: Request, res: Response): Promise<void> => {
+  const requester = (req as any).user;
+  if (requester.role !== 'HSD') {
+    res.status(403).json({ error: 'Only HSD can delete zones' }); return;
+  }
+  const zoneName = decodeURIComponent(req.params.name);
+  // Check if zone has active users
+  const activeUsers = await prisma.user.count({ where: { zone: zoneName, active: true } });
+  if (activeUsers > 0) {
+    res.status(400).json({ error: `Zone has ${activeUsers} active user(s). Reassign them first.` }); return;
+  }
+  res.json({ success: true, message: `Zone "${zoneName}" removed from registry` });
+});

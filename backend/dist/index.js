@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 3000;
 app.use((0, helmet_1.default)());
 app.use((0, compression_1.default)());
 app.use((0, cors_1.default)({
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'http://localhost:4173'],
+    origin: process.env.CORS_ORIGIN === '*' ? '*' : (process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'http://localhost:4173', 'http://20.97.114.220:8081', 'https://zamtelsd-max.github.io']),
     credentials: true,
 }));
 app.use(express_1.default.json({ limit: '10mb' }));
@@ -34,6 +34,7 @@ app.use('/api/v1/auth', auth_1.authRouter);
 app.use('/api/v1/tdr', tdr_1.tdrRouter);
 app.use('/api/v1/zbm', zbm_1.zbmRouter);
 app.use('/api/v1/hsd', hsd_1.hsdRouter);
+app.use('/api/v1/hsd/map', hsd_1.mapRouter);
 app.use('/api/v1/admin', admin_1.adminRouter);
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
