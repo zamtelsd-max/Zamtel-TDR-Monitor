@@ -164,3 +164,18 @@ export const hsdApi = {
   getMap: (zone?: string) =>
     client.get('/hsd/map', { params: zone && zone !== 'all' ? { zone } : {} }),
 };
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+export const adminApi = {
+  listUsers: () =>
+    client.get<Array<{ id: string; name: string; role: string; zone: string | null; createdAt: string }>>('/admin/users'),
+
+  createUser: (data: { id: string; name: string; role: string; zone: string; pin: string }) =>
+    client.post('/admin/users', data),
+
+  resetPin: (userId: string, pin: string) =>
+    client.patch(`/admin/users/${userId}/pin`, { pin }),
+
+  deleteUser: (userId: string) =>
+    client.delete(`/admin/users/${userId}`),
+};

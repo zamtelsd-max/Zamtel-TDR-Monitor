@@ -145,7 +145,7 @@ export const AddAgentForm: React.FC = () => {
             type="button"
             onClick={handleGPS}
             disabled={gpsLoading}
-            className="mt-2 flex items-center gap-2 text-sm text-zamtel-red font-medium hover:underline disabled:opacity-60"
+            className="mt-2 flex items-center gap-2 text-sm text-zamtel-pink font-medium hover:underline disabled:opacity-60"
           >
             {gpsLoading ? <Loader className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
             {gpsLoading ? 'Capturing...' : 'Auto-capture GPS'}

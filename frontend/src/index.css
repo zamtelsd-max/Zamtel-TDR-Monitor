@@ -28,8 +28,23 @@
 }
 
 @layer components {
+  /* Zamtel brand gradients */
   .zamtel-gradient {
-    background: linear-gradient(135deg, #E2231A 0%, #B01A14 100%);
+    background: linear-gradient(135deg, #00843D 0%, #006830 100%);
+  }
+  .zamtel-gradient-pink {
+    background: linear-gradient(135deg, #E4007C 0%, #B8005E 100%);
+  }
+  .zamtel-gradient-hero {
+    background: linear-gradient(135deg, #00843D 0%, #006830 60%, #004d24 100%);
+  }
+  .zamtel-card-green {
+    background: linear-gradient(135deg, #00843D22 0%, #00843D08 100%);
+    border-left: 4px solid #00843D;
+  }
+  .zamtel-card-pink {
+    background: linear-gradient(135deg, #E4007C22 0%, #E4007C08 100%);
+    border-left: 4px solid #E4007C;
   }
 }
 

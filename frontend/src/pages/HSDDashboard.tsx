@@ -141,7 +141,7 @@ export const HSDDashboardPage: React.FC = () => {
         subtitle="All Zones"
       >
         <select
-          className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-zamtel-red"
+          className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-zamtel-green"
           value={period}
           onChange={e => setPeriod(e.target.value)}
         >
@@ -157,7 +157,7 @@ export const HSDDashboardPage: React.FC = () => {
           [0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 rounded-2xl" />)
         ) : (
           <>
-            <StatCard label="Agents Recruited"  value={dashboard?.kpis.totalAgents    || 0} color="text-zamtel-red"  loading={loading && !dashboard} />
+            <StatCard label="Agents Recruited"  value={dashboard?.kpis.totalAgents    || 0} color="text-zamtel-pink"  loading={loading && !dashboard} />
             <StatCard label="Merchants"          value={dashboard?.kpis.totalMerchants || 0} color="text-blue-600"   loading={loading && !dashboard} />
             <StatCard label="Outlet Visits"      value={dashboard?.kpis.totalVisits    || 0} color="text-green-700"  loading={loading && !dashboard} />
             <StatCard label="Open Float Issues"  value={dashboard?.kpis.openFloatIssues || 0} color="text-amber-600" loading={loading && !dashboard} />

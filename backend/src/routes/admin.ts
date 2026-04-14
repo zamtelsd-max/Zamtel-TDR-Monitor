@@ -4,8 +4,8 @@ import { requireAuth } from '../middleware/auth';
 
 export const adminRouter = Router();
 
-// Admin routes only accessible in non-production or with HSD role
-adminRouter.use(requireAuth('HSD'));
+// Admin routes accessible to HSD (full) and ZBM (zone-scoped add TDR)
+adminRouter.use(requireAuth('HSD', 'ZBM'));
 
 // ─── POST /admin/migrate-from-sheets ─────────────────────────────────────────
 // Accepts a JSON body with rows exported from the Google Sheet CSV
@@ -92,4 +92,60 @@ adminRouter.get('/users', async (_req: Request, res: Response): Promise<void> =>
     orderBy: { createdAt: 'asc' },
   });
   res.json(users);
+});
+
+// ─── POST /admin/users — Create TDR/ZBM account ───────────────────────────────
+adminRouter.post('/users', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, name, role, zone, pin } = req.body as {
+      id: string; name: string; role: string; zone: string; pin: string;
+    };
+    if (!id || !name || !pin) {
+      res.status(400).json({ error: 'id, name, and pin are required' }); return;
+    }
+    const bcrypt = await import('bcryptjs');
+    const pinHash = await bcrypt.hash(pin, 10);
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (existing) {
+      res.status(409).json({ error: `User ID "${id}" already exists` }); return;
+    }
+
+    const user = await prisma.user.create({
+      data: { id, name, role: role as 'TDR' | 'ZBM' | 'HSD', zone: zone || null, pin: pinHash, active: true },
+    });
+    res.status(201).json({ id: user.id, name: user.name, role: user.role, zone: user.zone });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// ─── PATCH /admin/users/:id/pin — Reset PIN ────────────────────────────────────
+adminRouter.patch('/users/:id/pin', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { pin } = req.body as { pin: string };
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      res.status(400).json({ error: 'PIN must be exactly 4 digits' }); return;
+    }
+    const bcrypt = await import('bcryptjs');
+    const pinHash = await bcrypt.hash(pin, 10);
+    await prisma.user.update({ where: { id: req.params.id }, data: { pin: pinHash } });
+    res.json({ success: true, message: `PIN reset for ${req.params.id}` });
+  } catch {
+    res.status(500).json({ error: 'Failed to reset PIN' });
+  }
+});
+
+// ─── DELETE /admin/users/:id — Delete user ─────────────────────────────────────
+adminRouter.delete('/users/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const requester = (req as any).user;
+    if (req.params.id === requester.userId) {
+      res.status(400).json({ error: 'Cannot delete yourself' }); return;
+    }
+    await prisma.user.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: 'User not found or could not be deleted' });
+  }
 });

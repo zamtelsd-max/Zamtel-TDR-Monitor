@@ -101,11 +101,11 @@ export const ZBMDashboardPage: React.FC = () => {
         ) : (
           <>
             <Card>
-              <p className="text-2xl font-bold text-zamtel-red">{data?.zone.totals.agents}</p>
+              <p className="text-2xl font-bold text-zamtel-pink">{data?.zone.totals.agents}</p>
               <p className="text-xs text-gray-500">Agents Recruited</p>
               <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-zamtel-red rounded-full transition-all"
+                  className="h-full zamtel-gradient rounded-full transition-all"
                   style={{ width: `${progress(data?.zone.totals.agents || 0, data?.zone.targets.agents || 1)}%` }}
                 />
               </div>

@@ -8,13 +8,20 @@ export default {
     extend: {
       colors: {
         zamtel: {
-          red:   '#E2231A',
-          dark:  '#1A1A2E',
-          white: '#FFFFFF',
-          'red-dark':  '#B01A14',
-          'red-light': '#FF4D47',
-          gray:        '#F5F5F5',
-          'gray-mid':  '#9CA3AF',
+          green:        '#00843D',
+          'green-dark': '#006830',
+          'green-light':'#00A84F',
+          pink:         '#E4007C',
+          'pink-dark':  '#B8005E',
+          'pink-light': '#FF1A94',
+          dark:         '#0D1B12',
+          white:        '#FFFFFF',
+          gray:         '#F5F5F5',
+          'gray-mid':   '#9CA3AF',
+          // legacy aliases so old classes don't break during transition
+          red:          '#E4007C',
+          'red-dark':   '#B8005E',
+          'red-light':  '#FF1A94',
         },
       },
       fontFamily: {

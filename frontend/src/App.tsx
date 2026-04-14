@@ -12,6 +12,7 @@ import { AddAgentForm }         from './pages/AddAgentForm';
 import { RecordVisitForm }      from './pages/RecordVisitForm';
 import { ReportFloatIssueForm } from './pages/ReportFloatIssueForm';
 import { AddProspectForm }      from './pages/AddProspectForm';
+import { AdminPanel }           from './pages/AdminPanel';
 
 function RootRedirect() {
   const state = store.getState();
@@ -67,6 +68,13 @@ function AppRoutes() {
       <Route path="/hsd" element={
         <ProtectedRoute roles={['HSD']}>
           <HSDDashboardPage />
+        </ProtectedRoute>
+      } />
+
+      {/* Admin Panel — HSD + ZBM */}
+      <Route path="/admin" element={
+        <ProtectedRoute roles={['HSD', 'ZBM']}>
+          <AdminPanel />
         </ProtectedRoute>
       } />
 

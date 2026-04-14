@@ -84,7 +84,7 @@ export const TDRDashboardPage: React.FC = () => {
       {/* Float Issues */}
       <Card className="mb-4">
         <div className="flex items-center gap-2 mb-3">
-          <AlertTriangle className="w-4 h-4 text-zamtel-red" />
+          <AlertTriangle className="w-4 h-4 text-zamtel-pink" />
           <h3 className="font-semibold text-zamtel-dark text-sm">Float Issues</h3>
         </div>
         {loading && !data ? (
@@ -145,7 +145,7 @@ export const TDRDashboardPage: React.FC = () => {
             {data.recentActivity.agents.slice(0, 3).map(a => (
               <div key={a.id} className="flex items-center gap-3 py-2 border-b border-gray-50">
                 <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <UserPlus className="w-4 h-4 text-zamtel-red" />
+                  <UserPlus className="w-4 h-4 text-zamtel-pink" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{a.agentName}</p>
@@ -177,7 +177,7 @@ export const TDRDashboardPage: React.FC = () => {
         <div className="flex flex-col gap-2 items-end">
           <Link to="/tdr/agents/new" className="flex items-center gap-2">
             <span className="text-xs bg-white shadow-md rounded-full px-3 py-1.5 font-medium text-gray-700">Add Agent</span>
-            <div className="w-10 h-10 bg-zamtel-red rounded-full shadow-lg flex items-center justify-center">
+            <div className="w-10 h-10 zamtel-gradient rounded-full shadow-lg flex items-center justify-center">
               <UserPlus className="w-5 h-5 text-white" />
             </div>
           </Link>

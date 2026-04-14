@@ -70,7 +70,7 @@ export const Login: React.FC = () => {
     <div className="min-h-screen bg-zamtel-dark flex flex-col items-center justify-center px-4">
       {/* Logo */}
       <div className="mb-8 text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-zamtel-red rounded-3xl shadow-2xl mb-4">
+        <div className="inline-flex items-center justify-center w-20 h-20 zamtel-gradient rounded-3xl shadow-2xl mb-4">
           <span className="text-white font-black text-3xl">Z</span>
         </div>
         <h1 className="text-white text-2xl font-bold">Zamtel TDR Monitor</h1>
@@ -108,7 +108,7 @@ export const Login: React.FC = () => {
                 value={digit}
                 onChange={e => handlePinChange(i, e.target.value)}
                 onKeyDown={e => handlePinKeyDown(i, e)}
-                className="w-14 h-14 text-center text-xl font-bold border-2 rounded-2xl focus:outline-none focus:border-zamtel-red focus:ring-2 focus:ring-zamtel-red/20 transition bg-gray-50"
+                className="w-14 h-14 text-center text-xl font-bold border-2 rounded-2xl focus:outline-none focus:border-zamtel-green focus:ring-2 focus:ring-zamtel-green/20 transition bg-gray-50"
               />
             ))}
           </div>
