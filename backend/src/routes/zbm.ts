@@ -3,6 +3,19 @@ import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
 
+function workingDaysInMonth(year: number, month: number): number {
+  let count = 0;
+  const days = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= days; d++) {
+    if (new Date(year, month, d).getDay() !== 0) count++;
+  }
+  return count;
+}
+function visitMonthlyTarget(): number {
+  const n = new Date();
+  return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
+}
+
 export const zbmRouter = Router();
 zbmRouter.use(requireAuth('ZBM'));
 zbmRouter.use(apiRateLimit);
@@ -33,7 +46,7 @@ zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
 
     const agentTarget    = 96;
     const merchantTarget = 96;
-    const visitTarget    = 20;
+    const visitTarget    = visitMonthlyTarget();
     const pct = Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100);
 
     return { tdr, agents, merchants, visits, floatIssues, pct };
@@ -63,7 +76,7 @@ zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
       targets: {
         agents:    target?.targetAgents    || 96 * tdrs.length,
         merchants: target?.targetMerchants || 96 * tdrs.length,
-        visits:    target?.targetOutlets   || 20 * tdrs.length,
+        visits:    target?.targetOutlets   || visitMonthlyTarget() * tdrs.length,
       },
     },
     tdrStats,

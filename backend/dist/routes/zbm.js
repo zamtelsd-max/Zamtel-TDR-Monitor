@@ -5,6 +5,19 @@ const express_1 = require("express");
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
 const rateLimit_1 = require("../middleware/rateLimit");
+function workingDaysInMonth(year, month) {
+    let count = 0;
+    const days = new Date(year, month + 1, 0).getDate();
+    for (let d = 1; d <= days; d++) {
+        if (new Date(year, month, d).getDay() !== 0)
+            count++;
+    }
+    return count;
+}
+function visitMonthlyTarget() {
+    const n = new Date();
+    return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
+}
 exports.zbmRouter = (0, express_1.Router)();
 exports.zbmRouter.use((0, auth_1.requireAuth)('ZBM'));
 exports.zbmRouter.use(rateLimit_1.apiRateLimit);
@@ -30,7 +43,7 @@ exports.zbmRouter.get('/dashboard', async (req, res) => {
         ]);
         const agentTarget = 96;
         const merchantTarget = 96;
-        const visitTarget = 20;
+        const visitTarget = visitMonthlyTarget();
         const pct = Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100);
         return { tdr, agents, merchants, visits, floatIssues, pct };
     }));
@@ -56,7 +69,7 @@ exports.zbmRouter.get('/dashboard', async (req, res) => {
             targets: {
                 agents: target?.targetAgents || 96 * tdrs.length,
                 merchants: target?.targetMerchants || 96 * tdrs.length,
-                visits: target?.targetOutlets || 20 * tdrs.length,
+                visits: target?.targetOutlets || visitMonthlyTarget() * tdrs.length,
             },
         },
         tdrStats,

@@ -582,9 +582,10 @@ export const AdminPanel: React.FC = () => {
           <Card>
             <h3 className="font-bold text-gray-900 mb-3">Monthly Targets (per TDR)</h3>
             <div className="grid grid-cols-3 gap-3 text-center">
-              {[{ label: 'New Agents', v: 96 }, { label: 'Merchants', v: 96 }, { label: 'Visits', v: 20 }].map(t => (
+              {[{ label: 'New Agents', v: '96', sub: '/month' }, { label: 'Merchants', v: '96', sub: '/month' }, { label: 'Visits', v: '20', sub: '/day' }].map(t => (
                 <div key={t.label} className="bg-green-50 rounded-xl p-3">
                   <p className="text-2xl font-bold text-zamtel-green">{t.v}</p>
+                  <p className="text-[10px] font-semibold text-zamtel-green">{t.sub}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{t.label}</p>
                 </div>
               ))}

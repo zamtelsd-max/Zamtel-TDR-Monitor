@@ -11,7 +11,7 @@ import { format, differenceInHours } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
 import { useAppSelector } from '../hooks/useAppDispatch';
 import { getUserTitle } from '../utils/userTitle';
-import { getBand, calcWeightedScore, floatResolutionPct } from '../utils/performance';
+import { getBand, calcWeightedScore, floatResolutionPct, visitMonthlyTarget } from '../utils/performance';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -265,7 +265,7 @@ export const HSDDashboardPage: React.FC = () => {
                     <span className={getBand(Math.min(Math.round(z.merchants/96*100),100)).color}>{z.merchants}</span>
                   </td>
                   <td className="text-right py-2.5 px-2 text-xs">
-                    <span className={getBand(Math.min(Math.round(z.visits/20*100),100)).color}>{z.visits}</span>
+                    <span className={getBand(Math.min(Math.round(z.visits/visitMonthlyTarget()*100),100)).color}>{z.visits}</span>
                   </td>
                   <td className="text-right py-2.5 px-2 text-xs">
                     {z.floatIssues > 0

@@ -9,7 +9,7 @@ import { Card, ProgressRing, Skeleton, Badge } from '../components/UI';
 import { format } from 'date-fns';
 import {
   getBand, calcWeightedScore, floatResolutionPct,
-  WEIGHT_PCT, WEIGHT_LABELS,
+  WEIGHT_PCT, WEIGHT_LABELS, visitMonthlyTarget,
 } from '../utils/performance';
 
 // ─── Weighted KPI card ────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ const ScoreBanner: React.FC<{ score: number; loading: boolean }> = ({ score, loa
             Weighted Performance Score
           </p>
           <p className="text-[10px] mt-0.5" style={{ color: band.textHex, opacity: 0.8 }}>
-            Agents 40% · Merchants 20% · Float Resolution 30% · Visits 10%
+            Agents 40% · Merchants 20% · Float Res. 30% · Visits 10% (20/day)
           </p>
         </div>
         {loading ? <Skeleton className="w-16 h-10" /> : (
@@ -148,7 +148,7 @@ export const TDRDashboardPage: React.FC = () => {
         <KPIRing pct={merchantPct} label={WEIGHT_LABELS.merchants} weight={WEIGHT_PCT.merchants}
           count={data?.stats.merchants.count ?? 0} target={data?.stats.merchants.target ?? 96} loading={loading && !data} />
         <KPIRing pct={visitPct}    label={WEIGHT_LABELS.visits}    weight={WEIGHT_PCT.visits}
-          count={data?.stats.visits.count ?? 0}    target={data?.stats.visits.target ?? 20}    loading={loading && !data} />
+          count={data?.stats.visits.count ?? 0}    target={data?.stats.visits.target ?? visitMonthlyTarget()}    loading={loading && !data} />
         <Card className={`flex flex-col items-center py-3 border-t-2 ${getBand(floatPct).border}`}>
           <ProgressRing value={floatPct} size={72} color={getBand(floatPct).ring}
             label="Float Res." sublabel={`${data?.floatIssues.resolved ?? 0}/${data?.floatIssues.total ?? 0}`} />

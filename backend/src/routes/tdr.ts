@@ -8,6 +8,20 @@ export const tdrRouter = Router();
 tdrRouter.use(requireAuth('TDR'));
 tdrRouter.use(apiRateLimit);
 
+// ─── Helper: working days Mon–Sat in a given month ───────────────────────────
+function workingDaysInMonth(year: number, month: number): number {
+  let count = 0;
+  const days = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= days; d++) {
+    if (new Date(year, month, d).getDay() !== 0) count++; // exclude Sundays
+  }
+  return count;
+}
+function visitMonthlyTarget(): number {
+  const n = new Date();
+  return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
+}
+
 // ─── Helper: current month range ─────────────────────────────────────────────
 function currentMonthRange() {
   const now = new Date();
@@ -51,7 +65,7 @@ tdrRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
     stats: {
       agents:    { count: agentsCount,   target: target?.targetAgents    || 96 },
       merchants: { count: merchantsCount, target: target?.targetMerchants || 96 },
-      visits:    { count: visitsCount,    target: target?.targetOutlets   || 20 },
+      visits:    { count: visitsCount,    target: target?.targetOutlets   || visitMonthlyTarget() },
     },
     floatIssues: {
       total:    floatIssues.length,

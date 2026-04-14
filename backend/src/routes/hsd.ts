@@ -4,6 +4,19 @@ import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
 
+function workingDaysInMonth(year: number, month: number): number {
+  let count = 0;
+  const days = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= days; d++) {
+    if (new Date(year, month, d).getDay() !== 0) count++;
+  }
+  return count;
+}
+function visitMonthlyTarget(): number {
+  const n = new Date();
+  return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
+}
+
 export const hsdRouter = Router();
 hsdRouter.use(requireAuth('HSD'));
 hsdRouter.use(apiRateLimit);
@@ -82,7 +95,7 @@ hsdRouter.get('/zones', async (req: Request, res: Response): Promise<void> => {
     const target = await prisma.salesTarget.findUnique({ where: { zone_period: { zone, period } } });
     const agentTarget    = target?.targetAgents    || 96 * tdrs;
     const merchantTarget = target?.targetMerchants || 96 * tdrs;
-    const visitTarget    = target?.targetOutlets   || 20 * tdrs;
+    const visitTarget    = target?.targetOutlets   || visitMonthlyTarget() * tdrs;
     const pct = tdrs > 0
       ? Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100)
       : 0;
@@ -108,7 +121,8 @@ hsdRouter.get('/zones/:zone', async (req: Request, res: Response): Promise<void>
       prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
       prisma.floatIssue.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
     ]);
-    const pct = Math.round(((agents / 96) + (merchants / 96) + (visits / 20)) / 3 * 100);
+    const vt  = visitMonthlyTarget();
+    const pct = Math.round(((agents / 96) + (merchants / 96) + (visits / vt)) / 3 * 100);
     return { tdr, agents, merchants, visits, floatIssues, pct };
   }));
 

@@ -21,6 +21,24 @@ export const WEIGHTS = {
   visits:   0.10,   // Trade Visitations      10%
 } as const;
 
+// ─── Visit target: 20/day × working days (Mon–Sat) in current month ──────────
+export function workingDaysInMonth(year: number, month: number): number {
+  let count = 0;
+  const days = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= days; d++) {
+    if (new Date(year, month, d).getDay() !== 0) count++;
+  }
+  return count;
+}
+
+export function visitMonthlyTarget(): number {
+  const n = new Date();
+  return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
+}
+
+/** Daily visit rate: 20/day */
+export const VISIT_DAILY_TARGET = 20;
+
 export const WEIGHT_LABELS = {
   agents:    'Agent Recruitment',
   merchants: 'Merchant Recruitment',

@@ -9,7 +9,7 @@ import { Card, Skeleton, Badge, Button } from '../components/UI';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
-import { getBand, calcWeightedScore, floatResolutionPct, WEIGHT_PCT } from '../utils/performance';
+import { getBand, calcWeightedScore, floatResolutionPct, WEIGHT_PCT, visitMonthlyTarget } from '../utils/performance';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -28,7 +28,7 @@ function tdrScore(row: TDRStat): number {
     agentPct:    Math.min(Math.round((row.agents    / 96)  * 100), 100),
     merchantPct: Math.min(Math.round((row.merchants / 96)  * 100), 100),
     floatPct,
-    visitPct:    Math.min(Math.round((row.visits    / 20)  * 100), 100),
+    visitPct:    Math.min(Math.round((row.visits / visitMonthlyTarget()) * 100), 100),
   });
 }
 
@@ -206,7 +206,7 @@ export const ZBMDashboardPage: React.FC = () => {
                     <span className={clsx('text-xs', getBand(Math.min(Math.round(row.merchants/96*100),100)).color)}>{row.merchants}</span>
                   </td>
                   <td className="text-right py-2.5 px-2">
-                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.visits/20*100),100)).color)}>{row.visits}</span>
+                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.visits/visitMonthlyTarget()*100),100)).color)}>{row.visits}</span>
                   </td>
                   <td className="text-right py-2.5 px-2">
                     {row.floatIssues > 0
