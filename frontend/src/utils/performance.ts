@@ -21,7 +21,9 @@ export const WEIGHTS = {
   visits:   0.10,   // Trade Visitations      10%
 } as const;
 
-// ─── Visit target: 20/day × working days (Mon–Sat) in current month ──────────
+// ─── MTD working-day helpers (Mon–Sat, Zambia) ───────────────────────────────
+
+/** Total working days (Mon–Sat) in a given month */
 export function workingDaysInMonth(year: number, month: number): number {
   let count = 0;
   const days = new Date(year, month + 1, 0).getDate();
@@ -31,6 +33,42 @@ export function workingDaysInMonth(year: number, month: number): number {
   return count;
 }
 
+/** Working days elapsed so far this month (up to and including today) */
+export function workingDaysElapsed(): number {
+  const n = new Date();
+  const today = n.getDate();
+  let count = 0;
+  for (let d = 1; d <= today; d++) {
+    if (new Date(n.getFullYear(), n.getMonth(), d).getDay() !== 0) count++;
+  }
+  return Math.max(count, 1); // never 0 to avoid division by zero
+}
+
+/** Full-month working day count for current month */
+export function workingDaysThisMonth(): number {
+  const n = new Date();
+  return workingDaysInMonth(n.getFullYear(), n.getMonth());
+}
+
+/**
+ * MTD visit target = 20 × working days elapsed so far.
+ * e.g. if 10 working days have passed → target = 200 visits.
+ */
+export function visitMtdTarget(): number {
+  return 20 * workingDaysElapsed();
+}
+
+/**
+ * MTD agent/merchant target = full-month target × (elapsed / total working days).
+ * e.g. if 10 of 26 working days done → 96 × (10/26) ≈ 37 agents expected.
+ */
+export function prorateMtdTarget(fullMonthTarget: number): number {
+  const elapsed = workingDaysElapsed();
+  const total   = workingDaysThisMonth();
+  return Math.max(1, Math.round(fullMonthTarget * elapsed / total));
+}
+
+/** @deprecated Use visitMtdTarget() for MTD scoring */
 export function visitMonthlyTarget(): number {
   const n = new Date();
   return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());

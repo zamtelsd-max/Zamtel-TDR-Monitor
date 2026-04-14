@@ -11,7 +11,7 @@ import { format, differenceInHours } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
 import { useAppSelector } from '../hooks/useAppDispatch';
 import { getUserTitle } from '../utils/userTitle';
-import { getBand, calcWeightedScore, floatResolutionPct, visitMonthlyTarget } from '../utils/performance';
+import { getBand, calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -22,13 +22,14 @@ function pctColor(pct: number) {
 }
 
 function zoneScore(z: { agents: number; merchants: number; visits: number; floatIssues: number; targets?: { agents: number; merchants: number; visits: number } }): number {
-  const ta = z.targets?.agents    ?? 96;
-  const tm = z.targets?.merchants ?? 96;
-  const tv = z.targets?.visits    ?? 20;
+  // Use MTD targets for current-month scoring; fallback to targets from API when available
+  const ta = z.targets?.agents    ?? prorateMtdTarget(96);
+  const tm = z.targets?.merchants ?? prorateMtdTarget(96);
+  const tv = z.targets?.visits    ?? visitMtdTarget();
   return calcWeightedScore({
     agentPct:    Math.min(Math.round(z.agents    / ta * 100), 100),
     merchantPct: Math.min(Math.round(z.merchants / tm * 100), 100),
-    floatPct:    floatResolutionPct(0, z.floatIssues), // pending = unresolved
+    floatPct:    floatResolutionPct(0, z.floatIssues),
     visitPct:    Math.min(Math.round(z.visits    / tv * 100), 100),
   });
 }
@@ -166,6 +167,22 @@ export const HSDDashboardPage: React.FC = () => {
         </select>
       </PageHeader>
 
+      {/* MTD progress — shown only for current month */}
+      {!period || period === `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}` ? (() => {
+        const el = workingDaysElapsed(); const tot = workingDaysThisMonth(); const pct = Math.round(el/tot*100);
+        return (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1 px-0.5">
+              <span className="text-xs text-gray-500">📅 MTD — Working day <strong>{el}</strong> of <strong>{tot}</strong> · targets prorated</span>
+              <span className="text-xs font-semibold text-gray-600">{pct}% of month</span>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full">
+              <div className="h-1.5 rounded-full bg-gray-400 transition-all" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })() : null}
+
       {/* KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
         {loading && !dashboard ? (
@@ -259,13 +276,13 @@ export const HSDDashboardPage: React.FC = () => {
                   <td className="py-2.5 pr-3 text-gray-600 truncate max-w-[70px]">{z.zbm}</td>
                   <td className="text-right py-2.5 px-2 text-gray-700 text-xs">{z.tdrs}</td>
                   <td className="text-right py-2.5 px-2 text-xs">
-                    <span className={getBand(Math.min(Math.round(z.agents/96*100),100)).color}>{z.agents}</span>
+                    <span className={getBand(Math.min(Math.round(z.agents/prorateMtdTarget(96)*100),100)).color}>{z.agents}</span>
                   </td>
                   <td className="text-right py-2.5 px-2 text-xs">
-                    <span className={getBand(Math.min(Math.round(z.merchants/96*100),100)).color}>{z.merchants}</span>
+                    <span className={getBand(Math.min(Math.round(z.merchants/prorateMtdTarget(96)*100),100)).color}>{z.merchants}</span>
                   </td>
                   <td className="text-right py-2.5 px-2 text-xs">
-                    <span className={getBand(Math.min(Math.round(z.visits/visitMonthlyTarget()*100),100)).color}>{z.visits}</span>
+                    <span className={getBand(Math.min(Math.round(z.visits/visitMtdTarget()*100),100)).color}>{z.visits}</span>
                   </td>
                   <td className="text-right py-2.5 px-2 text-xs">
                     {z.floatIssues > 0

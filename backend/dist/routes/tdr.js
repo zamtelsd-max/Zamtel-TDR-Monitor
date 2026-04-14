@@ -6,34 +6,14 @@ const zod_1 = require("zod");
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
 const rateLimit_1 = require("../middleware/rateLimit");
+const mtd_1 = require("../utils/mtd");
 exports.tdrRouter = (0, express_1.Router)();
 exports.tdrRouter.use((0, auth_1.requireAuth)('TDR'));
 exports.tdrRouter.use(rateLimit_1.apiRateLimit);
-// ─── Helper: working days Mon–Sat in a given month ───────────────────────────
-function workingDaysInMonth(year, month) {
-    let count = 0;
-    const days = new Date(year, month + 1, 0).getDate();
-    for (let d = 1; d <= days; d++) {
-        if (new Date(year, month, d).getDay() !== 0)
-            count++; // exclude Sundays
-    }
-    return count;
-}
-function visitMonthlyTarget() {
-    const n = new Date();
-    return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
-}
-// ─── Helper: current month range ─────────────────────────────────────────────
-function currentMonthRange() {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    return { start, end };
-}
 // ─── GET /tdr/dashboard ───────────────────────────────────────────────────────
 exports.tdrRouter.get('/dashboard', async (req, res) => {
     const tdrId = req.user.userId;
-    const { start, end } = currentMonthRange();
+    const { start, end } = (0, mtd_1.mtdRange)();
     const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits] = await Promise.all([
         prisma_1.prisma.agent.count({ where: { tdrId, type: 'normal', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start, lte: end } } }),
@@ -53,10 +33,14 @@ exports.tdrRouter.get('/dashboard', async (req, res) => {
     res.json({
         tdr: { id: tdrId, name: req.user.name, zone: req.user.zone },
         month: period,
+        mtd: {
+            workingDaysElapsed: (0, mtd_1.workingDaysElapsed)(),
+            workingDaysTotal: (0, mtd_1.workingDaysThisMonth)(),
+        },
         stats: {
-            agents: { count: agentsCount, target: target?.targetAgents || 96 },
-            merchants: { count: merchantsCount, target: target?.targetMerchants || 96 },
-            visits: { count: visitsCount, target: target?.targetOutlets || visitMonthlyTarget() },
+            agents: { count: agentsCount, target: (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96) },
+            merchants: { count: merchantsCount, target: (0, mtd_1.prorateMtdTarget)(target?.targetMerchants || 96) },
+            visits: { count: visitsCount, target: (0, mtd_1.visitMtdTarget)() },
         },
         floatIssues: {
             total: floatIssues.length,

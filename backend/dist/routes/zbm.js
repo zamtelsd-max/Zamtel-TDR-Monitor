@@ -38,32 +38,14 @@ const express_1 = require("express");
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
 const rateLimit_1 = require("../middleware/rateLimit");
-function workingDaysInMonth(year, month) {
-    let count = 0;
-    const days = new Date(year, month + 1, 0).getDate();
-    for (let d = 1; d <= days; d++) {
-        if (new Date(year, month, d).getDay() !== 0)
-            count++;
-    }
-    return count;
-}
-function visitMonthlyTarget() {
-    const n = new Date();
-    return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
-}
+const mtd_1 = require("../utils/mtd");
 exports.zbmRouter = (0, express_1.Router)();
 exports.zbmRouter.use((0, auth_1.requireAuth)('ZBM'));
 exports.zbmRouter.use(rateLimit_1.apiRateLimit);
-function currentMonthRange() {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    return { start, end };
-}
 // ─── GET /zbm/dashboard ───────────────────────────────────────────────────────
 exports.zbmRouter.get('/dashboard', async (req, res) => {
     const zone = req.user.zone || null; // null = no zone filter (e.g. zbm-kuzanga sees all)
-    const { start, end } = currentMonthRange();
+    const { start, end } = (0, mtd_1.mtdRange)();
     // All TDRs in this zone (or all if zone is null)
     const tdrs = await prisma_1.prisma.user.findMany({
         where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
@@ -76,9 +58,9 @@ exports.zbmRouter.get('/dashboard', async (req, res) => {
             prisma_1.prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
             prisma_1.prisma.floatIssue.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
         ]);
-        const agentTarget = 96;
-        const merchantTarget = 96;
-        const visitTarget = visitMonthlyTarget();
+        const agentTarget = (0, mtd_1.prorateMtdTarget)(96);
+        const merchantTarget = (0, mtd_1.prorateMtdTarget)(96);
+        const visitTarget = (0, mtd_1.visitMtdTarget)();
         const pct = Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100);
         return { tdr, agents, merchants, visits, floatIssues, pct };
     }));
@@ -102,12 +84,16 @@ exports.zbmRouter.get('/dashboard', async (req, res) => {
     res.json({
         zbm: { id: req.user.userId, name: req.user.name, zone },
         month: period,
+        mtd: {
+            workingDaysElapsed: (0, mtd_1.workingDaysElapsed)(),
+            workingDaysTotal: (0, mtd_1.workingDaysThisMonth)(),
+        },
         zone: {
             totals: { agents: totalAgents, merchants: totalMerchants, visits: totalVisits, floatIssuesPending },
             targets: {
-                agents: target?.targetAgents || 96 * tdrs.length,
-                merchants: target?.targetMerchants || 96 * tdrs.length,
-                visits: target?.targetOutlets || visitMonthlyTarget() * tdrs.length,
+                agents: (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96 * tdrs.length),
+                merchants: (0, mtd_1.prorateMtdTarget)(target?.targetMerchants || 96 * tdrs.length),
+                visits: (0, mtd_1.visitMtdTarget)() * tdrs.length,
             },
         },
         tdrStats,
@@ -123,7 +109,7 @@ exports.zbmRouter.get('/tdr/:tdrId', async (req, res) => {
         res.status(404).json({ error: 'TDR not found in your zone' });
         return;
     }
-    const { start, end } = currentMonthRange();
+    const { start, end } = (0, mtd_1.mtdRange)();
     const [agents, visits, floatIssues, prospects] = await Promise.all([
         prisma_1.prisma.agent.findMany({ where: { tdrId, createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
         prisma_1.prisma.visit.findMany({ where: { tdrId, createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),

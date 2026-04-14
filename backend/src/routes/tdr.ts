@@ -3,37 +3,17 @@ import { z } from 'zod';
 import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
+import { mtdRange, visitMtdTarget, prorateMtdTarget, visitMonthlyTarget,
+         workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
 
 export const tdrRouter = Router();
 tdrRouter.use(requireAuth('TDR'));
 tdrRouter.use(apiRateLimit);
 
-// ─── Helper: working days Mon–Sat in a given month ───────────────────────────
-function workingDaysInMonth(year: number, month: number): number {
-  let count = 0;
-  const days = new Date(year, month + 1, 0).getDate();
-  for (let d = 1; d <= days; d++) {
-    if (new Date(year, month, d).getDay() !== 0) count++; // exclude Sundays
-  }
-  return count;
-}
-function visitMonthlyTarget(): number {
-  const n = new Date();
-  return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
-}
-
-// ─── Helper: current month range ─────────────────────────────────────────────
-function currentMonthRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  return { start, end };
-}
-
 // ─── GET /tdr/dashboard ───────────────────────────────────────────────────────
 tdrRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
   const tdrId = req.user!.userId;
-  const { start, end } = currentMonthRange();
+  const { start, end } = mtdRange();
 
   const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits] =
     await Promise.all([
@@ -62,10 +42,14 @@ tdrRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
   res.json({
     tdr: { id: tdrId, name: req.user!.name, zone: req.user!.zone },
     month: period,
+    mtd: {
+      workingDaysElapsed: workingDaysElapsed(),
+      workingDaysTotal:   workingDaysThisMonth(),
+    },
     stats: {
-      agents:    { count: agentsCount,   target: target?.targetAgents    || 96 },
-      merchants: { count: merchantsCount, target: target?.targetMerchants || 96 },
-      visits:    { count: visitsCount,    target: target?.targetOutlets   || visitMonthlyTarget() },
+      agents:    { count: agentsCount,    target: prorateMtdTarget(target?.targetAgents    || 96) },
+      merchants: { count: merchantsCount, target: prorateMtdTarget(target?.targetMerchants || 96) },
+      visits:    { count: visitsCount,    target: visitMtdTarget() },
     },
     floatIssues: {
       total:    floatIssues.length,

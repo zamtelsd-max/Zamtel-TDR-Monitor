@@ -9,7 +9,7 @@ import { Card, Skeleton, Badge, Button } from '../components/UI';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
-import { getBand, calcWeightedScore, floatResolutionPct, WEIGHT_PCT, visitMonthlyTarget } from '../utils/performance';
+import { getBand, calcWeightedScore, floatResolutionPct, WEIGHT_PCT, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -25,10 +25,10 @@ function tdrScore(row: TDRStat): number {
     (row as any).floatTotal ?? row.floatIssues ?? 0
   );
   return calcWeightedScore({
-    agentPct:    Math.min(Math.round((row.agents    / 96)  * 100), 100),
-    merchantPct: Math.min(Math.round((row.merchants / 96)  * 100), 100),
+    agentPct:    Math.min(Math.round((row.agents    / prorateMtdTarget(96)) * 100), 100),
+    merchantPct: Math.min(Math.round((row.merchants / prorateMtdTarget(96)) * 100), 100),
     floatPct,
-    visitPct:    Math.min(Math.round((row.visits / visitMonthlyTarget()) * 100), 100),
+    visitPct:    Math.min(Math.round((row.visits    / visitMtdTarget())      * 100), 100),
   });
 }
 
@@ -126,6 +126,19 @@ export const ZBMDashboardPage: React.FC = () => {
         title={data ? (data.zbm.zone ? `${data.zbm.zone} Zone` : 'All Zones') : 'Loading...'}
         subtitle={data ? `${data.zbm.name} · ${format(new Date(), 'MMMM yyyy')}` : ''}
       />
+
+      {/* MTD progress */}
+      {(() => { const el = workingDaysElapsed(); const tot = workingDaysThisMonth(); const pct = Math.round(el/tot*100); return (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1 px-0.5">
+            <span className="text-xs text-gray-500">📅 MTD — Working day <strong>{el}</strong> of <strong>{tot}</strong></span>
+            <span className="text-xs font-semibold text-gray-600">{pct}% of month</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full">
+            <div className="h-1.5 rounded-full bg-gray-400 transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      ); })()}
 
       {/* Export button */}
       <div className="flex justify-end mb-3">
@@ -229,13 +242,13 @@ export const ZBMDashboardPage: React.FC = () => {
                 <tr key={row.tdr.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-2.5 pr-3 font-medium text-gray-800 truncate max-w-[90px]">{row.tdr.name}</td>
                   <td className="text-right py-2.5 px-2">
-                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.agents/96*100),100)).color)}>{row.agents}</span>
+                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.agents/prorateMtdTarget(96)*100),100)).color)}>{row.agents}</span>
                   </td>
                   <td className="text-right py-2.5 px-2">
-                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.merchants/96*100),100)).color)}>{row.merchants}</span>
+                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.merchants/prorateMtdTarget(96)*100),100)).color)}>{row.merchants}</span>
                   </td>
                   <td className="text-right py-2.5 px-2">
-                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.visits/visitMonthlyTarget()*100),100)).color)}>{row.visits}</span>
+                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.visits/visitMtdTarget()*100),100)).color)}>{row.visits}</span>
                   </td>
                   <td className="text-right py-2.5 px-2">
                     {row.floatIssues > 0

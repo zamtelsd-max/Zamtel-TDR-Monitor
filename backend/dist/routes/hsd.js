@@ -6,19 +6,7 @@ const zod_1 = require("zod");
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
 const rateLimit_1 = require("../middleware/rateLimit");
-function workingDaysInMonth(year, month) {
-    let count = 0;
-    const days = new Date(year, month + 1, 0).getDate();
-    for (let d = 1; d <= days; d++) {
-        if (new Date(year, month, d).getDay() !== 0)
-            count++;
-    }
-    return count;
-}
-function visitMonthlyTarget() {
-    const n = new Date();
-    return 20 * workingDaysInMonth(n.getFullYear(), n.getMonth());
-}
+const mtd_1 = require("../utils/mtd");
 exports.hsdRouter = (0, express_1.Router)();
 exports.hsdRouter.use((0, auth_1.requireAuth)('HSD'));
 exports.hsdRouter.use(rateLimit_1.apiRateLimit);
@@ -32,22 +20,27 @@ const ZONES = [
 ];
 function monthRange(period) {
     let year, month;
+    const now = new Date();
+    const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     if (period) {
         [year, month] = period.split('-').map(Number);
     }
     else {
-        const now = new Date();
         year = now.getFullYear();
         month = now.getMonth() + 1;
     }
     const start = new Date(year, month - 1, 1);
-    const end = new Date(year, month, 0, 23, 59, 59, 999);
-    return { start, end };
+    // MTD: if viewing current month, end is today; otherwise full month
+    const isCurrentMonth = !period || period === currentPeriod;
+    const end = isCurrentMonth
+        ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+        : new Date(year, month, 0, 23, 59, 59, 999);
+    return { start, end, isCurrentMonth };
 }
 // ─── GET /hsd/dashboard ───────────────────────────────────────────────────────
 exports.hsdRouter.get('/dashboard', async (req, res) => {
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const { start, end } = monthRange(period);
+    const { start, end, isCurrentMonth } = monthRange(period);
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const [totalAgents, totalMerchants, totalVisits, openIssues, criticalIssues, prospectsBreakdown] = await Promise.all([
         prisma_1.prisma.agent.count({ where: { type: 'normal', createdAt: { gte: start, lte: end } } }),
@@ -73,7 +66,7 @@ exports.hsdRouter.get('/dashboard', async (req, res) => {
 // ─── GET /hsd/zones ───────────────────────────────────────────────────────────
 exports.hsdRouter.get('/zones', async (req, res) => {
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const { start, end } = monthRange(period);
+    const { start, end, isCurrentMonth } = monthRange(period);
     const zoneStats = await Promise.all(ZONES.map(async (zone) => {
         const [zbm, tdrs, agents, merchants, visits, floatIssues] = await Promise.all([
             prisma_1.prisma.user.findFirst({ where: { role: 'ZBM', zone } }),
@@ -84,21 +77,34 @@ exports.hsdRouter.get('/zones', async (req, res) => {
             prisma_1.prisma.floatIssue.count({ where: { zone, status: { not: 'resolved' } } }),
         ]);
         const target = await prisma_1.prisma.salesTarget.findUnique({ where: { zone_period: { zone, period } } });
-        const agentTarget = target?.targetAgents || 96 * tdrs;
-        const merchantTarget = target?.targetMerchants || 96 * tdrs;
-        const visitTarget = target?.targetOutlets || visitMonthlyTarget() * tdrs;
+        const agentTarget = isCurrentMonth
+            ? (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96 * tdrs)
+            : (target?.targetAgents || 96 * tdrs);
+        const merchantTarget = isCurrentMonth
+            ? (0, mtd_1.prorateMtdTarget)(target?.targetMerchants || 96 * tdrs)
+            : (target?.targetMerchants || 96 * tdrs);
+        const visitTarget = isCurrentMonth
+            ? (0, mtd_1.visitMtdTarget)() * tdrs
+            : (target?.targetOutlets || (0, mtd_1.visitMonthlyTarget)() * tdrs);
         const pct = tdrs > 0
             ? Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100)
             : 0;
         return { zone, zbm: zbm?.name || 'Unassigned', tdrs, agents, merchants, visits, floatIssues, pct };
     }));
-    res.json({ period, zones: zoneStats });
+    res.json({
+        period,
+        zones: zoneStats,
+        mtd: isCurrentMonth ? {
+            workingDaysElapsed: (0, mtd_1.workingDaysElapsed)(),
+            workingDaysTotal: (0, mtd_1.workingDaysThisMonth)(),
+        } : null,
+    });
 });
 // ─── GET /hsd/zones/:zone ─────────────────────────────────────────────────────
 exports.hsdRouter.get('/zones/:zone', async (req, res) => {
     const zone = req.params.zone;
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const { start, end } = monthRange(period);
+    const { start, end, isCurrentMonth } = monthRange(period);
     const tdrs = await prisma_1.prisma.user.findMany({ where: { role: 'TDR', zone, active: true } });
     const tdrStats = await Promise.all(tdrs.map(async (tdr) => {
         const [agents, merchants, visits, floatIssues] = await Promise.all([
@@ -107,8 +113,10 @@ exports.hsdRouter.get('/zones/:zone', async (req, res) => {
             prisma_1.prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
             prisma_1.prisma.floatIssue.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
         ]);
-        const vt = visitMonthlyTarget();
-        const pct = Math.round(((agents / 96) + (merchants / 96) + (visits / vt)) / 3 * 100);
+        const at = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
+        const mt = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
+        const vt = isCurrentMonth ? (0, mtd_1.visitMtdTarget)() : (0, mtd_1.visitMonthlyTarget)();
+        const pct = Math.round(((agents / at) + (merchants / mt) + (visits / vt)) / 3 * 100);
         return { tdr, agents, merchants, visits, floatIssues, pct };
     }));
     const floatIssues = await prisma_1.prisma.floatIssue.findMany({ where: { zone }, orderBy: { reportedAt: 'desc' } });

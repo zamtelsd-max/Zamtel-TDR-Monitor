@@ -9,7 +9,8 @@ import { Card, ProgressRing, Skeleton, Badge } from '../components/UI';
 import { format } from 'date-fns';
 import {
   getBand, calcWeightedScore, floatResolutionPct,
-  WEIGHT_PCT, WEIGHT_LABELS, visitMonthlyTarget,
+  WEIGHT_PCT, WEIGHT_LABELS, visitMtdTarget, prorateMtdTarget,
+  workingDaysElapsed, workingDaysThisMonth,
 } from '../utils/performance';
 
 // ─── Weighted KPI card ────────────────────────────────────────────────────────
@@ -92,7 +93,7 @@ const ScoreBanner: React.FC<{ score: number; loading: boolean }> = ({ score, loa
             Weighted Performance Score
           </p>
           <p className="text-[10px] mt-0.5" style={{ color: band.textHex, opacity: 0.8 }}>
-            Agents 40% · Merchants 20% · Float Res. 30% · Visits 10% (20/day)
+            Agents 40% · Merchants 20% · Float Res. 30% · Visits 10% — MTD targets
           </p>
         </div>
         {loading ? <Skeleton className="w-16 h-10" /> : (
@@ -131,12 +132,27 @@ export const TDRDashboardPage: React.FC = () => {
   const floatPct    = data ? floatResolutionPct(data.floatIssues.resolved, data.floatIssues.total) : 100;
   const score       = data ? calcWeightedScore({ agentPct, merchantPct, floatPct, visitPct }) : 0;
 
+  const elapsed = workingDaysElapsed();
+  const total   = workingDaysThisMonth();
+  const mtdPct  = Math.round(elapsed / total * 100);
+
   return (
     <Layout title="TDR Dashboard">
       <PageHeader
         title={data?.tdr.name || 'My Dashboard'}
         subtitle={`${data?.tdr.zone || ''} · ${format(new Date(), 'MMMM yyyy')}`}
       />
+
+      {/* MTD progress chip */}
+      <div className="flex items-center justify-between mb-2 px-1">
+        <span className="text-xs text-gray-500 font-medium">
+          📅 MTD — Working day <span className="font-bold text-gray-700">{elapsed}</span> of <span className="font-bold text-gray-700">{total}</span>
+        </span>
+        <span className="text-xs font-semibold text-gray-600">{mtdPct}% of month</span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full mb-3">
+        <div className="h-1.5 rounded-full bg-gray-400 transition-all" style={{ width: `${mtdPct}%` }} />
+      </div>
 
       {/* Composite score banner */}
       <ScoreBanner score={score} loading={loading && !data} />
@@ -148,7 +164,7 @@ export const TDRDashboardPage: React.FC = () => {
         <KPIRing pct={merchantPct} label={WEIGHT_LABELS.merchants} weight={WEIGHT_PCT.merchants}
           count={data?.stats.merchants.count ?? 0} target={data?.stats.merchants.target ?? 96} loading={loading && !data} />
         <KPIRing pct={visitPct}    label={WEIGHT_LABELS.visits}    weight={WEIGHT_PCT.visits}
-          count={data?.stats.visits.count ?? 0}    target={data?.stats.visits.target ?? visitMonthlyTarget()}    loading={loading && !data} />
+          count={data?.stats.visits.count ?? 0}    target={data?.stats.visits.target ?? visitMtdTarget()}    loading={loading && !data} />
         <Card className={`flex flex-col items-center py-3 border-t-2 ${getBand(floatPct).border}`}>
           <ProgressRing value={floatPct} size={72} color={getBand(floatPct).ring}
             label="Float Res." sublabel={`${data?.floatIssues.resolved ?? 0}/${data?.floatIssues.total ?? 0}`} />
