@@ -38,6 +38,24 @@
   .zamtel-gradient-hero {
     background: linear-gradient(135deg, #00843D 0%, #006830 60%, #004d24 100%);
   }
+  /* Header: green → pink sweep with curved white bottom edge */
+  .zamtel-header {
+    background: linear-gradient(105deg, #00843D 0%, #006830 45%, #C0005A 75%, #E4007C 100%);
+    border-bottom-left-radius: 22px;
+    border-bottom-right-radius: 22px;
+    position: relative;
+  }
+  .zamtel-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 5%;
+    right: 5%;
+    height: 6px;
+    background: white;
+    border-radius: 0 0 18px 18px;
+    opacity: 0.18;
+  }
   .zamtel-card-green {
     background: linear-gradient(135deg, #00843D22 0%, #00843D08 100%);
     border-left: 4px solid #00843D;

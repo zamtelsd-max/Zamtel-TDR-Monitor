@@ -27,7 +27,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, backT
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header — Zamtel green */}
-      <header className="zamtel-gradient text-white sticky top-0 z-50 shadow-lg">
+      <header className="zamtel-header text-white sticky top-0 z-50 shadow-lg mb-1">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           {showBack && (
             <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-white/10 transition flex-shrink-0">
