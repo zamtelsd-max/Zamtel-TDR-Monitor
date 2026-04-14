@@ -5,6 +5,7 @@
  */
 const TITLE_OVERRIDES: Record<string, string> = {
   'hsd-sikalipa': 'Channels & Retail Manager',
+  'zbm-kuzanga':  'Lead Sales Performance',
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -15,6 +16,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 const SHORT_OVERRIDES: Record<string, string> = {
   'hsd-sikalipa': 'C&R Manager',
+  'zbm-kuzanga':  'Lead Sales',
 };
 
 /** Full display title — used in header subtitle, profile sections */
