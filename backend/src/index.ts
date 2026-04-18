@@ -15,6 +15,9 @@ import { errorHandler } from './middleware/errorHandler';
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust Railway / Cloudflare proxy so rate-limiter sees real client IP
+app.set('trust proxy', 1);
+
 // ─── Security & Parsing ──────────────────────────────────────────────────────
 app.use(helmet());
 app.use(compression());

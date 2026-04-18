@@ -104,20 +104,25 @@ tdrRouter.post('/agents', async (req: Request, res: Response): Promise<void> => 
   const parsed = agentSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  // Find ZBM for this zone
-  const zbm = await prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user!.zone || '' } });
-
-  const agent = await prisma.agent.create({
-    data: {
-      ...parsed.data,
-      tdrId:   req.user!.userId,
-      tdrName: req.user!.name,
-      zone:    req.user!.zone || '',
-      zbmName: zbm?.name || '',
-    },
-  });
-
-  res.status(201).json(agent);
+  try {
+    const zbm = await prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user!.zone || '' } });
+    const agent = await prisma.agent.create({
+      data: {
+        ...parsed.data,
+        tdrId:   req.user!.userId,
+        tdrName: req.user!.name,
+        zone:    req.user!.zone || '',
+        zbmName: zbm?.name || '',
+      },
+    });
+    res.status(201).json(agent);
+  } catch (err: any) {
+    if (err?.code === 'P2002') {
+      res.status(409).json({ error: 'Agent code already exists. Use a unique agent code.' });
+    } else {
+      res.status(500).json({ error: 'Failed to create agent' });
+    }
+  }
 });
 
 // ─── POST /tdr/visits ─────────────────────────────────────────────────────────
@@ -138,19 +143,21 @@ tdrRouter.post('/visits', async (req: Request, res: Response): Promise<void> => 
   const parsed = visitSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const zbm = await prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user!.zone || '' } });
-
-  const visit = await prisma.visit.create({
-    data: {
-      ...parsed.data,
-      tdrId:   req.user!.userId,
-      tdrName: req.user!.name,
-      zone:    req.user!.zone || '',
-      zbmName: zbm?.name || '',
-    },
-  });
-
-  res.status(201).json(visit);
+  try {
+    const zbm = await prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user!.zone || '' } });
+    const visit = await prisma.visit.create({
+      data: {
+        ...parsed.data,
+        tdrId:   req.user!.userId,
+        tdrName: req.user!.name,
+        zone:    req.user!.zone || '',
+        zbmName: zbm?.name || '',
+      },
+    });
+    res.status(201).json(visit);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to record visit' });
+  }
 });
 
 // ─── POST /tdr/float-issues ───────────────────────────────────────────────────
@@ -167,17 +174,20 @@ tdrRouter.post('/float-issues', async (req: Request, res: Response): Promise<voi
   const parsed = floatIssueSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const issue = await prisma.floatIssue.create({
-    data: {
-      ...parsed.data,
-      tdrId:   req.user!.userId,
-      tdrName: req.user!.name,
-      zone:    req.user!.zone || '',
-      status:  'reported',
-    },
-  });
-
-  res.status(201).json(issue);
+  try {
+    const issue = await prisma.floatIssue.create({
+      data: {
+        ...parsed.data,
+        tdrId:   req.user!.userId,
+        tdrName: req.user!.name,
+        zone:    req.user!.zone || '',
+        status:  'reported',
+      },
+    });
+    res.status(201).json(issue);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to report float issue' });
+  }
 });
 
 // ─── GET /tdr/float-issues ────────────────────────────────────────────────────
@@ -222,17 +232,20 @@ tdrRouter.post('/prospects', async (req: Request, res: Response): Promise<void> 
   const parsed = prospectSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
-  const prospect = await prisma.prospect.create({
-    data: {
-      ...parsed.data,
-      followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
-      tdrId:   req.user!.userId,
-      tdrName: req.user!.name,
-      zone:    req.user!.zone || '',
-    },
-  });
-
-  res.status(201).json(prospect);
+  try {
+    const prospect = await prisma.prospect.create({
+      data: {
+        ...parsed.data,
+        followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
+        tdrId:   req.user!.userId,
+        tdrName: req.user!.name,
+        zone:    req.user!.zone || '',
+      },
+    });
+    res.status(201).json(prospect);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to create prospect' });
+  }
 });
 
 // ─── GET /tdr/prospects ───────────────────────────────────────────────────────
