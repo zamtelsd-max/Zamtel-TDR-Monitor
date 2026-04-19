@@ -152,9 +152,9 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       })
     }
 
-    // Fit map to markers
+    // Fit map to markers — use wider zoom for better visibility
     if (bounds.length > 0) {
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 })
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 })
     }
   }, [agents, visits, showAgents, showVisitLayer, activeZone])
 
@@ -215,6 +215,21 @@ export const GeoMap: React.FC<GeoMapProps> = ({
             Visits
           </button>
         )}
+
+        {/* Fit all markers */}
+        <button
+          onClick={() => {
+            const map = mapInstanceRef.current;
+            if (!map) return;
+            const all: L.LatLngTuple[] = [
+              ...agents.filter(a => a.latitude && a.longitude).map(a => [a.latitude, a.longitude] as L.LatLngTuple),
+              ...visits.filter(v => v.latitude && v.longitude).map(v => [v.latitude, v.longitude] as L.LatLngTuple),
+            ];
+            if (all.length > 0) map.fitBounds(all, { padding: [50, 50], maxZoom: 15 });
+          }}
+          className="text-xs px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 font-medium hover:bg-gray-200 transition"
+          title="Fit all markers in view"
+        >⊕ Fit All</button>
       </div>
 
       {/* Legend */}

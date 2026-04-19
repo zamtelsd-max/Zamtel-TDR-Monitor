@@ -12,6 +12,7 @@ enum Role {
   TDR
   ZBM
   HSD
+  ASE
 }
 
 enum AgentType {
@@ -51,6 +52,7 @@ model User {
   pin       String
   role      Role
   zone      String?
+  aseId     String?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -171,10 +173,12 @@ model Prospect {
   merchantCategory String?
   estimatedFloat   Float?
 
-  status           ProspectStatus @default(identified)
-  notes            String?
-  followUpDate     DateTime?
-  convertedAt      DateTime?
+  status               ProspectStatus @default(identified)
+  notes                String?
+  followUpDate         DateTime?
+  convertedAt          DateTime?
+  closedByTdr          Boolean        @default(false)
+  zbmApprovalRequired  Boolean        @default(false)
 
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, UserPlus, MapPin, AlertTriangle, Target } from 'lucide-react';
+import { Plus, UserPlus, MapPin, AlertTriangle, Target, Download, Wifi, WifiOff, Clock, CheckCircle, Trash2, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { tdrApi } from '../services/api';
-import type { TDRDashboard } from '../types';
+import { tdrApi, getQueue, syncQueue } from '../services/api';
+import type { TDRDashboard, FloatIssue, Prospect } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, ProgressRing, Skeleton, Badge } from '../components/UI';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {
   getBand, calcWeightedScore, floatResolutionPct,
   WEIGHT_PCT, WEIGHT_LABELS, visitMtdTarget, prorateMtdTarget,
@@ -116,15 +117,108 @@ const ScoreBanner: React.FC<{ score: number; loading: boolean }> = ({ score, loa
 export const TDRDashboardPage: React.FC = () => {
   const [data,    setData]    = useState<TDRDashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [floatIssues, setFloatIssues] = useState<FloatIssue[]>([]);
+  const [prospects,   setProspects]   = useState<Prospect[]>([]);
+  const [activities,  setActivities]  = useState<Array<{ type: string; id: string; label: string; sub: string; ts: string }>>([]);
+  const [queueCount,  setQueueCount]  = useState(0);
+  const [syncing,     setSyncing]     = useState(false);
+  const [exporting,   setExporting]   = useState(false);
+  const isOnline = useOnlineStatus();
 
-  useEffect(() => {
+  const refresh = () => {
     const cached = localStorage.getItem('zamtel_tdr_dashboard');
     if (cached) { try { setData(JSON.parse(cached) as TDRDashboard); } catch {} }
     tdrApi.dashboard()
       .then(res => { setData(res.data); localStorage.setItem('zamtel_tdr_dashboard', JSON.stringify(res.data)); })
       .catch(() => toast.error('Could not refresh dashboard'))
       .finally(() => setLoading(false));
-  }, []);
+    tdrApi.getFloatIssues().then(r => setFloatIssues(r.data)).catch(() => {});
+    tdrApi.getProspects().then(r => setProspects(r.data)).catch(() => {});
+    tdrApi.getActivities().then(r => setActivities(r.data)).catch(() => {});
+    getQueue().then(q => setQueueCount(q.length)).catch(() => {});
+  };
+
+  useEffect(() => {
+    refresh();
+    // Daily browser notification for follow-up prospects
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []); // eslint-disable-line
+
+  // Check follow-up prospects and notify
+  useEffect(() => {
+    if (!prospects.length) return;
+    const today = new Date().toISOString().split('T')[0];
+    const due = prospects.filter(p =>
+      p.followUpDate && p.followUpDate.split('T')[0] <= today &&
+      p.status !== 'converted' && p.status !== 'rejected'
+    );
+    if (due.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification(`Zamtel TDR — ${due.length} prospect(s) need follow-up today`, {
+        body: due.map(p => p.businessName).join(', '),
+        icon: '/icons/icon-192x192.png',
+      });
+    }
+  }, [prospects]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const count = await syncQueue();
+      setQueueCount(0);
+      toast.success(`Synced ${count} offline ${count === 1 ? 'entry' : 'entries'}`);
+      refresh();
+    } catch {
+      toast.error('Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await tdrApi.export();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = `TDR-Export-${new Date().toISOString().slice(0,7)}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleMarkResolved = async (id: string) => {
+    try {
+      await tdrApi.updateFloatIssue(id, { status: 'resolved' } as any);
+      toast.success('Marked as resolved');
+      setFloatIssues(prev => prev.map(f => f.id === id ? { ...f, status: 'resolved' } : f));
+      refresh();
+    } catch { toast.error('Failed to update'); }
+  };
+
+  const handleDeleteAgent = async (id: string, name: string) => {
+    if (!confirm(`Delete agent "${name}"? This cannot be undone.`)) return;
+    try {
+      await tdrApi.deleteAgent(id);
+      toast.success('Agent deleted');
+      refresh();
+    } catch { toast.error('Delete failed'); }
+  };
+
+  const handleRequestClosure = async (id: string, name: string) => {
+    if (!confirm(`Request closure approval from ZBM for "${name}"?`)) return;
+    try {
+      await tdrApi.requestProspectClosure(id);
+      toast.success('Closure request sent to ZBM');
+      setProspects(prev => prev.map(p => p.id === id ? { ...p, closedByTdr: true } : p));
+    } catch { toast.error('Failed to request closure'); }
+  };
 
   const agentPct    = data ? Math.min(Math.round(data.stats.agents.count    / data.stats.agents.target    * 100), 100) : 0;
   const merchantPct = data ? Math.min(Math.round(data.stats.merchants.count / data.stats.merchants.target * 100), 100) : 0;
@@ -142,6 +236,30 @@ export const TDRDashboardPage: React.FC = () => {
         title={data?.tdr.name || 'My Dashboard'}
         subtitle={`${data?.tdr.zone || ''} · ${format(new Date(), 'MMMM yyyy')}`}
       />
+
+      {/* ── OFFLINE BANNER ───────────────────────────────────────── */}
+      {!isOnline && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3 text-sm text-amber-800">
+          <WifiOff className="w-4 h-4 flex-shrink-0" />
+          <span>You're offline. Entries will be queued and synced when you reconnect.</span>
+        </div>
+      )}
+      {isOnline && queueCount > 0 && (
+        <button onClick={handleSync} disabled={syncing}
+          className="w-full flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-3 text-sm text-blue-800 disabled:opacity-60">
+          <span className="flex items-center gap-2">
+            <Wifi className="w-4 h-4" />
+            {syncing ? 'Syncing…' : `${queueCount} pending offline ${queueCount === 1 ? 'entry' : 'entries'} — Tap to sync`}
+          </span>
+        </button>
+      )}
+
+      {/* ── EXPORT BUTTON ────────────────────────────────────────── */}
+      <button onClick={handleExport} disabled={exporting}
+        className="w-full flex items-center justify-center gap-2 bg-zamtel-green/10 text-zamtel-green border border-zamtel-green/20 rounded-xl px-3 py-2 mb-4 text-sm font-medium disabled:opacity-60">
+        <Download className="w-4 h-4" />
+        {exporting ? 'Preparing…' : 'Export My Data (Excel)'}
+      </button>
 
       {/* ── TODAY'S PROGRESS ─────────────────────────────────────── */}
       <div className="rounded-2xl mb-4 overflow-hidden shadow-sm border border-gray-100">
@@ -288,37 +406,104 @@ export const TDRDashboardPage: React.FC = () => {
         )}
       </Card>
 
-      {/* Recent Activity */}
-      {data && (data.recentActivity.agents.length > 0 || data.recentActivity.visits.length > 0) && (
-        <Card className="mb-24">
-          <h3 className="font-semibold text-gray-800 text-sm mb-3">Recent Activity</h3>
+      {/* ── PENDING FLOAT ISSUES ─────────────────────────────────── */}
+      {floatIssues.filter(f => f.status !== 'resolved').length > 0 && (
+        <Card className="mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-red-600" />
+            <h3 className="font-semibold text-gray-800 text-sm">Pending Float Issues</h3>
+            <span className="ml-auto bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
+              {floatIssues.filter(f => f.status !== 'resolved').length}
+            </span>
+          </div>
           <div className="space-y-2">
-            {data.recentActivity.agents.slice(0, 3).map(a => (
-              <div key={a.id} className="flex items-center gap-3 py-2 border-b border-gray-50">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <UserPlus className="w-4 h-4 text-zamtel-green" />
-                </div>
+            {floatIssues.filter(f => f.status !== 'resolved').map(f => (
+              <div key={f.id} className="flex items-center gap-3 bg-red-50 rounded-xl px-3 py-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{a.agentName}</p>
-                  <p className="text-xs text-gray-500">{a.type === 'merchant' ? 'Merchant' : 'Agent'} · {a.town}</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">{f.agentName}</p>
+                  <p className="text-xs text-gray-500">{f.issueType.replace(/_/g,' ')} · {f.status}</p>
                 </div>
-                <Badge color={a.type === 'merchant' ? 'bg-pink-100 text-zamtel-pink' : 'bg-green-100 text-zamtel-green'}>
-                  {a.type}
-                </Badge>
+                {f.status !== 'resolved' && (
+                  <button onClick={() => handleMarkResolved(f.id)}
+                    className="flex items-center gap-1 text-xs text-green-700 font-medium bg-green-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                    <CheckCircle className="w-3 h-3" /> Resolved
+                  </button>
+                )}
               </div>
             ))}
-            {data.recentActivity.visits.slice(0, 2).map(v => (
-              <div key={v.id} className="flex items-center gap-3 py-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-4 h-4 text-blue-700" />
+          </div>
+        </Card>
+      )}
+
+      {/* ── PROSPECTS PIPELINE DETAIL ────────────────────────────── */}
+      {prospects.length > 0 && (
+        <Card className="mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-4 h-4 text-purple-600" />
+            <h3 className="font-semibold text-gray-800 text-sm">Prospects</h3>
+          </div>
+          <div className="space-y-2">
+            {prospects.filter(p => p.status !== 'converted' && p.status !== 'rejected').slice(0, 5).map(p => {
+              const isOverdue = p.followUpDate && new Date(p.followUpDate) < new Date() && p.status !== 'converted';
+              return (
+                <div key={p.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${isOverdue ? 'bg-red-50 border border-red-100' : 'bg-gray-50'}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{p.businessName}</p>
+                    <p className="text-xs text-gray-500">
+                      {p.status}
+                      {p.followUpDate && ` · Follow-up: ${new Date(p.followUpDate).toLocaleDateString()}`}
+                      {isOverdue && ' ⚠️ Overdue'}
+                    </p>
+                  </div>
+                  {p.closedByTdr ? (
+                    <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded-lg">Awaiting ZBM</span>
+                  ) : (
+                    <button onClick={() => handleRequestClosure(p.id, p.businessName)}
+                      className="text-xs text-green-700 font-medium bg-green-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                      Close Deal
+                    </button>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{v.outletName}</p>
-                  <p className="text-xs text-gray-500">Visit · {v.town}</p>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* ── FULL ACTIVITIES FEED ─────────────────────────────────── */}
+      {activities.length > 0 && (
+        <Card className="mb-24">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="w-4 h-4 text-gray-600" />
+            <h3 className="font-semibold text-gray-800 text-sm">Recent Activity</h3>
+          </div>
+          <div className="space-y-2">
+            {activities.map(a => {
+              const iconMap: Record<string, React.ReactNode> = {
+                agent:   <UserPlus className="w-4 h-4 text-zamtel-green" />,
+                visit:   <MapPin className="w-4 h-4 text-blue-600" />,
+                float:   <AlertTriangle className="w-4 h-4 text-red-500" />,
+                prospect:<Target className="w-4 h-4 text-purple-600" />,
+              };
+              const bgMap: Record<string, string> = {
+                agent: 'bg-green-100', visit: 'bg-blue-100', float: 'bg-red-100', prospect: 'bg-purple-100',
+              };
+              return (
+                <div key={`${a.type}-${a.id}`} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                  <div className={`w-8 h-8 ${bgMap[a.type] || 'bg-gray-100'} rounded-full flex items-center justify-center flex-shrink-0`}>
+                    {iconMap[a.type]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{a.label}</p>
+                    <p className="text-xs text-gray-500">{a.sub}</p>
+                  </div>
+                  <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                    <Clock className="w-3 h-3 inline mr-0.5" />
+                    {formatDistanceToNow(new Date(a.ts), { addSuffix: true })}
+                  </span>
                 </div>
-                <Badge color="bg-blue-100 text-blue-700">visit</Badge>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       )}

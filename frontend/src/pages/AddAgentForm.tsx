@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { MapPin, Loader } from 'lucide-react';
@@ -15,24 +15,15 @@ export const AddAgentForm: React.FC = () => {
   const { capture: captureGPS, loading: gpsLoading } = useGPS();
 
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    agentName:        '',
-    agentCode:        '',
-    contactPhone:     '',
-    type:             'normal' as 'normal' | 'merchant',
-    merchantCategory: '',
-    initialFloat:     '',
-    town:             '',
-    address:          '',
-    cluster:          '',
-    market:           '',
-    latitude:         '',
-    longitude:        '',
-    notes:            '',
-  });
+  const DRAFT_KEY = 'draft_agent';
+  type AgentForm = { agentName: string; agentCode: string; contactPhone: string; type: 'normal'|'merchant'; merchantCategory: string; initialFloat: string; town: string; address: string; cluster: string; market: string; latitude: string; longitude: string; notes: string; };
+  const defaultForm: AgentForm = { agentName: '', agentCode: '', contactPhone: '', type: 'normal', merchantCategory: '', initialFloat: '', town: '', address: '', cluster: '', market: '', latitude: '', longitude: '', notes: '' };
+  const savedDraft: AgentForm | null = (() => { try { const d = localStorage.getItem(DRAFT_KEY); return d ? JSON.parse(d) as AgentForm : null; } catch { return null; } })();
+  const [form, setForm] = useState<AgentForm>(savedDraft || defaultForm);
+  useEffect(() => { if (savedDraft) toast('📋 Draft restored', { icon: '📋' }); }, []); // eslint-disable-line
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm(prev => ({ ...prev, [key]: e.target.value }));
+    setForm(prev => { const next = { ...prev, [key]: e.target.value }; localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); return next; });
   };
 
   const handleGPS = async () => {
@@ -69,6 +60,7 @@ export const AddAgentForm: React.FC = () => {
         longitude:        form.longitude ? parseFloat(form.longitude) : undefined,
         notes:            form.notes || undefined,
       });
+      localStorage.removeItem(DRAFT_KEY);
       toast.success('Agent recruited successfully!');
       navigate('/tdr');
     } catch (err: unknown) {

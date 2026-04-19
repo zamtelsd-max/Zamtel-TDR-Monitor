@@ -10,6 +10,7 @@ import { tdrRouter }    from './routes/tdr';
 import { zbmRouter }    from './routes/zbm';
 import { hsdRouter, mapRouter } from './routes/hsd';
 import { adminRouter }  from './routes/admin';
+import { aseRouter }    from './routes/ase';
 import { errorHandler } from './middleware/errorHandler';
 
 const app  = express();
@@ -39,6 +40,7 @@ app.use('/api/v1/zbm',   zbmRouter);
 app.use('/api/v1/hsd',   hsdRouter);
 app.use('/api/v1/hsd/map', mapRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/ase',   aseRouter);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));

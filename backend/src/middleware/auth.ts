@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 
 export interface JwtPayload {
   userId: string;
-  role: 'TDR' | 'ZBM' | 'HSD';
+  role: 'TDR' | 'ZBM' | 'HSD' | 'ASE';
   zone: string | null;
   name: string;
 }
@@ -19,7 +19,7 @@ declare global {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret-dev-only';
 
-export function requireAuth(...roles: Array<'TDR' | 'ZBM' | 'HSD'>) {
+export function requireAuth(...roles: Array<'TDR' | 'ZBM' | 'HSD' | 'ASE'>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {

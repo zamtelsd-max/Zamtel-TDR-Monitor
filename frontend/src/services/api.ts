@@ -98,8 +98,20 @@ export const tdrApi = {
   createAgent: (data: Partial<Agent>) =>
     client.post<Agent>('/tdr/agents', data),
 
+  updateAgent: (id: string, data: Partial<Agent>) =>
+    client.patch<Agent>(`/tdr/agents/${id}`, data),
+
+  deleteAgent: (id: string) =>
+    client.delete(`/tdr/agents/${id}`),
+
+  getAgentByCode: (code: string) =>
+    client.get<Agent>(`/tdr/agents/by-code/${encodeURIComponent(code)}`),
+
   createVisit: (data: Partial<Visit>) =>
     client.post<Visit>('/tdr/visits', data),
+
+  deleteVisit: (id: string) =>
+    client.delete(`/tdr/visits/${id}`),
 
   createFloatIssue: (data: Partial<FloatIssue>) =>
     client.post<FloatIssue>('/tdr/float-issues', data),
@@ -118,6 +130,18 @@ export const tdrApi = {
 
   updateProspect: (id: string, data: Partial<Prospect>) =>
     client.patch<Prospect>(`/tdr/prospects/${id}`, data),
+
+  deleteProspect: (id: string) =>
+    client.delete(`/tdr/prospects/${id}`),
+
+  requestProspectClosure: (id: string) =>
+    client.post(`/tdr/prospects/${id}/request-closure`),
+
+  getActivities: () =>
+    client.get<Array<{ type: string; id: string; label: string; sub: string; ts: string }>>('/tdr/activities'),
+
+  export: () =>
+    client.get('/tdr/export', { responseType: 'blob' }),
 };
 
 // ─── ZBM ─────────────────────────────────────────────────────────────────────
@@ -136,6 +160,9 @@ export const zbmApi = {
 
   getProspects: () =>
     client.get<Prospect[]>('/zbm/prospects'),
+
+  approveProspectClosure: (id: string) =>
+    client.post(`/zbm/prospects/${id}/approve-closure`),
 
   getMap: () =>
     client.get('/zbm/map'),
@@ -196,4 +223,13 @@ export const adminApi = {
 
   deleteZone: (name: string) =>
     client.delete(`/admin/zones/${encodeURIComponent(name)}`),
+};
+
+// ─── ASE ─────────────────────────────────────────────────────────────────────
+export const aseApi = {
+  dashboard: () =>
+    client.get<{ ase: { id: string; name: string }; tdrStats: Array<{ tdr: { id: string; name: string; zone: string | null }; agents: number; visits: number; floatIssues: number; prospects: number }> }>('/ase/dashboard'),
+
+  getTDR: (id: string) =>
+    client.get(`/ase/tdr/${id}`),
 };

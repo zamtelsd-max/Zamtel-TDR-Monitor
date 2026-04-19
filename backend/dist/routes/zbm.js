@@ -292,4 +292,26 @@ exports.zbmRouter.get('/export', async (req, res) => {
         res.status(500).json({ error: 'Export failed' });
     }
 });
+// ─── POST /zbm/prospects/:id/approve-closure ──────────────────────────────────
+exports.zbmRouter.post('/prospects/:id/approve-closure', async (req, res) => {
+    try {
+        const prospect = await prisma_1.prisma.prospect.findUnique({ where: { id: req.params.id } });
+        if (!prospect) {
+            res.status(404).json({ error: 'Not found' });
+            return;
+        }
+        if (prospect.zone !== req.user.zone) {
+            res.status(403).json({ error: 'Not in your zone' });
+            return;
+        }
+        const updated = await prisma_1.prisma.prospect.update({
+            where: { id: req.params.id },
+            data: { status: 'converted', convertedAt: new Date(), closedByTdr: true, zbmApprovalRequired: false },
+        });
+        res.json(updated);
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Failed to approve closure' });
+    }
+});
 //# sourceMappingURL=zbm.js.map

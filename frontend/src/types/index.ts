@@ -1,5 +1,5 @@
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-export type Role = 'TDR' | 'ZBM' | 'HSD';
+export type Role = 'TDR' | 'ZBM' | 'HSD' | 'ASE';
 
 export interface AuthUser {
   id:   string;
@@ -106,6 +106,8 @@ export interface Prospect {
   notes?:           string;
   followUpDate?:    string;
   convertedAt?:     string;
+  closedByTdr?:     boolean;
+  zbmApprovalRequired?: boolean;
   createdAt:        string;
   updatedAt:        string;
 }

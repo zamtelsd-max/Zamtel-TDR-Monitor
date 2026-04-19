@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { MapPin, Loader } from 'lucide-react';
@@ -11,22 +11,46 @@ export const RecordVisitForm: React.FC = () => {
   const navigate = useNavigate();
   const { capture: captureGPS, loading: gpsLoading } = useGPS();
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    outletName:   '',
-    agentCode:    '',
-    contactPhone: '',
-    town:         '',
-    cluster:      '',
-    market:       '',
-    floatAmount:  '',
-    latitude:     '',
-    longitude:    '',
-    notes:        '',
-  });
+  const [lookingUp, setLookingUp] = useState(false);
+  const DRAFT_KEY = 'draft_visit';
+  type VisitForm = { outletName: string; agentCode: string; contactPhone: string; town: string; cluster: string; market: string; floatAmount: string; latitude: string; longitude: string; notes: string; };
+  const defaultForm: VisitForm = { outletName: '', agentCode: '', contactPhone: '', town: '', cluster: '', market: '', floatAmount: '', latitude: '', longitude: '', notes: '' };
+  const savedDraft: VisitForm | null = (() => { try { const d = localStorage.getItem(DRAFT_KEY); return d ? JSON.parse(d) as VisitForm : null; } catch { return null; } })();
+  const [form, setForm] = useState<VisitForm>(savedDraft || defaultForm);
+  useEffect(() => { if (savedDraft) toast('📋 Draft restored', { icon: '📋' }); }, []); // eslint-disable-line
 
   const set = (key: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setForm(prev => ({ ...prev, [key]: e.target.value }));
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setForm(prev => { const next = { ...prev, [key]: e.target.value }; localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); return next; });
+    };
+
+  // Auto-lookup agent by code on blur
+  const handleAgentCodeBlur = async () => {
+    const code = form.agentCode.trim();
+    if (!code) return;
+    setLookingUp(true);
+    try {
+      const r = await tdrApi.getAgentByCode(code);
+      const a = r.data;
+      setForm(prev => {
+        const next = {
+          ...prev,
+          outletName:   a.agentName,
+          contactPhone: a.contactPhone,
+          town:         a.town,
+          latitude:     a.latitude  ? String(a.latitude)  : prev.latitude,
+          longitude:    a.longitude ? String(a.longitude) : prev.longitude,
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+        return next;
+      });
+      toast.success(`Agent found: ${a.agentName}`);
+    } catch {
+      // Agent not found — no action, let user fill manually
+    } finally {
+      setLookingUp(false);
+    }
+  };
 
   const handleGPS = async () => {
     try {
@@ -59,6 +83,7 @@ export const RecordVisitForm: React.FC = () => {
         longitude:    form.longitude ? parseFloat(form.longitude) : undefined,
         notes:        form.notes     || undefined,
       });
+      localStorage.removeItem(DRAFT_KEY);
       toast.success('Visit recorded successfully!');
       navigate('/tdr');
     } catch (err: unknown) {
@@ -77,7 +102,7 @@ export const RecordVisitForm: React.FC = () => {
         <Input label="Outlet / Business Name *" value={form.outletName} onChange={set('outletName')} placeholder="e.g. Mwamba Grocery" required />
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Agent Code *" value={form.agentCode} onChange={set('agentCode')} placeholder="e.g. ZM-COP-0023" required />
+          <Input label={`Agent Code * ${lookingUp ? '(looking up…)' : ''}`} value={form.agentCode} onChange={set('agentCode')} onBlur={handleAgentCodeBlur} placeholder="e.g. ZM-COP-0023" required />
           <Input label="Contact Phone" value={form.contactPhone} onChange={set('contactPhone')} placeholder="+260..." />
         </div>
 

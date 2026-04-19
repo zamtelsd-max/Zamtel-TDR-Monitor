@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { tdrApi } from '../services/api';
@@ -10,7 +10,11 @@ import type { ProspectType, ProspectStatus } from '../types';
 export const AddProspectForm: React.FC = () => {
   const navigate    = useNavigate();
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
+  const DRAFT_KEY = 'draft_prospect';
+  type ProspectForm = { prospectType: ProspectType; businessName: string; ownerName: string; contactPhone: string; town: string; address: string; merchantCategory: string; estimatedFloat: string; status: ProspectStatus; notes: string; followUpDate: string; };
+  const savedDraft: ProspectForm | null = (() => { try { const d = localStorage.getItem(DRAFT_KEY); return d ? JSON.parse(d) as ProspectForm : null; } catch { return null; } })();
+  useEffect(() => { if (savedDraft) toast('📋 Draft restored', { icon: '📋' }); }, []); // eslint-disable-line
+  const [form, setForm] = useState<ProspectForm>(savedDraft || {
     prospectType:    'agent' as ProspectType,
     businessName:    '',
     ownerName:       '',
@@ -25,8 +29,9 @@ export const AddProspectForm: React.FC = () => {
   });
 
   const set = (key: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm(prev => ({ ...prev, [key]: e.target.value }));
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      setForm(prev => { const next = { ...prev, [key]: e.target.value }; localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); return next; });
+    };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +55,7 @@ export const AddProspectForm: React.FC = () => {
         notes:           form.notes           || undefined,
         followUpDate:    form.followUpDate     || undefined,
       });
+      localStorage.removeItem(DRAFT_KEY);
       toast.success('Prospect added to pipeline!');
       navigate('/tdr');
     } catch (err: unknown) {
@@ -124,6 +130,8 @@ export const AddProspectForm: React.FC = () => {
             { value: 'identified', label: 'Identified' },
             { value: 'contacted',  label: 'Contacted' },
             { value: 'interested', label: 'Interested' },
+            { value: 'converted',  label: 'Converted ✅' },
+            { value: 'rejected',   label: 'Rejected ❌' },
           ]}
         />
 

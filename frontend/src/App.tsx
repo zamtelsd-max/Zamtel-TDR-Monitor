@@ -13,6 +13,7 @@ import { RecordVisitForm }      from './pages/RecordVisitForm';
 import { ReportFloatIssueForm } from './pages/ReportFloatIssueForm';
 import { AddProspectForm }      from './pages/AddProspectForm';
 import { AdminPanel }           from './pages/AdminPanel';
+import { ASEDashboardPage }     from './pages/ASEDashboard';
 
 function RootRedirect() {
   const state = store.getState();
@@ -21,6 +22,7 @@ function RootRedirect() {
   if (user.role === 'TDR') return <Navigate to="/tdr" replace />;
   if (user.role === 'ZBM') return <Navigate to="/zbm" replace />;
   if (user.role === 'HSD') return <Navigate to="/hsd" replace />;
+  if (user.role === 'ASE') return <Navigate to="/ase" replace />;
   return <Navigate to="/login" replace />;
 }
 
@@ -75,6 +77,13 @@ function AppRoutes() {
       <Route path="/admin" element={
         <ProtectedRoute roles={['HSD', 'ZBM']}>
           <AdminPanel />
+        </ProtectedRoute>
+      } />
+
+      {/* ASE */}
+      <Route path="/ase" element={
+        <ProtectedRoute roles={['ASE']}>
+          <ASEDashboardPage />
         </ProtectedRoute>
       } />
 

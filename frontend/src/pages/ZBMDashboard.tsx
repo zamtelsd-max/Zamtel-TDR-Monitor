@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { zbmApi } from '../services/api';
-import type { ZBMDashboard, TDRStat, FloatIssue } from '../types';
+import type { ZBMDashboard, TDRStat, FloatIssue, Prospect } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button } from '../components/UI';
 import { ISSUE_TYPE_LABELS } from '../types';
@@ -35,6 +35,7 @@ function tdrScore(row: TDRStat): number {
 export const ZBMDashboardPage: React.FC = () => {
   const [data,       setData]       = useState<ZBMDashboard | null>(null);
   const [issues,     setIssues]     = useState<FloatIssue[]>([]);
+  const [prospects,  setProspects]  = useState<Prospect[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [sortKey,    setSortKey]    = useState<SortKey>('pct');
   const [sortDir,    setSortDir]    = useState<SortDir>('desc');
@@ -44,13 +45,15 @@ export const ZBMDashboardPage: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [dashRes, issuesRes, mapRes] = await Promise.all([
+      const [dashRes, issuesRes, mapRes, prospectsRes] = await Promise.all([
         zbmApi.dashboard(),
         zbmApi.getFloatIssues(),
         zbmApi.getMap(),
+        zbmApi.getProspects(),
       ]);
       setData(dashRes.data);
       setIssues(issuesRes.data);
+      setProspects(prospectsRes.data);
       if (mapRes.data?.data) setMapData(mapRes.data.data);
       localStorage.setItem('zamtel_zbm_dashboard', JSON.stringify(dashRes.data));
     } catch {
@@ -319,6 +322,36 @@ export const ZBMDashboardPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* Prospects awaiting closure approval */}
+      {prospects.filter(p => p.closedByTdr && p.status !== 'converted').length > 0 && (
+        <Card className="mb-4 border-l-4 border-amber-400">
+          <h3 className="font-semibold text-amber-800 text-sm mb-3 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" /> Awaiting Closure Approval ({prospects.filter(p => p.closedByTdr && p.status !== 'converted').length})
+          </h3>
+          <div className="space-y-2">
+            {prospects.filter(p => p.closedByTdr && p.status !== 'converted').map(p => (
+              <div key={p.id} className="flex items-center gap-3 bg-amber-50 rounded-xl px-3 py-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{p.businessName}</p>
+                  <p className="text-xs text-gray-500">{p.tdrName} · {p.prospectType}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      await zbmApi.approveProspectClosure(p.id);
+                      toast.success(`Approved closure for ${p.businessName}`);
+                      setProspects(prev => prev.map(x => x.id === p.id ? { ...x, status: 'converted' } : x));
+                    } catch { toast.error('Approval failed'); }
+                  }}
+                  className="text-xs text-green-700 font-medium bg-green-100 px-3 py-1.5 rounded-lg whitespace-nowrap">
+                  ✅ Approve
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Prospects Breakdown */}
       {data && data.prospectsBreakdown.length > 0 && (

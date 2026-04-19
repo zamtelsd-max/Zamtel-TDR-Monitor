@@ -144,6 +144,20 @@ tdrRouter.post('/visits', async (req: Request, res: Response): Promise<void> => 
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
   try {
+    // Duplicate check: same TDR + same agentCode on same calendar day
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const todayEnd   = new Date(); todayEnd.setHours(23, 59, 59, 999);
+    const existing = await prisma.visit.findFirst({
+      where: {
+        tdrId:     req.user!.userId,
+        agentCode: parsed.data.agentCode,
+        createdAt: { gte: todayStart, lte: todayEnd },
+      },
+    });
+    if (existing) {
+      res.status(409).json({ error: `You already recorded a visit for agent ${parsed.data.agentCode} today.` });
+      return;
+    }
     const zbm = await prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user!.zone || '' } });
     const visit = await prisma.visit.create({
       data: {
@@ -297,4 +311,156 @@ tdrRouter.patch('/prospects/:id', async (req: Request, res: Response): Promise<v
   }
 
   res.json(updated);
+});
+
+// ─── GET /tdr/agents/by-code/:code ────────────────────────────────────────────
+tdrRouter.get('/agents/by-code/:code', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const agent = await prisma.agent.findUnique({ where: { agentCode: req.params.code } });
+    if (!agent) { res.status(404).json({ error: 'Agent not found' }); return; }
+    res.json(agent);
+  } catch (err) {
+    res.status(500).json({ error: 'Lookup failed' });
+  }
+});
+
+// ─── DELETE /tdr/agents/:id ───────────────────────────────────────────────────
+tdrRouter.delete('/agents/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const agent = await prisma.agent.findUnique({ where: { id: req.params.id } });
+    if (!agent || agent.tdrId !== req.user!.userId) { res.status(404).json({ error: 'Not found' }); return; }
+    await prisma.agent.delete({ where: { id: req.params.id } });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
+// ─── PATCH /tdr/agents/:id ────────────────────────────────────────────────────
+tdrRouter.patch('/agents/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const agent = await prisma.agent.findUnique({ where: { id: req.params.id } });
+    if (!agent || agent.tdrId !== req.user!.userId) { res.status(404).json({ error: 'Not found' }); return; }
+    const { agentName, contactPhone, initialFloat, town, address, cluster, market, notes, latitude, longitude } = req.body;
+    const updated = await prisma.agent.update({
+      where: { id: req.params.id },
+      data: { agentName, contactPhone, initialFloat, town, address, cluster, market, notes, latitude, longitude },
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed' });
+  }
+});
+
+// ─── DELETE /tdr/visits/:id ───────────────────────────────────────────────────
+tdrRouter.delete('/visits/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const visit = await prisma.visit.findUnique({ where: { id: req.params.id } });
+    if (!visit || visit.tdrId !== req.user!.userId) { res.status(404).json({ error: 'Not found' }); return; }
+    await prisma.visit.delete({ where: { id: req.params.id } });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
+// ─── DELETE /tdr/prospects/:id ────────────────────────────────────────────────
+tdrRouter.delete('/prospects/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const prospect = await prisma.prospect.findUnique({ where: { id: req.params.id } });
+    if (!prospect || prospect.tdrId !== req.user!.userId) { res.status(404).json({ error: 'Not found' }); return; }
+    await prisma.prospect.delete({ where: { id: req.params.id } });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
+// ─── POST /tdr/prospects/:id/request-closure ─────────────────────────────────
+tdrRouter.post('/prospects/:id/request-closure', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const prospect = await prisma.prospect.findUnique({ where: { id: req.params.id } });
+    if (!prospect || prospect.tdrId !== req.user!.userId) { res.status(404).json({ error: 'Not found' }); return; }
+    const updated = await prisma.prospect.update({
+      where: { id: req.params.id },
+      data: { closedByTdr: true, zbmApprovalRequired: true },
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to request closure' });
+  }
+});
+
+// ─── GET /tdr/activities ─────────────────────────────────────────────────────
+tdrRouter.get('/activities', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tdrId = req.user!.userId;
+    const [agents, visits, floatIssues, prospects] = await Promise.all([
+      prisma.agent.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
+      prisma.visit.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
+      prisma.floatIssue.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' }, take: 10 }),
+      prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    ]);
+    const activities = [
+      ...agents.map(a => ({ type: 'agent', id: a.id, label: a.agentName, sub: `${a.type} · ${a.town}`, ts: a.createdAt })),
+      ...visits.map(v => ({ type: 'visit', id: v.id, label: v.outletName, sub: `Visit · ${v.town}`, ts: v.createdAt })),
+      ...floatIssues.map(f => ({ type: 'float', id: f.id, label: f.agentName, sub: `Float Issue · ${f.status}`, ts: f.reportedAt })),
+      ...prospects.map(p => ({ type: 'prospect', id: p.id, label: p.businessName, sub: `Prospect · ${p.status}`, ts: p.createdAt })),
+    ].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 20);
+    res.json(activities);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch activities' });
+  }
+});
+
+// ─── GET /tdr/export ─────────────────────────────────────────────────────────
+tdrRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tdrId = req.user!.userId;
+    const [agents, visits, floatIssues, prospects] = await Promise.all([
+      prisma.agent.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
+      prisma.visit.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
+      prisma.floatIssue.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
+      prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
+    ]);
+
+    const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(agents.map(a => ({
+      'Agent Name': a.agentName, 'Agent Code': a.agentCode, 'Type': a.type,
+      'Town': a.town, 'Phone': a.contactPhone, 'Initial Float': a.initialFloat,
+      'Cluster': a.cluster || '', 'Market': a.market || '',
+      'Latitude': a.latitude || '', 'Longitude': a.longitude || '',
+      'Date': new Date(a.createdAt).toLocaleDateString(),
+    }))), 'Agents');
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(visits.map(v => ({
+      'Outlet Name': v.outletName, 'Agent Code': v.agentCode, 'Town': v.town,
+      'Float Amount': v.floatAmount, 'Phone': v.contactPhone,
+      'Latitude': v.latitude || '', 'Longitude': v.longitude || '',
+      'Date': new Date(v.createdAt).toLocaleDateString(),
+    }))), 'Visits');
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(floatIssues.map(f => ({
+      'Agent Code': f.agentCode, 'Agent Name': f.agentName, 'Issue Type': f.issueType,
+      'Status': f.status, 'Float': f.reportedFloat, 'Description': f.description,
+      'Reported': new Date(f.reportedAt).toLocaleDateString(),
+    }))), 'Float Issues');
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospects.map(p => ({
+      'Business': p.businessName, 'Owner': p.ownerName, 'Type': p.prospectType,
+      'Status': p.status, 'Town': p.town, 'Phone': p.contactPhone,
+      'Follow-up': p.followUpDate ? new Date(p.followUpDate).toLocaleDateString() : '',
+      'Notes': p.notes || '',
+    }))), 'Prospects');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const month = new Date().toISOString().slice(0, 7);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="TDR-Export-${req.user!.name.replace(/\s+/g,'-')}-${month}.xlsx"`);
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: 'Export failed' });
+  }
 });
