@@ -59,8 +59,17 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   useEffect(() => {
     if (!mapRef.current) return
 
-    // Init map centred on Zambia
-    const map = L.map(mapRef.current, { zoomControl: true }).setView([-13.1339, 27.8493], 7)
+    // Zambia bounding box: SW (-18.08, 21.99) → NE (-8.22, 33.71)
+    const zambiaBounds: L.LatLngBoundsExpression = [[-18.08, 21.99], [-8.22, 33.71]];
+
+    const map = L.map(mapRef.current, {
+      zoomControl: true,
+      minZoom: 6,
+      maxZoom: 18,
+      maxBounds: zambiaBounds,
+      maxBoundsViscosity: 1.0,   // hard wall — can't pan outside
+    }).setView([-13.1339, 27.8493], 7);
+    map.fitBounds(zambiaBounds);
     mapInstanceRef.current = map
 
     // OSM tile layer
