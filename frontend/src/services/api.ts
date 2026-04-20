@@ -142,6 +142,15 @@ export const tdrApi = {
 
   export: () =>
     client.get('/tdr/export', { responseType: 'blob' }),
+
+  getAgentDetail: (id: string) =>
+    client.get<Agent & { visits: Visit[] }>(`/tdr/agents/${id}`),
+
+  getVisitSummary: () =>
+    client.get<{
+      weekly:  Array<{ label: string; count: number }>;
+      monthly: Array<{ label: string; count: number }>;
+    }>('/tdr/visits/summary'),
 };
 
 // ─── ZBM ─────────────────────────────────────────────────────────────────────

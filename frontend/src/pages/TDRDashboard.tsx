@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, UserPlus, MapPin, AlertTriangle, Target, Download, Wifi, WifiOff, Clock, CheckCircle, Trash2, Activity } from 'lucide-react';
+import { Plus, UserPlus, MapPin, AlertTriangle, Target, Download, Wifi, WifiOff, Clock, CheckCircle, Trash2, Activity, Eye, X, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { tdrApi, getQueue, syncQueue } from '../services/api';
-import type { TDRDashboard, FloatIssue, Prospect } from '../types';
+import type { TDRDashboard, FloatIssue, Prospect, Agent, Visit } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, ProgressRing, Skeleton, Badge } from '../components/UI';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -125,6 +125,18 @@ export const TDRDashboardPage: React.FC = () => {
   const [exporting,   setExporting]   = useState(false);
   const isOnline = useOnlineStatus();
 
+  // Visit summary
+  const [visitSummary, setVisitSummary] = useState<{ weekly: Array<{ label: string; count: number }>; monthly: Array<{ label: string; count: number }> } | null>(null);
+
+  // Agent detail drawer
+  const [agentDetail, setAgentDetail] = useState<(Agent & { visits: Visit[] }) | null>(null);
+  const [agentDetailLoading, setAgentDetailLoading] = useState(false);
+
+  // Prospect edit modal
+  const [editProspect, setEditProspect] = useState<Prospect | null>(null);
+  const [editForm, setEditForm] = useState({ status: '', notes: '', followUpDate: '' });
+  const [editSaving, setEditSaving] = useState(false);
+
   const refresh = () => {
     const cached = localStorage.getItem('zamtel_tdr_dashboard');
     if (cached) { try { setData(JSON.parse(cached) as TDRDashboard); } catch {} }
@@ -135,6 +147,7 @@ export const TDRDashboardPage: React.FC = () => {
     tdrApi.getFloatIssues().then(r => setFloatIssues(r.data)).catch(() => {});
     tdrApi.getProspects().then(r => setProspects(r.data)).catch(() => {});
     tdrApi.getActivities().then(r => setActivities(r.data)).catch(() => {});
+    tdrApi.getVisitSummary().then(r => setVisitSummary(r.data)).catch(() => {});
     getQueue().then(q => setQueueCount(q.length)).catch(() => {});
   };
 
@@ -218,6 +231,41 @@ export const TDRDashboardPage: React.FC = () => {
       toast.success('Closure request sent to ZBM');
       setProspects(prev => prev.map(p => p.id === id ? { ...p, closedByTdr: true } : p));
     } catch { toast.error('Failed to request closure'); }
+  };
+
+  const openAgentDetail = async (id: string) => {
+    setAgentDetailLoading(true);
+    setAgentDetail(null);
+    try {
+      const res = await tdrApi.getAgentDetail(id);
+      setAgentDetail(res.data);
+    } catch { toast.error('Could not load agent details'); }
+    finally { setAgentDetailLoading(false); }
+  };
+
+  const openEditProspect = (p: Prospect) => {
+    setEditProspect(p);
+    setEditForm({
+      status: p.status,
+      notes: p.notes || '',
+      followUpDate: p.followUpDate ? new Date(p.followUpDate).toISOString().split('T')[0] : '',
+    });
+  };
+
+  const handleSaveProspect = async () => {
+    if (!editProspect) return;
+    setEditSaving(true);
+    try {
+      const res = await tdrApi.updateProspect(editProspect.id, {
+        status: editForm.status as Prospect['status'],
+        notes: editForm.notes,
+        followUpDate: editForm.followUpDate ? editForm.followUpDate : undefined,
+      });
+      setProspects(prev => prev.map(p => p.id === editProspect.id ? res.data : p));
+      toast.success('Prospect updated');
+      setEditProspect(null);
+    } catch { toast.error('Update failed'); }
+    finally { setEditSaving(false); }
   };
 
   const agentPct    = data ? Math.min(Math.round(data.stats.agents.count    / data.stats.agents.target    * 100), 100) : 0;
@@ -406,6 +454,47 @@ export const TDRDashboardPage: React.FC = () => {
         )}
       </Card>
 
+      {/* ── VISIT SUMMARY ────────────────────────────────────────── */}
+      {visitSummary && (
+        <Card className="mb-4">
+          <h3 className="font-semibold text-gray-800 text-sm mb-3 flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-blue-600" /> Visitation Summary
+          </h3>
+
+          {/* Weekly bar chart */}
+          <p className="text-xs text-gray-500 mb-2 font-medium">Weekly (last 8 weeks)</p>
+          <div className="flex items-end gap-1 h-16 mb-4">
+            {visitSummary.weekly.map((w, i) => {
+              const max = Math.max(...visitSummary.weekly.map(x => x.count), 1);
+              const pct = Math.round((w.count / max) * 100);
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                  <span className="text-[9px] text-gray-500">{w.count > 0 ? w.count : ''}</span>
+                  <div className="w-full rounded-t-sm bg-blue-500" style={{ height: `${Math.max(pct, 3)}%`, minHeight: w.count > 0 ? '4px' : '2px', opacity: i === visitSummary.weekly.length - 1 ? 1 : 0.6 }} />
+                  <span className="text-[8px] text-gray-400 truncate w-full text-center">{w.label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Monthly bar chart */}
+          <p className="text-xs text-gray-500 mb-2 font-medium">Monthly (last 6 months)</p>
+          <div className="flex items-end gap-1.5 h-14">
+            {visitSummary.monthly.map((m, i) => {
+              const max = Math.max(...visitSummary.monthly.map(x => x.count), 1);
+              const pct = Math.round((m.count / max) * 100);
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                  <span className="text-[9px] text-gray-500">{m.count > 0 ? m.count : ''}</span>
+                  <div className="w-full rounded-t-sm bg-zamtel-green" style={{ height: `${Math.max(pct, 3)}%`, minHeight: m.count > 0 ? '4px' : '2px', opacity: i === visitSummary.monthly.length - 1 ? 1 : 0.6 }} />
+                  <span className="text-[9px] text-gray-400 truncate w-full text-center">{m.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {/* ── PENDING FLOAT ISSUES ─────────────────────────────────── */}
       {floatIssues.filter(f => f.status !== 'resolved').length > 0 && (
         <Card className="mb-4">
@@ -455,14 +544,20 @@ export const TDRDashboardPage: React.FC = () => {
                       {isOverdue && ' ⚠️ Overdue'}
                     </p>
                   </div>
-                  {p.closedByTdr ? (
-                    <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded-lg">Awaiting ZBM</span>
-                  ) : (
-                    <button onClick={() => handleRequestClosure(p.id, p.businessName)}
-                      className="text-xs text-green-700 font-medium bg-green-100 px-2 py-1 rounded-lg whitespace-nowrap">
-                      Close Deal
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => openEditProspect(p)}
+                      className="p-1.5 rounded-lg bg-blue-50 text-blue-600" title="Edit prospect">
+                      <Edit2 className="w-3.5 h-3.5" />
                     </button>
-                  )}
+                    {p.closedByTdr ? (
+                      <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded-lg">Awaiting ZBM</span>
+                    ) : (
+                      <button onClick={() => handleRequestClosure(p.id, p.businessName)}
+                        className="text-xs text-green-700 font-medium bg-green-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                        Close Deal
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -497,10 +592,18 @@ export const TDRDashboardPage: React.FC = () => {
                     <p className="text-sm font-medium text-gray-800 truncate">{a.label}</p>
                     <p className="text-xs text-gray-500">{a.sub}</p>
                   </div>
-                  <span className="text-[10px] text-gray-400 whitespace-nowrap">
-                    <Clock className="w-3 h-3 inline mr-0.5" />
-                    {formatDistanceToNow(new Date(a.ts), { addSuffix: true })}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {a.type === 'agent' && (
+                      <button onClick={() => openAgentDetail(a.id)}
+                        className="p-1.5 rounded-lg bg-green-50 text-zamtel-green" title="View agent">
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                      <Clock className="w-3 h-3 inline mr-0.5" />
+                      {formatDistanceToNow(new Date(a.ts), { addSuffix: true })}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -535,6 +638,110 @@ export const TDRDashboardPage: React.FC = () => {
           </div>
         </Link>
       </div>
+
+      {/* ── AGENT DETAIL DRAWER ──────────────────────────────────── */}
+      {(agentDetail || agentDetailLoading) && (
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setAgentDetail(null)}>
+          <div className="mt-auto bg-white rounded-t-3xl max-h-[80vh] overflow-y-auto p-5"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg text-gray-800">Agent Details</h2>
+              <button onClick={() => setAgentDetail(null)} className="p-2 rounded-full bg-gray-100">
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            {agentDetailLoading && <p className="text-center text-gray-400 py-8">Loading…</p>}
+            {agentDetail && (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  {[
+                    { label: 'Name',    value: agentDetail.agentName },
+                    { label: 'Code',    value: agentDetail.agentCode },
+                    { label: 'Type',    value: agentDetail.type },
+                    { label: 'Phone',   value: agentDetail.contactPhone },
+                    { label: 'Town',    value: agentDetail.town },
+                    { label: 'Float',   value: `K${Number(agentDetail.initialFloat).toLocaleString()}` },
+                    { label: 'Zone',    value: agentDetail.zone },
+                    { label: 'Added',   value: new Date(agentDetail.createdAt).toLocaleDateString() },
+                  ].map(f => (
+                    <div key={f.label} className="bg-gray-50 rounded-xl px-3 py-2">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">{f.label}</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{f.value || '—'}</p>
+                    </div>
+                  ))}
+                </div>
+                {agentDetail.notes && (
+                  <div className="bg-amber-50 rounded-xl px-3 py-2 mb-4">
+                    <p className="text-[10px] text-amber-600 uppercase tracking-wide font-semibold">Notes</p>
+                    <p className="text-sm text-gray-700">{agentDetail.notes}</p>
+                  </div>
+                )}
+                <h3 className="font-semibold text-sm text-gray-700 mb-2">Recent Visits ({agentDetail.visits.length})</h3>
+                {agentDetail.visits.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4">No visits recorded yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {agentDetail.visits.map(v => (
+                      <div key={v.id} className="flex items-center gap-3 bg-blue-50 rounded-xl px-3 py-2">
+                        <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{v.outletName}</p>
+                          <p className="text-xs text-gray-500">{v.town} · K{Number(v.floatAmount).toLocaleString()}</p>
+                        </div>
+                        <span className="text-[10px] text-gray-400">{new Date(v.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── PROSPECT EDIT MODAL ──────────────────────────────────── */}
+      {editProspect && (
+        <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setEditProspect(null)}>
+          <div className="w-full bg-white rounded-t-3xl p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg text-gray-800">Edit Prospect</h2>
+              <button onClick={() => setEditProspect(null)} className="p-2 rounded-full bg-gray-100">
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <p className="text-sm font-semibold text-gray-700 mb-4">{editProspect.businessName}</p>
+
+            <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+            <select value={editForm.status}
+              onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-zamtel-green">
+              {['new','contacted','interested','follow_up','converted','rejected'].map(s => (
+                <option key={s} value={s}>{s.replace(/_/g,' ')}</option>
+              ))}
+            </select>
+
+            <label className="block text-xs font-medium text-gray-600 mb-1">Follow-up Date</label>
+            <input type="date" value={editForm.followUpDate}
+              onChange={e => setEditForm(f => ({ ...f, followUpDate: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-zamtel-green" />
+
+            <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+            <textarea rows={3} value={editForm.notes}
+              onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-4 focus:outline-none focus:border-zamtel-green resize-none"
+              placeholder="Add notes…" />
+
+            <button onClick={handleSaveProspect} disabled={editSaving}
+              className="w-full py-3 rounded-2xl font-bold text-white text-sm disabled:opacity-60"
+              style={{ background: '#00843D' }}>
+              {editSaving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 };

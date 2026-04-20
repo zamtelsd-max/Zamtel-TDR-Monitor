@@ -502,4 +502,55 @@ exports.tdrRouter.get('/export', async (req, res) => {
         res.status(500).json({ error: 'Export failed' });
     }
 });
+// ─── GET /tdr/visits/summary ──────────────────────────────────────────────────
+// Returns weekly + monthly visit counts for the TDR
+exports.tdrRouter.get('/visits/summary', async (req, res) => {
+    const tdrId = req.user.userId;
+    // Build last 8 weeks buckets
+    const now = new Date();
+    const weeks = [];
+    for (let i = 7; i >= 0; i--) {
+        const end = new Date(now);
+        end.setDate(end.getDate() - i * 7);
+        end.setHours(23, 59, 59, 999);
+        const start = new Date(end);
+        start.setDate(start.getDate() - 6);
+        start.setHours(0, 0, 0, 0);
+        const label = `W${Math.ceil((start.getDate()) / 7)} ${start.toLocaleString('default', { month: 'short' })}`;
+        weeks.push({ label, start, end });
+    }
+    const weeklyData = await Promise.all(weeks.map(async (w) => ({
+        label: w.label,
+        count: await prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: w.start, lte: w.end } } }),
+    })));
+    // Last 6 months
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const start = new Date(d.getFullYear(), d.getMonth(), 1);
+        const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+        months.push({ label: d.toLocaleString('default', { month: 'short', year: '2-digit' }), start, end });
+    }
+    const monthlyData = await Promise.all(months.map(async (m) => ({
+        label: m.label,
+        count: await prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: m.start, lte: m.end } } }),
+    })));
+    res.json({ weekly: weeklyData, monthly: monthlyData });
+});
+// ─── GET /tdr/agents/:id ──────────────────────────────────────────────────────
+// Returns full agent detail including recent visits (joined via agentCode)
+exports.tdrRouter.get('/agents/:id', async (req, res) => {
+    const tdrId = req.user.userId;
+    const agent = await prisma_1.prisma.agent.findUnique({ where: { id: req.params.id } });
+    if (!agent || agent.tdrId !== tdrId) {
+        res.status(404).json({ error: 'Not found' });
+        return;
+    }
+    const visits = await prisma_1.prisma.visit.findMany({
+        where: { tdrId, agentCode: agent.agentCode },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+    });
+    res.json({ ...agent, visits });
+});
 //# sourceMappingURL=tdr.js.map
