@@ -6,12 +6,12 @@ import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 import { authApi } from '../services/api';
 
 export const Login: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
+  const dispatch  = useAppDispatch();
+  const navigate  = useNavigate();
   const { user, loading, error } = useAppSelector(s => s.auth);
 
   const [userId, setUserId] = useState('');
-  const [pin, setPin] = useState(['', '', '', '']);
+  const [pin,    setPin]    = useState(['', '', '', '']);
   const pinRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -19,55 +19,91 @@ export const Login: React.FC = () => {
     useRef<HTMLInputElement>(null),
   ];
 
+  // Redirect if already logged in
   useEffect(() => {
-    if (user) {
-      if (user.role === 'TDR') navigate('/tdr',  { replace: true });
-      if (user.role === 'ZBM') navigate('/zbm',  { replace: true });
-      if (user.role === 'HSD') navigate('/hsd',  { replace: true });
-    }
+    if (!user) return;
+    const dest = roleRoute(user.role);
+    if (dest) navigate(dest, { replace: true });
   }, [user, navigate]);
 
+  function roleRoute(role: string): string | null {
+    if (role === 'TDR')   return '/tdr';
+    if (role === 'ZBM')   return '/zbm';
+    if (role === 'HSD')   return '/hsd';
+    if (role === 'ASE')   return '/ase';
+    if (role === 'ADMIN') return '/admin';
+    return '/tdr';
+  }
+
   const handlePinChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return;
-    const next = [...pin];
-    next[index] = value;
+    // Accept only single digit
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const next  = [...pin];
+    next[index] = digit;
     setPin(next);
-    if (value && index < 3) pinRefs[index + 1].current?.focus();
+    if (digit && index < 3) {
+      setTimeout(() => pinRefs[index + 1].current?.focus(), 10);
+    }
+    // Auto-submit when last digit entered
+    if (digit && index === 3) {
+      const full = [...next].join('');
+      if (full.length === 4 && userId.trim()) {
+        setTimeout(() => doLogin(userId.trim(), full), 80);
+      }
+    }
   };
 
   const handlePinKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !pin[index] && index > 0) pinRefs[index - 1].current?.focus();
+    if (e.key === 'Backspace') {
+      if (pin[index]) {
+        // Clear current
+        const next = [...pin];
+        next[index] = '';
+        setPin(next);
+      } else if (index > 0) {
+        // Move back
+        pinRefs[index - 1].current?.focus();
+      }
+    }
     if (e.key === 'Enter') handleSubmit();
   };
 
-  const handleSubmit = async () => {
-    const pinStr = pin.join('');
-    if (!userId.trim()) { toast.error('Please enter your User ID'); return; }
-    if (pinStr.length !== 4) { toast.error('Please enter your 4-digit PIN'); return; }
+  const doLogin = async (id: string, pinStr: string) => {
     dispatch(loginStart());
     try {
-      const res = await authApi.login(userId.trim(), pinStr);
+      const res  = await authApi.login(id, pinStr);
       dispatch(loginSuccess(res.data));
-      const role = res.data.user.role;
-      if (role === 'TDR') navigate('/tdr');
-      if (role === 'ZBM') navigate('/zbm');
-      if (role === 'HSD') navigate('/hsd');
+      const dest = roleRoute(res.data.user.role);
+      if (dest) navigate(dest, { replace: true });
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Login failed';
+      const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Login failed. Check your ID and PIN.';
       dispatch(loginFailure(message));
       toast.error(message);
       setPin(['', '', '', '']);
-      pinRefs[0].current?.focus();
+      setTimeout(() => pinRefs[0].current?.focus(), 50);
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(160deg, #0D1B12 0%, #003d1c 50%, #00843D 100%)' }}>
+  const handleSubmit = () => {
+    const pinStr = pin.join('');
+    if (!userId.trim())      { toast.error('Please enter your User ID'); return; }
+    if (pinStr.length !== 4) { toast.error('Please enter your 4-digit PIN'); return; }
+    doLogin(userId.trim(), pinStr);
+  };
 
+  return (
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        background: 'linear-gradient(160deg, #0D1B12 0%, #003d1c 50%, #00843D 100%)',
+        /* iOS safe area */
+        paddingTop:    'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
       {/* Top brand stripe */}
       <div className="flex items-center justify-between px-5 pt-6 pb-2">
         <div className="flex items-center gap-2">
-          {/* Zamtel "Z" wordmark block */}
           <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-lg">
             <span className="text-zamtel-green font-black text-lg leading-none">Z</span>
           </div>
@@ -81,18 +117,16 @@ export const Login: React.FC = () => {
         </div>
       </div>
 
-      {/* Hero section */}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-8">
+      {/* Hero */}
+      <div className="flex-1 flex flex-col items-center justify-center px-5 py-6">
 
-        {/* Big logo */}
-        <div className="mb-8 text-center">
-          <div className="relative inline-block mb-5">
-            {/* Outer glow ring */}
+        {/* Logo */}
+        <div className="mb-7 text-center">
+          <div className="relative inline-block mb-4">
             <div className="absolute inset-0 rounded-3xl bg-zamtel-green/30 blur-xl scale-110" />
             <div className="relative w-24 h-24 bg-white rounded-3xl shadow-2xl flex items-center justify-center">
               <span className="text-zamtel-green font-black text-5xl leading-none">Z</span>
             </div>
-            {/* Pink dot accent */}
             <div className="absolute -top-1 -right-1 w-5 h-5 bg-zamtel-pink rounded-full border-2 border-white shadow" />
           </div>
           <h1 className="text-white text-2xl font-black tracking-tight">TDR Monitor</h1>
@@ -102,12 +136,11 @@ export const Login: React.FC = () => {
         {/* Login card */}
         <div className="w-full max-w-sm">
           <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden">
-            {/* Card top accent bar */}
             <div className="h-2 w-full rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #00843D 0%, #006830 35%, #C0005A 70%, #E4007C 100%)' }} />
 
-            <div className="p-7">
-              <h2 className="text-lg font-bold text-gray-900 mb-1 text-center">Sign In</h2>
-              <p className="text-xs text-gray-400 text-center mb-6">Enter your ID and 4-digit PIN</p>
+            <div className="p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-0.5 text-center">Sign In</h2>
+              <p className="text-xs text-gray-400 text-center mb-5">Enter your ID and 4-digit PIN</p>
 
               {/* User ID */}
               <div className="mb-5">
@@ -115,12 +148,15 @@ export const Login: React.FC = () => {
                   User ID
                 </label>
                 <input
-                  className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-4 py-3 text-sm font-medium focus:outline-none focus:border-zamtel-green focus:bg-white transition placeholder-gray-300"
+                  className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-4 py-3.5 text-sm font-medium focus:outline-none focus:border-zamtel-green focus:bg-white transition placeholder-gray-300"
                   placeholder="e.g. tdr-cb-01"
                   value={userId}
-                  onChange={e => setUserId(e.target.value)}
+                  onChange={e => setUserId(e.target.value.trim())}
                   autoComplete="username"
-                  autoFocus
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="next"
                   onKeyDown={e => e.key === 'Enter' && pinRefs[0].current?.focus()}
                 />
               </div>
@@ -135,22 +171,26 @@ export const Login: React.FC = () => {
                     <input
                       key={i}
                       ref={pinRefs[i]}
-                      type="password"
+                      type="tel"
                       inputMode="numeric"
-                      pattern="\d*"
+                      pattern="[0-9]*"
                       maxLength={1}
                       value={digit}
                       onChange={e => handlePinChange(i, e.target.value)}
                       onKeyDown={e => handlePinKeyDown(i, e)}
-                      className={`w-14 h-14 text-center text-2xl font-bold rounded-2xl border-2 transition focus:outline-none
+                      onFocus={e => e.target.select()}
+                      enterKeyHint={i < 3 ? 'next' : 'done'}
+                      style={{ WebkitUserSelect: 'none', touchAction: 'manipulation' }}
+                      className={`w-14 h-14 text-center text-2xl font-bold rounded-2xl border-2 transition-all focus:outline-none select-none
                         ${digit
-                          ? 'border-zamtel-green bg-green-50 text-zamtel-green'
+                          ? 'border-zamtel-green bg-green-50 text-zamtel-green shadow-sm'
                           : 'border-gray-200 bg-gray-50 text-gray-800'
                         }
                         focus:border-zamtel-green focus:bg-green-50 focus:ring-4 focus:ring-zamtel-green/10`}
                     />
                   ))}
                 </div>
+                <p className="text-center text-[10px] text-gray-400 mt-2">Auto-submits when PIN is complete</p>
               </div>
 
               {error && (
@@ -159,12 +199,11 @@ export const Login: React.FC = () => {
                 </div>
               )}
 
-              {/* Sign In button — green → pink gradient */}
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full py-3.5 rounded-2xl text-white font-bold text-base shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{ background: loading ? '#9CA3AF' : 'linear-gradient(90deg, #00843D 0%, #006830 60%, #004d24 100%)' }}
+                className="w-full py-4 rounded-2xl text-white font-bold text-base shadow-lg transition-all active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ background: loading ? '#9CA3AF' : 'linear-gradient(90deg, #00843D 0%, #006830 60%, #004d24 100%)', touchAction: 'manipulation' }}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -179,8 +218,7 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          {/* Bottom tagline */}
-          <div className="mt-6 text-center space-y-1">
+          <div className="mt-5 text-center space-y-1">
             <p className="text-green-300 text-xs font-medium">Zambia Telecommunications Company Limited</p>
             <div className="flex items-center justify-center gap-2">
               <div className="w-12 h-px bg-green-700" />

@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/Zamtel-TDR-Monitor/sw.js', { scope: '/Zamtel-TDR-Monitor/' })})}

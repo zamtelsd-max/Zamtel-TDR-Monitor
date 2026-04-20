@@ -2,28 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#E2231A" />
+    <!-- viewport-fit=cover enables safe-area-inset on iPhone notch/Dynamic Island -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#00843D" />
     <meta name="description" content="Zamtel TDR Monitor — Territory Development Representative Sales Performance System" />
 
-    <!-- Apple PWA meta tags -->
+    <!-- iOS Add to Home Screen -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="TDR Monitor" />
 
+    <!-- Android -->
+    <meta name="application-name" content="TDR Monitor" />
+
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
     <!-- Preconnect to Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
+    <!-- Prevent tap highlight on mobile -->
+    <style>
+      * { -webkit-tap-highlight-color: transparent; }
+      html, body { overscroll-behavior-y: none; }
+    </style>
+
     <title>Zamtel TDR Monitor</title>
-    <script type="module" crossorigin src="/tdr/assets/index-CPP_3mt4.js"></script>
+    <script type="module" crossorigin src="/tdr/assets/index-CI88pt9H.js"></script>
     <link rel="modulepreload" crossorigin href="/tdr/assets/react-vendor-oqzFO2kG.js">
     <link rel="modulepreload" crossorigin href="/tdr/assets/redux-vendor-De8sty20.js">
-    <link rel="stylesheet" crossorigin href="/tdr/assets/index-CjG-GWeW.css">
+    <link rel="stylesheet" crossorigin href="/tdr/assets/index-CI5TnNgi.css">
   </head>
   <body>
     <div id="root"></div>

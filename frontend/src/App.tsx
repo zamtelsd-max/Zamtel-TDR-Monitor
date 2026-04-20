@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 import { store } from './store';
@@ -105,27 +105,25 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/tdr'}>
-        <AppRoutes />
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              borderRadius: '12px',
-              background: '#1A1A2E',
-              color: '#fff',
-              fontSize: '14px',
-            },
-            success: {
-              iconTheme: { primary: '#22c55e', secondary: '#fff' },
-            },
-            error: {
-              iconTheme: { primary: '#E2231A', secondary: '#fff' },
-            },
-          }}
-        />
-      </BrowserRouter>
+      {import.meta.env.VITE_USE_HASH === 'true' ? (
+        <HashRouter>
+          <AppRoutes />
+          <Toaster position="top-center" toastOptions={{ duration: 3000, style: { borderRadius: '12px', background: '#1A1A2E', color: '#fff', fontSize: '14px' }, success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } }, error: { iconTheme: { primary: '#E2231A', secondary: '#fff' } } }} />
+        </HashRouter>
+      ) : (
+        <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/tdr'}>
+          <AppRoutes />
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 3000,
+              style: { borderRadius: '12px', background: '#1A1A2E', color: '#fff', fontSize: '14px' },
+              success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#E2231A', secondary: '#fff' } },
+            }}
+          />
+        </BrowserRouter>
+      )}
     </Provider>
   );
 }
