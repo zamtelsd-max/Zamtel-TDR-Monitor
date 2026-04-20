@@ -27,12 +27,12 @@ const KPIRing: React.FC<{
     </Card>
   );
   return (
-    <Card className={`flex flex-col items-center py-3 border-t-2 ${band.border}`}>
+    <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-4 border-t-4 flex flex-col items-center py-3 ${band.border}`}>
       <ProgressRing value={pct} size={72} color={band.ring} label={label} sublabel={`${count}/${target}`} />
       <span className={`mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${band.bg} ${band.color}`}>
         {weight}
       </span>
-    </Card>
+    </div>
   );
 };
 

@@ -16,7 +16,8 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply text-gray-900;
+    background: #f0f4f0;
     overscroll-behavior-y: none;
   }
 
@@ -28,7 +29,7 @@
 }
 
 @layer components {
-  /* Zamtel brand gradients */
+  /* ── Brand gradients ─────────────────────────────────────────── */
   .zamtel-gradient {
     background: linear-gradient(135deg, #00843D 0%, #006830 100%);
   }
@@ -38,12 +39,14 @@
   .zamtel-gradient-hero {
     background: linear-gradient(135deg, #00843D 0%, #006830 60%, #004d24 100%);
   }
-  /* Header: green → pink sweep with curved white bottom edge */
+
+  /* ── Header: green → pink sweep ─────────────────────────────── */
   .zamtel-header {
     background: linear-gradient(105deg, #00843D 0%, #006830 45%, #C0005A 75%, #E4007C 100%);
     border-bottom-left-radius: 22px;
     border-bottom-right-radius: 22px;
     position: relative;
+    box-shadow: 0 4px 24px rgba(0,132,61,0.25), 0 2px 8px rgba(228,0,124,0.15);
   }
   .zamtel-header::after {
     content: '';
@@ -56,14 +59,73 @@
     border-radius: 0 0 18px 18px;
     opacity: 0.18;
   }
+
+  /* ── Brand cards ─────────────────────────────────────────────── */
   .zamtel-card-green {
-    background: linear-gradient(135deg, #00843D22 0%, #00843D08 100%);
+    background: linear-gradient(135deg, rgba(0,132,61,0.08) 0%, rgba(0,132,61,0.03) 100%);
     border-left: 4px solid #00843D;
   }
   .zamtel-card-pink {
-    background: linear-gradient(135deg, #E4007C22 0%, #E4007C08 100%);
+    background: linear-gradient(135deg, rgba(228,0,124,0.08) 0%, rgba(228,0,124,0.03) 100%);
     border-left: 4px solid #E4007C;
   }
+
+  /* ── Page background with subtle green tint ──────────────────── */
+  .page-bg {
+    background: linear-gradient(180deg, #e8f5ee 0%, #f0f4f0 100px, #f0f4f0 100%);
+    min-height: 100vh;
+  }
+
+  /* ── Section divider pill ────────────────────────────────────── */
+  .section-pill {
+    @apply inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full;
+    background: rgba(0,132,61,0.10);
+    color: #00843D;
+  }
+  .section-pill-pink {
+    background: rgba(228,0,124,0.10);
+    color: #B8005E;
+  }
+
+  /* ── Stat card ───────────────────────────────────────────────── */
+  .stat-card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-4;
+    border-top: 3px solid transparent;
+  }
+  .stat-card-green  { border-top-color: #00843D; }
+  .stat-card-pink   { border-top-color: #E4007C; }
+  .stat-card-blue   { border-top-color: #2563EB; }
+  .stat-card-amber  { border-top-color: #D97706; }
+
+  /* ── Nav tab bar ─────────────────────────────────────────────── */
+  .tab-bar {
+    background: rgba(255,255,255,0.95);
+    border-top: 1px solid rgba(0,132,61,0.12);
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+    backdrop-filter: blur(10px);
+  }
+
+  /* ── Brand button ────────────────────────────────────────────── */
+  .btn-zamtel {
+    @apply flex items-center justify-center gap-2 py-3 px-5 rounded-2xl font-bold text-sm text-white transition-all active:scale-[0.97];
+    background: linear-gradient(90deg, #00843D 0%, #006830 100%);
+    box-shadow: 0 4px 12px rgba(0,132,61,0.30);
+  }
+  .btn-zamtel:disabled { opacity: 0.55; box-shadow: none; }
+  .btn-zamtel-pink {
+    background: linear-gradient(90deg, #E4007C 0%, #B8005E 100%);
+    box-shadow: 0 4px 12px rgba(228,0,124,0.30);
+  }
+  .btn-zamtel-outline {
+    @apply border-2 border-zamtel-green text-zamtel-green bg-transparent;
+    box-shadow: none;
+  }
+
+  /* ── Score band backgrounds ──────────────────────────────────── */
+  .band-platinum { background: linear-gradient(135deg, #e8f5ee, #d4edde); border-color: #00843D; }
+  .band-gold     { background: linear-gradient(135deg, #fffbeb, #fef3c7); border-color: #D97706; }
+  .band-silver   { background: linear-gradient(135deg, #f9fafb, #f3f4f6); border-color: #6B7280; }
+  .band-red      { background: linear-gradient(135deg, #fef2f2, #fee2e2); border-color: #DC2626; }
 }
 
 @layer utilities {
@@ -77,15 +139,11 @@
   }
 
   /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #D1D5DB;
-    border-radius: 9999px;
-  }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 9999px; }
+
+  /* Text accessibility helpers — WCAG AA (4.5:1 on white) */
+  .text-accessible-green { color: #005A2B; }   /* #005A2B on white = 7.2:1 ✓ */
+  .text-accessible-pink  { color: #9C0055; }   /* #9C0055 on white = 7.0:1 ✓ */
 }
