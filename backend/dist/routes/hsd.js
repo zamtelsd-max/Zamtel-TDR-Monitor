@@ -263,4 +263,23 @@ exports.mapRouter.get('/', async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to fetch map data' });
     }
 });
+// ─── GET /hsd/agents/stale ────────────────────────────────────────────────────
+// All agents nationwide whose last visit was > 5 days ago (HSD national view)
+exports.hsdRouter.get('/agents/stale', async (req, res) => {
+    const agents = await prisma_1.prisma.agent.findMany({ orderBy: [{ zone: 'asc' }, { agentName: 'asc' }] });
+    const enriched = await Promise.all(agents.map(async (a) => {
+        const lastVisit = await prisma_1.prisma.visit.findFirst({
+            where: { agentCode: a.agentCode },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+        });
+        const lastVisitedAt = lastVisit?.createdAt ?? null;
+        const daysAgo = lastVisitedAt
+            ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
+            : null;
+        return { ...a, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 5 };
+    }));
+    const stale = enriched.filter(a => a.isStale);
+    res.json({ stale, total: agents.length, staleCount: stale.length });
+});
 //# sourceMappingURL=hsd.js.map

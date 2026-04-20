@@ -521,3 +521,28 @@ tdrRouter.get('/agents/:id', async (req: Request, res: Response): Promise<void> 
 
   res.json({ ...agent, visits });
 });
+
+// ─── GET /tdr/agents/stale ────────────────────────────────────────────────────
+// This TDR's agents whose last visit was > 5 days ago
+tdrRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void> => {
+  const tdrId  = req.user!.userId;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 5);
+
+  const agents = await prisma.agent.findMany({ where: { tdrId }, orderBy: { agentName: 'asc' } });
+
+  const enriched = await Promise.all(agents.map(async (a) => {
+    const lastVisit = await prisma.visit.findFirst({
+      where:   { tdrId, agentCode: a.agentCode },
+      orderBy: { createdAt: 'desc' },
+      select:  { createdAt: true },
+    });
+    const lastVisitedAt = lastVisit?.createdAt ?? null;
+    const daysAgo = lastVisitedAt
+      ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
+      : null;
+    return { ...a, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 5 };
+  }));
+
+  res.json(enriched.filter(a => a.isStale));
+});

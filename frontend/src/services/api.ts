@@ -151,6 +151,9 @@ export const tdrApi = {
       weekly:  Array<{ label: string; count: number }>;
       monthly: Array<{ label: string; count: number }>;
     }>('/tdr/visits/summary'),
+
+  getStaleAgents: () =>
+    client.get<Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null; isStale: boolean }>>('/tdr/agents/stale'),
 };
 
 // ─── ZBM ─────────────────────────────────────────────────────────────────────
@@ -172,6 +175,9 @@ export const zbmApi = {
 
   approveProspectClosure: (id: string) =>
     client.post(`/zbm/prospects/${id}/approve-closure`),
+
+  getStaleAgents: () =>
+    client.get<{ stale: Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null }>; total: number; staleCount: number }>('/zbm/agents/stale'),
 
   getMap: () =>
     client.get('/zbm/map'),

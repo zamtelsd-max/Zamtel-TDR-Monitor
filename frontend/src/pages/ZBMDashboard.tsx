@@ -42,16 +42,20 @@ export const ZBMDashboardPage: React.FC = () => {
   const [resolving,  setResolving]  = useState<string | null>(null);
   const [mapData,    setMapData]    = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
   const [exporting,  setExporting]  = useState(false);
+  const [staleAgents, setStaleAgents] = useState<Array<any>>([]);
+  const [showAllStale, setShowAllStale] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [dashRes, issuesRes, mapRes, prospectsRes] = await Promise.all([
+      const [dashRes, issuesRes, mapRes, prospectsRes, staleRes] = await Promise.all([
         zbmApi.dashboard(),
         zbmApi.getFloatIssues(),
         zbmApi.getMap(),
         zbmApi.getProspects(),
+        zbmApi.getStaleAgents().catch(() => ({ data: { stale: [], total: 0, staleCount: 0 } })),
       ]);
       setData(dashRes.data);
+      setStaleAgents(staleRes.data.stale || []);
       setIssues(issuesRes.data);
       setProspects(prospectsRes.data);
       if (mapRes.data?.data) setMapData(mapRes.data.data);
@@ -204,6 +208,45 @@ export const ZBMDashboardPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* 🚩 STALE AGENTS — ZBM view */}
+      {staleAgents.length > 0 && (
+        <Card className="mb-4 border-l-4 border-red-500 bg-red-50">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg">🚩</span>
+            <h3 className="font-bold text-red-700 text-sm">Unvisited Outlets (5+ days)</h3>
+            <span className="ml-auto bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              {staleAgents.length}
+            </span>
+          </div>
+          <p className="text-xs text-red-500 mb-3">Agents / Merchants not visited in 5+ days — TDR action required</p>
+          <div className="space-y-2">
+            {(showAllStale ? staleAgents : staleAgents.slice(0, 5)).map((a: any) => (
+              <div key={a.id} className="flex items-center gap-3 bg-white border border-red-100 rounded-xl px-3 py-2">
+                <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 text-sm">🚩</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{a.agentName}</p>
+                  <p className="text-xs text-gray-500">{a.type === 'merchant' ? '🏪 Merchant' : '👤 Agent'} · {a.town} · {a.tdrName || '—'}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs font-bold text-red-600">
+                    {a.daysAgo === null ? 'Never visited' : `${a.daysAgo}d ago`}
+                  </p>
+                  <p className="text-[10px] text-gray-400">
+                    {a.lastVisitedAt ? new Date(a.lastVisitedAt).toLocaleDateString() : '—'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {staleAgents.length > 5 && (
+            <button onClick={() => setShowAllStale(s => !s)}
+              className="mt-3 w-full text-xs text-red-600 font-semibold py-1.5 rounded-xl bg-red-100 hover:bg-red-200 transition">
+              {showAllStale ? `Show less` : `Show all ${staleAgents.length} unvisited outlets`}
+            </button>
+          )}
+        </Card>
+      )}
 
       {/* TDR Performance Table */}
       <Card className="mb-4 overflow-x-auto">

@@ -128,6 +128,9 @@ export const TDRDashboardPage: React.FC = () => {
   // Visit summary
   const [visitSummary, setVisitSummary] = useState<{ weekly: Array<{ label: string; count: number }>; monthly: Array<{ label: string; count: number }> } | null>(null);
 
+  // Stale agents (not visited in 5+ days)
+  const [staleAgents, setStaleAgents] = useState<Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null }>>([]);
+
   // Agent detail drawer
   const [agentDetail, setAgentDetail] = useState<(Agent & { visits: Visit[] }) | null>(null);
   const [agentDetailLoading, setAgentDetailLoading] = useState(false);
@@ -148,6 +151,7 @@ export const TDRDashboardPage: React.FC = () => {
     tdrApi.getProspects().then(r => setProspects(r.data)).catch(() => {});
     tdrApi.getActivities().then(r => setActivities(r.data)).catch(() => {});
     tdrApi.getVisitSummary().then(r => setVisitSummary(r.data)).catch(() => {});
+    tdrApi.getStaleAgents().then(r => setStaleAgents(r.data)).catch(() => {});
     getQueue().then(q => setQueueCount(q.length)).catch(() => {});
   };
 
@@ -453,6 +457,41 @@ export const TDRDashboardPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* ── 🚩 STALE AGENTS — not visited in 5+ days ─────────────── */}
+      {staleAgents.length > 0 && (
+        <Card className="mb-4 border-l-4 border-red-500 bg-red-50">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">🚩</span>
+            <h3 className="font-bold text-red-700 text-sm">Unvisited Agents / Merchants</h3>
+            <span className="ml-auto bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              {staleAgents.length}
+            </span>
+          </div>
+          <p className="text-xs text-red-500 mb-3 font-medium">Not visited in 5+ days — needs immediate follow-up</p>
+          <div className="space-y-2">
+            {staleAgents.map(a => (
+              <div key={a.id} className="flex items-center gap-3 bg-white border border-red-100 rounded-xl px-3 py-2">
+                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm">🚩</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{a.agentName}</p>
+                  <p className="text-xs text-gray-500">{a.type === 'merchant' ? '🏪 Merchant' : '👤 Agent'} · {a.town}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs font-bold text-red-600">
+                    {a.daysAgo === null ? 'Never visited' : `${a.daysAgo}d ago`}
+                  </p>
+                  <p className="text-[10px] text-gray-400">
+                    {a.lastVisitedAt ? new Date(a.lastVisitedAt).toLocaleDateString() : '—'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* ── VISIT SUMMARY ────────────────────────────────────────── */}
       {visitSummary && (

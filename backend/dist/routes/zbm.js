@@ -314,4 +314,32 @@ exports.zbmRouter.post('/prospects/:id/approve-closure', async (req, res) => {
         res.status(500).json({ error: 'Failed to approve closure' });
     }
 });
+// ─── GET /zbm/agents/stale ────────────────────────────────────────────────────
+// Agents + merchants in this ZBM's zone whose last visit was > 5 days ago (red flag)
+exports.zbmRouter.get('/agents/stale', async (req, res) => {
+    const zone = req.user.zone ?? undefined;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 5);
+    // All agents in zone
+    const agents = await prisma_1.prisma.agent.findMany({
+        where: zone ? { zone } : {},
+        orderBy: { agentName: 'asc' },
+    });
+    // For each agent get the most recent visit
+    const enriched = await Promise.all(agents.map(async (a) => {
+        const lastVisit = await prisma_1.prisma.visit.findFirst({
+            where: { agentCode: a.agentCode },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+        });
+        const lastVisitedAt = lastVisit?.createdAt ?? null;
+        const daysAgo = lastVisitedAt
+            ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
+            : null;
+        const isStale = daysAgo === null ? true : daysAgo >= 5;
+        return { ...a, lastVisitedAt, daysAgo, isStale };
+    }));
+    const stale = enriched.filter(a => a.isStale);
+    res.json({ stale, total: agents.length, staleCount: stale.length });
+});
 //# sourceMappingURL=zbm.js.map
