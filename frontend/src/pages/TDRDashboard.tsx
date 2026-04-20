@@ -473,7 +473,7 @@ export const TDRDashboardPage: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">{a.agentName}</p>
-                  <p className="text-xs text-gray-500">{a.type === 'merchant' ? '🏪 Merchant' : '👤 Agent'} · {a.town}</p>
+                  <p className="text-xs text-gray-500">{a.type === 'merchant' ? '🏪 Merchant' : '👤 Normal Agent'} · {a.town}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs font-bold text-red-600">
@@ -628,7 +628,7 @@ export const TDRDashboardPage: React.FC = () => {
                     <p className="text-xs text-gray-500">{a.sub}</p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {a.type === 'agent' && (
+                    {(a.type === 'agent' || a.type === 'normal' || a.type === 'merchant') && (
                       <button onClick={() => openAgentDetail(a.id)}
                         className="p-1.5 rounded-lg bg-green-50 text-zamtel-green" title="View agent">
                         <Eye className="w-3.5 h-3.5" />
