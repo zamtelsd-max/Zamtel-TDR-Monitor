@@ -157,13 +157,9 @@ export const TDRDashboardPage: React.FC = () => {
 
   useEffect(() => {
     refresh();
-    // Daily browser notification for follow-up prospects
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
   }, []); // eslint-disable-line
 
-  // Check follow-up prospects and notify
+  // Check follow-up prospects and show in-app toast alert
   useEffect(() => {
     if (!prospects.length) return;
     const today = new Date().toISOString().split('T')[0];
@@ -171,10 +167,10 @@ export const TDRDashboardPage: React.FC = () => {
       p.followUpDate && p.followUpDate.split('T')[0] <= today &&
       p.status !== 'converted' && p.status !== 'rejected'
     );
-    if (due.length > 0 && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification(`Zamtel TDR — ${due.length} prospect(s) need follow-up today`, {
-        body: due.map(p => p.businessName).join(', '),
-        icon: '/icons/icon-192x192.png',
+    if (due.length > 0) {
+      toast(`🔔 ${due.length} prospect(s) need follow-up today: ${due.map(p => p.businessName).join(', ')}`, {
+        duration: 6000,
+        icon: '📋',
       });
     }
   }, [prospects]);
