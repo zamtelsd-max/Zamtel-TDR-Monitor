@@ -77,10 +77,12 @@ export const HSDDashboardPage: React.FC = () => {
     } catch {
       const cached = localStorage.getItem('zamtel_hsd_dashboard');
       if (cached) {
-        const d = JSON.parse(cached) as { dashboard: HSDDashboard; zones: ZoneStat[]; period: string };
-        setDashboard(d.dashboard);
-        setZones(d.zones);
-        toast('Showing cached data', { icon: '📦' });
+        try {
+          const d = JSON.parse(cached) as { dashboard: HSDDashboard; zones: ZoneStat[]; period: string };
+          setDashboard(d.dashboard);
+          setZones(d.zones);
+          toast('Showing cached data', { icon: '📦' });
+        } catch { localStorage.removeItem('zamtel_hsd_dashboard'); toast.error('Failed to load dashboard'); }
       } else {
         toast.error('Failed to load dashboard');
       }

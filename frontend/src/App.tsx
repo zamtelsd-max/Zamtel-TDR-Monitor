@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 import { store } from './store';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { PageErrorBoundary } from './components/PageErrorBoundary';
 import { Login }                from './pages/Login';
 import { TDRDashboardPage }     from './pages/TDRDashboard';
 import { ZBMDashboardPage }     from './pages/ZBMDashboard';
@@ -35,55 +36,55 @@ function AppRoutes() {
       {/* TDR */}
       <Route path="/tdr" element={
         <ProtectedRoute roles={['TDR']}>
-          <TDRDashboardPage />
+          <PageErrorBoundary page="TDR Dashboard"><TDRDashboardPage /></PageErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/tdr/agents/new" element={
         <ProtectedRoute roles={['TDR']}>
-          <AddAgentForm />
+          <PageErrorBoundary page="Add Agent"><AddAgentForm /></PageErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/tdr/visits/new" element={
         <ProtectedRoute roles={['TDR']}>
-          <RecordVisitForm />
+          <PageErrorBoundary page="Record Visit"><RecordVisitForm /></PageErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/tdr/float-issues/new" element={
         <ProtectedRoute roles={['TDR']}>
-          <ReportFloatIssueForm />
+          <PageErrorBoundary page="Float Issue"><ReportFloatIssueForm /></PageErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/tdr/prospects/new" element={
         <ProtectedRoute roles={['TDR']}>
-          <AddProspectForm />
+          <PageErrorBoundary page="Add Prospect"><AddProspectForm /></PageErrorBoundary>
         </ProtectedRoute>
       } />
 
       {/* ZBM */}
       <Route path="/zbm" element={
         <ProtectedRoute roles={['ZBM']}>
-          <ZBMDashboardPage />
+          <PageErrorBoundary page="ZBM Dashboard"><ZBMDashboardPage /></PageErrorBoundary>
         </ProtectedRoute>
       } />
 
       {/* HSD */}
       <Route path="/hsd" element={
         <ProtectedRoute roles={['HSD']}>
-          <HSDDashboardPage />
+          <PageErrorBoundary page="HSD Dashboard"><HSDDashboardPage /></PageErrorBoundary>
         </ProtectedRoute>
       } />
 
       {/* Admin Panel — HSD + ZBM */}
       <Route path="/admin" element={
         <ProtectedRoute roles={['HSD', 'ZBM']}>
-          <AdminPanel />
+          <PageErrorBoundary page="Admin Panel"><AdminPanel /></PageErrorBoundary>
         </ProtectedRoute>
       } />
 
       {/* ASE */}
       <Route path="/ase" element={
         <ProtectedRoute roles={['ASE']}>
-          <ASEDashboardPage />
+          <PageErrorBoundary page="ASE Dashboard"><ASEDashboardPage /></PageErrorBoundary>
         </ProtectedRoute>
       } />
 

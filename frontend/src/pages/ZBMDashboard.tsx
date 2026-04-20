@@ -62,7 +62,7 @@ export const ZBMDashboardPage: React.FC = () => {
       localStorage.setItem('zamtel_zbm_dashboard', JSON.stringify(dashRes.data));
     } catch {
       const cached = localStorage.getItem('zamtel_zbm_dashboard');
-      if (cached) setData(JSON.parse(cached) as ZBMDashboard);
+      if (cached) { try { setData(JSON.parse(cached) as ZBMDashboard); } catch { localStorage.removeItem('zamtel_zbm_dashboard'); } }
       else toast.error('Failed to load dashboard');
     } finally {
       setLoading(false);
