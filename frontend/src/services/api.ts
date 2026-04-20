@@ -22,7 +22,8 @@ client.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('zamtel_token');
       localStorage.removeItem('zamtel_user');
-      window.location.href = (import.meta.env.VITE_BASE_PATH || '/tdr') + '/login';
+      // HashRouter-friendly redirect
+      window.location.hash = '#/login';
     }
     return Promise.reject(err);
   }
@@ -37,36 +38,57 @@ export interface QueuedRequest {
   queuedAt: string;
 }
 
-async function getDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('zamtel-offline-queue', 1);
-    req.onupgradeneeded = () => {
-      req.result.createObjectStore('queue', { keyPath: 'id' });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
-  });
+// IndexedDB — safe wrapper that gracefully degrades on iOS private mode / restricted WebViews
+let _db: IDBDatabase | null = null;
+let _dbFailed = false;
+
+async function getDB(): Promise<IDBDatabase | null> {
+  if (_dbFailed) return null;
+  if (_db) return _db;
+  try {
+    _db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open('zamtel-offline-queue', 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore('queue', { keyPath: 'id' });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => reject(req.error);
+    });
+    return _db;
+  } catch {
+    _dbFailed = true;
+    return null;
+  }
 }
 
 export async function enqueueRequest(method: string, url: string, data: unknown): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction('queue', 'readwrite');
-  tx.objectStore('queue').add({ id: crypto.randomUUID(), method, url, data, queuedAt: new Date().toISOString() });
+  if (!db) return; // IndexedDB unavailable — silently skip offline queue
+  try {
+    const tx = db.transaction('queue', 'readwrite');
+    tx.objectStore('queue').add({ id: crypto.randomUUID(), method, url, data, queuedAt: new Date().toISOString() });
+  } catch { /* ignore */ }
 }
 
 export async function getQueue(): Promise<QueuedRequest[]> {
   const db = await getDB();
-  return new Promise((resolve, reject) => {
-    const req = db.transaction('queue', 'readonly').objectStore('queue').getAll();
-    req.onsuccess = () => resolve(req.result as QueuedRequest[]);
-    req.onerror   = () => reject(req.error);
-  });
+  if (!db) return [];
+  try {
+    return await new Promise((resolve, reject) => {
+      const req = db.transaction('queue', 'readonly').objectStore('queue').getAll();
+      req.onsuccess = () => resolve(req.result as QueuedRequest[]);
+      req.onerror   = () => reject(req.error);
+    });
+  } catch { return []; }
 }
 
 export async function removeFromQueue(id: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction('queue', 'readwrite');
-  tx.objectStore('queue').delete(id);
+  if (!db) return;
+  try {
+    const tx = db.transaction('queue', 'readwrite');
+    tx.objectStore('queue').delete(id);
+  } catch { /* ignore */ }
 }
 
 export async function syncQueue(): Promise<number> {
