@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { Download, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { hsdApi } from '../services/api';
 import type { HSDDashboard, ZoneStat, FloatIssue } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
@@ -47,6 +48,7 @@ function monthOptions() {
 }
 
 export const HSDDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const authUser = useAppSelector(s => s.auth.user);
   const [dashboard, setDashboard] = useState<HSDDashboard | null>(null);
   const [zones,     setZones]     = useState<ZoneStat[]>([]);
@@ -149,9 +151,14 @@ export const HSDDashboardPage: React.FC = () => {
     <Layout
       title={authUser ? `${getUserTitle(authUser.id, authUser.role)} — Dashboard` : 'National Dashboard'}
       actions={
-        <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}>
-          <Download className="w-3.5 h-3.5 mr-1" /> Export
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" onClick={() => navigate('/leaderboard')}>
+            <Trophy className="w-3.5 h-3.5 mr-1" /> Leaderboard
+          </Button>
+          <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Export
+          </Button>
+        </div>
       }
     >
       <PageHeader

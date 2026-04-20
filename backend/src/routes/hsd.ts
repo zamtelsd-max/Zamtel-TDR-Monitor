@@ -315,3 +315,51 @@ hsdRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
   const stale = enriched.filter(a => a.isStale);
   res.json({ stale, total: agents.length, staleCount: stale.length });
 });
+
+// ─── GET /hsd/leaderboard ─────────────────────────────────────────────────────
+// Top TDRs (all zones) + Zone leaderboard ranked by % achievement
+hsdRouter.get('/leaderboard', async (req: Request, res: Response): Promise<void> => {
+  const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const { start, end, isCurrentMonth } = monthRange(period);
+
+  const at = isCurrentMonth ? prorateMtdTarget(96) : 96;
+  const mt = isCurrentMonth ? prorateMtdTarget(96) : 96;
+  const vt = isCurrentMonth ? visitMtdTarget()     : visitMonthlyTarget();
+
+  const tdrs = await prisma.user.findMany({ where: { role: 'TDR', active: true } });
+
+  const tdrRows = await Promise.all(tdrs.map(async (tdr) => {
+    const [agents, merchants, visits] = await Promise.all([
+      prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: start, lte: end } } }),
+      prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+      prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
+    ]);
+    const pct = Math.round(((agents / at) + (merchants / mt) + (visits / vt)) / 3 * 100);
+    return { id: tdr.id, name: tdr.name, zone: tdr.zone || 'Unassigned', agents, merchants, visits, pct };
+  }));
+
+  // Top 30 TDRs by pct
+  const topTDRs = [...tdrRows].sort((a, b) => b.pct - a.pct || b.agents - a.agents).slice(0, 30);
+
+  // Zone leaderboard (aggregate per zone)
+  const zoneMap: Record<string, { zone: string; agents: number; merchants: number; visits: number; tdrCount: number }> = {};
+  for (const r of tdrRows) {
+    if (!zoneMap[r.zone]) zoneMap[r.zone] = { zone: r.zone, agents: 0, merchants: 0, visits: 0, tdrCount: 0 };
+    zoneMap[r.zone].agents    += r.agents;
+    zoneMap[r.zone].merchants += r.merchants;
+    zoneMap[r.zone].visits    += r.visits;
+    zoneMap[r.zone].tdrCount  += 1;
+  }
+  const zoneRows = Object.values(zoneMap).map(z => {
+    const zt = z.tdrCount;
+    const pct = zt > 0 ? Math.round(((z.agents / (at * zt)) + (z.merchants / (mt * zt)) + (z.visits / (vt * zt))) / 3 * 100) : 0;
+    return { ...z, pct };
+  }).sort((a, b) => b.pct - a.pct || b.agents - a.agents);
+
+  res.json({
+    period,
+    topTDRs,
+    zoneLeaderboard: zoneRows,
+    mtd: isCurrentMonth ? { workingDaysElapsed: workingDaysElapsed(), workingDaysTotal: workingDaysThisMonth() } : null,
+  });
+});

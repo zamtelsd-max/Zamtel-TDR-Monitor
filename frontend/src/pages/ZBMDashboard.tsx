@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download, Trophy } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { zbmApi } from '../services/api';
 import type { ZBMDashboard, TDRStat, FloatIssue, Prospect } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
@@ -33,6 +34,7 @@ function tdrScore(row: TDRStat): number {
 }
 
 export const ZBMDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [data,       setData]       = useState<ZBMDashboard | null>(null);
   const [issues,     setIssues]     = useState<FloatIssue[]>([]);
   const [prospects,  setProspects]  = useState<Prospect[]>([]);
@@ -147,8 +149,13 @@ export const ZBMDashboardPage: React.FC = () => {
         </div>
       ); })()}
 
-      {/* Export button */}
-      <div className="flex justify-end mb-3">
+      {/* Action buttons */}
+      <div className="flex justify-end gap-2 mb-3">
+        <Button size="sm" variant="secondary" onClick={() => navigate('/leaderboard')}
+          className="flex items-center gap-1.5">
+          <Trophy className="w-3.5 h-3.5" />
+          Leaderboard
+        </Button>
         <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}
           className="flex items-center gap-1.5">
           <Download className="w-3.5 h-3.5" />

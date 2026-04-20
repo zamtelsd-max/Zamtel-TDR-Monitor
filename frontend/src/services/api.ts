@@ -233,6 +233,14 @@ export const hsdApi = {
 
   getMap: (zone?: string) =>
     client.get('/hsd/map', { params: zone && zone !== 'all' ? { zone } : {} }),
+
+  getLeaderboard: (period?: string) =>
+    client.get<{
+      period: string;
+      topTDRs: Array<{ id: string; name: string; zone: string; agents: number; merchants: number; visits: number; pct: number }>;
+      zoneLeaderboard: Array<{ zone: string; agents: number; merchants: number; visits: number; tdrCount: number; pct: number }>;
+      mtd: { workingDaysElapsed: number; workingDaysTotal: number } | null;
+    }>('/hsd/leaderboard', { params: period ? { period } : {} }),
 };
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

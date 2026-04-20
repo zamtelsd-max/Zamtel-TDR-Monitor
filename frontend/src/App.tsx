@@ -14,6 +14,7 @@ import { RecordVisitForm }      from './pages/RecordVisitForm';
 import { ReportFloatIssueForm } from './pages/ReportFloatIssueForm';
 import { AddProspectForm }      from './pages/AddProspectForm';
 import { AdminPanel }           from './pages/AdminPanel';
+import { LeaderboardPage }      from './pages/Leaderboard';
 import { ASEDashboardPage }     from './pages/ASEDashboard';
 
 function RootRedirect() {
@@ -71,6 +72,13 @@ function AppRoutes() {
       <Route path="/hsd" element={
         <ProtectedRoute roles={['HSD']}>
           <PageErrorBoundary page="HSD Dashboard"><HSDDashboardPage /></PageErrorBoundary>
+        </ProtectedRoute>
+      } />
+
+      {/* Leaderboard — HSD + ZBM */}
+      <Route path="/leaderboard" element={
+        <ProtectedRoute roles={['HSD', 'ZBM']}>
+          <PageErrorBoundary page="Leaderboard"><LeaderboardPage /></PageErrorBoundary>
         </ProtectedRoute>
       } />
 
