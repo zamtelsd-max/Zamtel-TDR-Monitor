@@ -1,12 +1,20 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { AuthState, AuthUser } from '../types';
 
-const storedUser  = localStorage.getItem('zamtel_user');
-const storedToken = localStorage.getItem('zamtel_token');
+// Safe parse — never crash on corrupted localStorage (blank screen fix)
+function safeParse<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T : null;
+  } catch {
+    localStorage.removeItem(key); // wipe corrupted value
+    return null;
+  }
+}
 
 const initialState: AuthState = {
-  user:    storedUser  ? JSON.parse(storedUser) as AuthUser : null,
-  token:   storedToken || null,
+  user:    safeParse<AuthUser>('zamtel_user'),
+  token:   localStorage.getItem('zamtel_token') || null,
   loading: false,
   error:   null,
 };

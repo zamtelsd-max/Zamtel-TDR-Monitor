@@ -26,9 +26,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, backT
   const canAdmin = user?.role === 'HSD' || user?.role === 'ZBM';
 
   return (
-    <div className="page-bg flex flex-col min-h-screen">
-      {/* Header — Zamtel green→pink */}
-      <header className="zamtel-header text-white sticky top-0 z-50 mb-1">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header — Zamtel green */}
+      <header className="zamtel-header text-white sticky top-0 z-50 shadow-lg mb-1">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           {showBack && (
             <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-white/10 transition flex-shrink-0">
@@ -98,13 +98,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, backT
 export const PageHeader: React.FC<{
   title: string; subtitle?: string; children?: React.ReactNode;
 }> = ({ title, subtitle, children }) => (
-  <div className="mb-5 flex items-start justify-between gap-3">
+  <div className="mb-6 flex items-start justify-between gap-3">
     <div>
-      <div className="flex items-center gap-2 mb-0.5">
-        <div className="w-1 h-5 rounded-full bg-zamtel-green" />
-        <h2 className="text-xl font-black text-gray-900">{title}</h2>
-      </div>
-      {subtitle && <p className="text-sm text-gray-500 mt-0.5 pl-3">{subtitle}</p>}
+      <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+      {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
     </div>
     {children && <div className="flex-shrink-0">{children}</div>}
   </div>

@@ -189,11 +189,11 @@ export const HSDDashboardPage: React.FC = () => {
           [0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 rounded-2xl" />)
         ) : (
           <>
-            <StatCard label="Agents Recruited"  value={dashboard?.kpis.totalAgents    || 0} accent="pink"  loading={loading && !dashboard} />
-            <StatCard label="Merchants"          value={dashboard?.kpis.totalMerchants || 0} accent="blue"  loading={loading && !dashboard} />
-            <StatCard label="Outlet Visits"      value={dashboard?.kpis.totalVisits    || 0} accent="green" loading={loading && !dashboard} />
-            <StatCard label="Open Float Issues"  value={dashboard?.kpis.openFloatIssues || 0} accent="amber" loading={loading && !dashboard} />
-            <StatCard label="Conversion Rate"    value={`${dashboard?.kpis.conversionRate || 0}%`} accent="green" loading={loading && !dashboard} />
+            <StatCard label="Agents Recruited"  value={dashboard?.kpis.totalAgents    || 0} color="text-zamtel-pink"  loading={loading && !dashboard} />
+            <StatCard label="Merchants"          value={dashboard?.kpis.totalMerchants || 0} color="text-blue-600"   loading={loading && !dashboard} />
+            <StatCard label="Outlet Visits"      value={dashboard?.kpis.totalVisits    || 0} color="text-green-700"  loading={loading && !dashboard} />
+            <StatCard label="Open Float Issues"  value={dashboard?.kpis.openFloatIssues || 0} color="text-amber-600" loading={loading && !dashboard} />
+            <StatCard label="Conversion Rate"    value={`${dashboard?.kpis.conversionRate || 0}%`} color="text-purple-700" loading={loading && !dashboard} />
           </>
         )}
       </div>
