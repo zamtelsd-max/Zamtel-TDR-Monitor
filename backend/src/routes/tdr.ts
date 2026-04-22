@@ -105,11 +105,22 @@ tdrRouter.post('/agents', async (req: Request, res: Response): Promise<void> => 
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
   try {
+    const tdrId = req.user!.userId;
+
+    // Check if THIS TDR already registered this agent code (per-TDR uniqueness)
+    const existing = await prisma.agent.findFirst({
+      where: { tdrId, agentCode: parsed.data.agentCode },
+    });
+    if (existing) {
+      res.status(409).json({ error: `Agent code ${parsed.data.agentCode} is already registered under your account.` });
+      return;
+    }
+
     const zbm = await prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user!.zone || '' } });
     const agent = await prisma.agent.create({
       data: {
         ...parsed.data,
-        tdrId:   req.user!.userId,
+        tdrId,
         tdrName: req.user!.name,
         zone:    req.user!.zone || '',
         zbmName: zbm?.name || '',
@@ -118,7 +129,7 @@ tdrRouter.post('/agents', async (req: Request, res: Response): Promise<void> => 
     res.status(201).json(agent);
   } catch (err: any) {
     if (err?.code === 'P2002') {
-      res.status(409).json({ error: 'Agent code already exists. Use a unique agent code.' });
+      res.status(409).json({ error: `Agent code ${(req.body as any)?.agentCode} is already registered under your account.` });
     } else {
       res.status(500).json({ error: 'Failed to create agent' });
     }
