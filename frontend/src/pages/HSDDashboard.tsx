@@ -130,7 +130,7 @@ export const HSDDashboardPage: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([res.data as BlobPart]));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `zamtel-tdr-export-${period}.csv`;
+      a.download = `zamtel-hsd-export-${period}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {

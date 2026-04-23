@@ -186,55 +186,107 @@ hsdRouter.post('/targets', async (req: Request, res: Response): Promise<void> =>
 
 // ─── GET /hsd/export ──────────────────────────────────────────────────────────
 hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
-  const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-  const { start, end } = monthRange(period);
+  try {
+    const XLSX = await import('xlsx');
+    const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end } = monthRange(period);
 
-  const [agents, visits, floatIssues, prospects] = await Promise.all([
-    prisma.agent.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
-    prisma.visit.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
-    prisma.floatIssue.findMany({ orderBy: { reportedAt: 'desc' } }),
-    prisma.prospect.findMany({ orderBy: { createdAt: 'desc' } }),
-  ]);
+    const [agents, visits, floatIssues, prospects] = await Promise.all([
+      prisma.agent.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: [{ zone: 'asc' }, { createdAt: 'desc' }] }),
+      prisma.visit.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
+      prisma.floatIssue.findMany({ orderBy: { reportedAt: 'desc' } }),
+      prisma.prospect.findMany({ orderBy: { createdAt: 'desc' } }),
+    ]);
 
-  // Build CSV
-  const lines: string[] = [];
+    const wb = XLSX.utils.book_new();
 
-  lines.push('=== AGENTS ===');
-  lines.push('id,tdrId,tdrName,zone,zbmName,agentName,agentCode,contactPhone,type,merchantCategory,initialFloat,town,address,cluster,market,latitude,longitude,notes,createdAt');
-  agents.forEach(a => {
-    lines.push([a.id, a.tdrId, a.tdrName, a.zone, a.zbmName, a.agentName, a.agentCode, a.contactPhone, a.type,
-      a.merchantCategory || '', a.initialFloat, a.town, a.address || '', a.cluster || '', a.market || '',
-      a.latitude || '', a.longitude || '', (a.notes || '').replace(/,/g, ';'), a.createdAt.toISOString()].join(','));
-  });
+    // Sheet 1: Agents
+    const agentRows = agents.map(a => ({
+      'Zone': a.zone, 'ZBM': a.zbmName, 'TDR Name': a.tdrName,
+      'Agent Name': a.agentName, 'Agent Code': a.agentCode, 'Phone': a.contactPhone,
+      'Type': a.type, 'Category': a.merchantCategory || '',
+      'Initial Float': a.initialFloat, 'Town': a.town, 'Address': a.address || '',
+      'Cluster': a.cluster || '', 'Market': a.market || '',
+      'Latitude': a.latitude || '', 'Longitude': a.longitude || '',
+      'Notes': a.notes || '', 'Date': a.createdAt.toISOString().split('T')[0],
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(agentRows.length > 0 ? agentRows : [{}]), 'Agents');
 
-  lines.push('\n=== VISITS ===');
-  lines.push('id,tdrId,tdrName,zone,zbmName,outletName,agentCode,contactPhone,town,cluster,market,floatAmount,latitude,longitude,notes,createdAt');
-  visits.forEach(v => {
-    lines.push([v.id, v.tdrId, v.tdrName, v.zone, v.zbmName, v.outletName, v.agentCode, v.contactPhone,
-      v.town, v.cluster || '', v.market || '', v.floatAmount, v.latitude || '', v.longitude || '',
-      (v.notes || '').replace(/,/g, ';'), v.createdAt.toISOString()].join(','));
-  });
+    // Sheet 2: Visits
+    const visitRows = visits.map(v => ({
+      'Zone': v.zone, 'ZBM': v.zbmName, 'TDR Name': v.tdrName,
+      'Outlet Name': v.outletName, 'Agent Code': v.agentCode, 'Phone': v.contactPhone,
+      'Town': v.town, 'Cluster': v.cluster || '', 'Market': v.market || '',
+      'Float Amount': v.floatAmount,
+      'Latitude': v.latitude || '', 'Longitude': v.longitude || '',
+      'Notes': v.notes || '', 'Date': v.createdAt.toISOString().split('T')[0],
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(visitRows.length > 0 ? visitRows : [{}]), 'Visits');
 
-  lines.push('\n=== FLOAT ISSUES ===');
-  lines.push('id,tdrId,tdrName,zone,agentCode,agentName,contactPhone,issueType,reportedFloat,description,status,resolvedAt,resolvedBy,resolutionNotes,reportedAt');
-  floatIssues.forEach(f => {
-    lines.push([f.id, f.tdrId, f.tdrName, f.zone, f.agentCode, f.agentName, f.contactPhone, f.issueType,
-      f.reportedFloat, f.description.replace(/,/g, ';'), f.status, f.resolvedAt?.toISOString() || '',
-      f.resolvedBy || '', (f.resolutionNotes || '').replace(/,/g, ';'), f.reportedAt.toISOString()].join(','));
-  });
+    // Sheet 3: Float Issues
+    const issueRows = floatIssues.map(f => ({
+      'Zone': f.zone, 'TDR Name': f.tdrName,
+      'Agent Code': f.agentCode, 'Agent Name': f.agentName, 'Phone': f.contactPhone,
+      'Issue Type': f.issueType, 'Float Amount': f.reportedFloat,
+      'Description': f.description, 'Status': f.status,
+      'Resolved At': f.resolvedAt?.toISOString().split('T')[0] || '',
+      'Resolution Notes': f.resolutionNotes || '',
+      'Reported At': f.reportedAt.toISOString().split('T')[0],
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(issueRows.length > 0 ? issueRows : [{}]), 'Float Issues');
 
-  lines.push('\n=== PROSPECTS ===');
-  lines.push('id,tdrId,tdrName,zone,prospectType,businessName,ownerName,contactPhone,town,address,merchantCategory,estimatedFloat,status,followUpDate,convertedAt,notes,createdAt');
-  prospects.forEach(p => {
-    lines.push([p.id, p.tdrId, p.tdrName, p.zone, p.prospectType, p.businessName, p.ownerName, p.contactPhone,
-      p.town, p.address || '', p.merchantCategory || '', p.estimatedFloat || '', p.status,
-      p.followUpDate?.toISOString() || '', p.convertedAt?.toISOString() || '',
-      (p.notes || '').replace(/,/g, ';'), p.createdAt.toISOString()].join(','));
-  });
+    // Sheet 4: Prospects
+    const prospectRows = prospects.map(p => ({
+      'Zone': p.zone, 'TDR Name': p.tdrName,
+      'Prospect Type': p.prospectType, 'Business Name': p.businessName,
+      'Owner Name': p.ownerName, 'Phone': p.contactPhone, 'Town': p.town,
+      'Category': p.merchantCategory || '', 'Est. Float': p.estimatedFloat || '',
+      'Status': p.status,
+      'Follow-up Date': p.followUpDate?.toISOString().split('T')[0] || '',
+      'Converted At': p.convertedAt?.toISOString().split('T')[0] || '',
+      'Notes': p.notes || '', 'Date': p.createdAt.toISOString().split('T')[0],
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospectRows.length > 0 ? prospectRows : [{}]), 'Prospects');
 
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', `attachment; filename="zamtel-tdr-export-${period}.csv"`);
-  res.send(lines.join('\n'));
+    // Sheet 5: Unvisited Outlets (all zones — last visit > 4 days or never)
+    const allAgents = await prisma.agent.findMany({
+      orderBy: [{ zone: 'asc' }, { tdrName: 'asc' }, { agentName: 'asc' }],
+    });
+    const unvisitedRows: object[] = [];
+    for (const a of allAgents) {
+      const lastVisit = await prisma.visit.findFirst({
+        where: { agentCode: a.agentCode },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      const lastVisitedAt = lastVisit?.createdAt ?? null;
+      const daysAgo = lastVisitedAt
+        ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
+        : null;
+      if (daysAgo === null || daysAgo >= 4) {
+        unvisitedRows.push({
+          'Zone': a.zone, 'ZBM': a.zbmName, 'TDR Name': a.tdrName,
+          'Agent Name': a.agentName, 'Agent Code': a.agentCode,
+          'Type': a.type, 'Phone': a.contactPhone, 'Town': a.town,
+          'Cluster': a.cluster || '', 'Market': a.market || '',
+          'Last Visited': lastVisitedAt ? lastVisitedAt.toISOString().split('T')[0] : 'NEVER',
+          'Days Since Visit': daysAgo === null ? 'Never' : daysAgo,
+          'Status': daysAgo === null ? '🔴 Never Visited' : `🔴 ${daysAgo} days ago`,
+        });
+      }
+    }
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+      unvisitedRows.length > 0 ? unvisitedRows : [{ 'Status': 'All outlets visited within 4 days ✅' }]
+    ), 'Unvisited Outlets');
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="zamtel-hsd-export-${period}.xlsx"`);
+    res.send(buf);
+  } catch (err) {
+    console.error('HSD export error:', err);
+    res.status(500).json({ error: 'Export failed' });
+  }
 });
 
 // ─── GPS Map Data ──────────────────────────────────────────────────────────────

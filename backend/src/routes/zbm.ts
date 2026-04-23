@@ -271,6 +271,39 @@ zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospectRows), 'Prospects');
 
+    // Sheet 5: Unvisited Outlets (never visited OR last visit > 4 days ago)
+    const allAgents = await prisma.agent.findMany({
+      where: zoneWhere,
+      orderBy: [{ zone: 'asc' }, { tdrName: 'asc' }, { agentName: 'asc' }],
+    });
+    const unvisitedRows: object[] = [];
+    for (const a of allAgents) {
+      const lastVisit = await prisma.visit.findFirst({
+        where: { agentCode: a.agentCode },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      const lastVisitedAt = lastVisit?.createdAt ?? null;
+      const daysAgo = lastVisitedAt
+        ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
+        : null;
+      if (daysAgo === null || daysAgo >= 4) {
+        unvisitedRows.push({
+          'Zone': a.zone, 'TDR Name': a.tdrName, 'Agent Name': a.agentName,
+          'Agent Code': a.agentCode, 'Type': a.type,
+          'Phone': a.contactPhone, 'Town': a.town,
+          'Cluster': a.cluster || '', 'Market': a.market || '',
+          'Last Visited': lastVisitedAt ? lastVisitedAt.toISOString().split('T')[0] : 'NEVER',
+          'Days Since Visit': daysAgo === null ? 'Never' : daysAgo,
+          'Status': daysAgo === null ? '🔴 Never Visited' : `🔴 ${daysAgo} days ago`,
+        });
+      }
+    }
+    const unvisitedSheet = XLSX.utils.json_to_sheet(
+      unvisitedRows.length > 0 ? unvisitedRows : [{ 'Status': 'All outlets visited within 4 days ✅' }]
+    );
+    XLSX.utils.book_append_sheet(wb, unvisitedSheet, 'Unvisited Outlets');
+
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const scope = zone || 'ALL-ZONES';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
