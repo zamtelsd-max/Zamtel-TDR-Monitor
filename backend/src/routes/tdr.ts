@@ -527,23 +527,8 @@ tdrRouter.get('/visits/summary', async (req: Request, res: Response): Promise<vo
   res.json({ weekly: weeklyData, monthly: monthlyData });
 });
 
-// ─── GET /tdr/agents/:id ──────────────────────────────────────────────────────
-// Returns full agent detail including recent visits (joined via agentCode)
-tdrRouter.get('/agents/:id', async (req: Request, res: Response): Promise<void> => {
-  const tdrId = req.user!.userId;
-  const agent = await prisma.agent.findUnique({ where: { id: req.params.id } });
-  if (!agent || agent.tdrId !== tdrId) { res.status(404).json({ error: 'Not found' }); return; }
-
-  const visits = await prisma.visit.findMany({
-    where: { tdrId, agentCode: agent.agentCode },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-  });
-
-  res.json({ ...agent, visits });
-});
-
 // ─── GET /tdr/agents/stale ────────────────────────────────────────────────────
+// MUST be before /agents/:id — otherwise "stale" is treated as an ID
 // This TDR's agents whose last visit was > 4 days ago (threshold: 4 days)
 tdrRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void> => {
   const tdrId  = req.user!.userId;
@@ -565,4 +550,20 @@ tdrRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
 
   const stale = enriched.filter(a => a.isStale);
   res.json({ stale, total: enriched.length, staleCount: stale.length });
+});
+
+// ─── GET /tdr/agents/:id ──────────────────────────────────────────────────────
+// Returns full agent detail including recent visits (joined via agentCode)
+tdrRouter.get('/agents/:id', async (req: Request, res: Response): Promise<void> => {
+  const tdrId = req.user!.userId;
+  const agent = await prisma.agent.findUnique({ where: { id: req.params.id } });
+  if (!agent || agent.tdrId !== tdrId) { res.status(404).json({ error: 'Not found' }); return; }
+
+  const visits = await prisma.visit.findMany({
+    where: { tdrId, agentCode: agent.agentCode },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  });
+
+  res.json({ ...agent, visits });
 });
