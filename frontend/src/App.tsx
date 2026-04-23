@@ -8,6 +8,7 @@ import { PageErrorBoundary } from './components/PageErrorBoundary';
 import { Login }                from './pages/Login';
 import { TDRDashboardPage }     from './pages/TDRDashboard';
 import { ZBMDashboardPage }     from './pages/ZBMDashboard';
+import { ZBMLeaderboardPage }  from './pages/ZBMLeaderboardPage';
 import { HSDDashboardPage }     from './pages/HSDDashboard';
 import { AddAgentForm }         from './pages/AddAgentForm';
 import { RecordVisitForm }      from './pages/RecordVisitForm';
@@ -65,6 +66,11 @@ function AppRoutes() {
       <Route path="/zbm" element={
         <ProtectedRoute roles={['ZBM']}>
           <PageErrorBoundary page="ZBM Dashboard"><ZBMDashboardPage /></PageErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/zbm/leaderboard" element={
+        <ProtectedRoute roles={['ZBM']}>
+          <PageErrorBoundary page="ZBM Leaderboard"><ZBMLeaderboardPage /></PageErrorBoundary>
         </ProtectedRoute>
       } />
 

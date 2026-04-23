@@ -209,6 +209,22 @@ export const zbmApi = {
       params: period ? { period } : {},
       responseType: 'blob',
     }),
+
+  getLeaderboard: (period?: string) =>
+    client.get<{
+      period: string;
+      zone: string;
+      zbmName: string;
+      tdrLeaderboard: Array<{
+        id: string; name: string; zone: string;
+        agents: number; merchants: number; visits: number;
+        floatTotal: number; floatResolved: number;
+        agentPct: number; merchantPct: number; visitPct: number; floatPct: number;
+        score: number; pct: number;
+      }>;
+      targets: { agents: number; merchants: number; visits: number };
+      mtd: { workingDaysElapsed: number; workingDaysTotal: number } | null;
+    }>('/zbm/leaderboard', { params: period ? { period } : {} }),
 };
 
 // ─── HSD ─────────────────────────────────────────────────────────────────────

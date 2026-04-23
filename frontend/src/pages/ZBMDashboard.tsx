@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download, Trophy } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { zbmApi } from '../services/api';
 import type { ZBMDashboard, TDRStat, FloatIssue, Prospect } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
@@ -150,16 +150,21 @@ export const ZBMDashboardPage: React.FC = () => {
       ); })()}
 
       {/* Action buttons */}
-      <div className="flex justify-end gap-2 mb-3">
-        <Button size="sm" variant="secondary" onClick={() => navigate('/leaderboard')}
-          className="flex items-center gap-1.5">
-          <Trophy className="w-3.5 h-3.5" />
-          Leaderboard
-        </Button>
+      <div className="flex gap-2 mb-3 flex-wrap">
+        {/* Zone Leaderboard — prominent card */}
+        <Link to="/zbm/leaderboard" className="flex-1">
+          <div className="zamtel-gradient rounded-2xl px-4 py-3 flex items-center justify-between shadow-md cursor-pointer hover:opacity-90 transition-opacity">
+            <div>
+              <p className="text-white font-bold text-sm">🏆 Zone Leaderboard</p>
+              <p className="text-white/70 text-xs">TDR performance ranking</p>
+            </div>
+            <Trophy className="w-7 h-7 text-white opacity-80" />
+          </div>
+        </Link>
         <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}
-          className="flex items-center gap-1.5">
+          className="flex items-center gap-1.5 self-stretch">
           <Download className="w-3.5 h-3.5" />
-          Export Excel
+          Export
         </Button>
       </div>
 

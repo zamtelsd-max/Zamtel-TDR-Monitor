@@ -329,3 +329,59 @@ zbmRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
   const stale = enriched.filter(a => a.isStale);
   res.json({ stale, total: agents.length, staleCount: stale.length });
 });
+
+// ─── GET /zbm/leaderboard ─────────────────────────────────────────────────────
+// TDR performance leaderboard scoped to this ZBM's zone
+zbmRouter.get('/leaderboard', async (req: Request, res: Response): Promise<void> => {
+  const zbmId = req.user!.userId;
+  const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+  // Get ZBM's zone
+  const zbm = await prisma.user.findUnique({ where: { id: zbmId }, select: { zone: true, name: true } });
+  const zone = zbm?.zone || null;
+
+  // Date range for period
+  const [year, month] = period.split('-').map(Number);
+  const start = new Date(year, month - 1, 1);
+  const end   = new Date(year, month, 0, 23, 59, 59, 999);
+  const isCurrentMonth = new Date().getFullYear() === year && new Date().getMonth() + 1 === month;
+
+  const at = isCurrentMonth ? prorateMtdTarget(96) : 96;
+  const mt = isCurrentMonth ? prorateMtdTarget(96) : 96;
+  const vt = isCurrentMonth ? visitMtdTarget()     : visitMonthlyTarget();
+
+  // All TDRs in this ZBM's zone
+  const tdrs = await prisma.user.findMany({
+    where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
+    orderBy: { name: 'asc' },
+  });
+
+  const rows = await Promise.all(tdrs.map(async (tdr) => {
+    const [agents, merchants, visits, floatTotal, floatResolved] = await Promise.all([
+      prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: start, lte: end } } }),
+      prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+      prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
+      prisma.floatIssue.count({ where: { tdrId: tdr.id, reportedAt: { gte: start, lte: end } } }),
+      prisma.floatIssue.count({ where: { tdrId: tdr.id, status: 'resolved', reportedAt: { gte: start, lte: end } } }),
+    ]);
+    const agentPct    = Math.min(Math.round(agents    / Math.max(at, 1) * 100), 100);
+    const merchantPct = Math.min(Math.round(merchants / Math.max(mt, 1) * 100), 100);
+    const visitPct    = Math.min(Math.round(visits    / Math.max(vt, 1) * 100), 100);
+    const floatPct    = floatTotal > 0 ? Math.round(floatResolved / floatTotal * 100) : 100;
+    // Weighted score: agents 40%, merchants 20%, float 30%, visits 10%
+    const score = Math.round(agentPct * 0.4 + merchantPct * 0.2 + floatPct * 0.3 + visitPct * 0.1);
+    const pct   = Math.round((agentPct + merchantPct + visitPct) / 3);
+    return { id: tdr.id, name: tdr.name, zone: tdr.zone || 'Unassigned', agents, merchants, visits, floatTotal, floatResolved, agentPct, merchantPct, visitPct, floatPct, score, pct };
+  }));
+
+  const ranked = [...rows].sort((a, b) => b.score - a.score || b.agents - a.agents);
+
+  res.json({
+    period,
+    zone: zone || 'All Zones',
+    zbmName: zbm?.name || '',
+    tdrLeaderboard: ranked,
+    targets: { agents: at, merchants: mt, visits: vt },
+    mtd: isCurrentMonth ? { workingDaysElapsed: workingDaysElapsed(), workingDaysTotal: workingDaysThisMonth() } : null,
+  });
+});
