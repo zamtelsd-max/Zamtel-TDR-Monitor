@@ -423,7 +423,7 @@ tdrRouter.get('/activities', async (req: Request, res: Response): Promise<void> 
       prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
     ]);
     const activities = [
-      ...agents.map(a => ({ type: 'agent', id: a.id, label: a.agentName, sub: `${a.type} · ${a.town}`, ts: a.createdAt })),
+      ...agents.map(a => ({ type: 'agent', id: a.id, label: a.agentName, sub: `${a.agentCode} · ${a.type} · ${a.town}`, ts: a.createdAt })),
       ...visits.map(v => ({ type: 'visit', id: v.id, label: v.outletName, sub: `Visit · ${v.town}`, ts: v.createdAt })),
       ...floatIssues.map(f => ({ type: 'float', id: f.id, label: f.agentName, sub: `Float Issue · ${f.status}`, ts: f.reportedAt })),
       ...prospects.map(p => ({ type: 'prospect', id: p.id, label: p.businessName, sub: `Prospect · ${p.status}`, ts: p.createdAt })),

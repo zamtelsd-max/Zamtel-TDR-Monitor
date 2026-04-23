@@ -486,6 +486,7 @@ export const TDRDashboardPage: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">{a.agentName}</p>
                   <p className="text-xs text-gray-500">{a.type === 'merchant' ? '🏪 Merchant' : '👤 Normal Agent'} · {a.town}</p>
+                  <p className="text-xs font-mono text-gray-400">{a.agentCode}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs font-bold text-red-600">
@@ -703,14 +704,14 @@ export const TDRDashboardPage: React.FC = () => {
               <>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   {[
-                    { label: 'Name',    value: agentDetail.agentName },
-                    { label: 'Code',    value: agentDetail.agentCode },
-                    { label: 'Type',    value: agentDetail.type },
-                    { label: 'Phone',   value: agentDetail.contactPhone },
-                    { label: 'Town',    value: agentDetail.town },
-                    { label: 'Float',   value: `K${Number(agentDetail.initialFloat).toLocaleString()}` },
-                    { label: 'Zone',    value: agentDetail.zone },
-                    { label: 'Added',   value: new Date(agentDetail.createdAt).toLocaleDateString() },
+                    { label: 'Name',       value: agentDetail.agentName },
+                    { label: 'Agent Code', value: agentDetail.agentCode },
+                    { label: 'Type',       value: agentDetail.type },
+                    { label: 'Phone',      value: agentDetail.contactPhone },
+                    { label: 'Town',       value: agentDetail.town },
+                    { label: 'Float',      value: `K${Number(agentDetail.initialFloat).toLocaleString()}` },
+                    { label: 'Zone',       value: agentDetail.zone },
+                    { label: 'Added',      value: new Date(agentDetail.createdAt).toLocaleDateString() },
                   ].map(f => (
                     <div key={f.label} className="bg-gray-50 rounded-xl px-3 py-2">
                       <p className="text-[10px] text-gray-400 uppercase tracking-wide">{f.label}</p>
