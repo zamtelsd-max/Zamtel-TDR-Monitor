@@ -329,7 +329,17 @@ tdrRouter.get('/agents/by-code/:code', async (req: Request, res: Response): Prom
   try {
     const agent = await prisma.agent.findUnique({ where: { agentCode: req.params.code } });
     if (!agent) { res.status(404).json({ error: 'Agent not found' }); return; }
-    res.json(agent);
+    // Include last visit info for stale detection
+    const lastVisit = await prisma.visit.findFirst({
+      where:   { agentCode: agent.agentCode },
+      orderBy: { createdAt: 'desc' },
+      select:  { createdAt: true },
+    });
+    const lastVisitedAt = lastVisit?.createdAt ?? null;
+    const daysAgo = lastVisitedAt
+      ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
+      : null;
+    res.json({ ...agent, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 4 });
   } catch (err) {
     res.status(500).json({ error: 'Lookup failed' });
   }
@@ -534,11 +544,9 @@ tdrRouter.get('/agents/:id', async (req: Request, res: Response): Promise<void> 
 });
 
 // ─── GET /tdr/agents/stale ────────────────────────────────────────────────────
-// This TDR's agents whose last visit was > 5 days ago
+// This TDR's agents whose last visit was > 4 days ago (threshold: 4 days)
 tdrRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void> => {
   const tdrId  = req.user!.userId;
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 5);
 
   const agents = await prisma.agent.findMany({ where: { tdrId }, orderBy: { agentName: 'asc' } });
 
@@ -552,8 +560,9 @@ tdrRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
     const daysAgo = lastVisitedAt
       ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
       : null;
-    return { ...a, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 5 };
+    return { ...a, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 4 };
   }));
 
-  res.json(enriched.filter(a => a.isStale));
+  const stale = enriched.filter(a => a.isStale);
+  res.json({ stale, total: enriched.length, staleCount: stale.length });
 });

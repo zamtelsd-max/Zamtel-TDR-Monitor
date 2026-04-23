@@ -128,8 +128,9 @@ export const TDRDashboardPage: React.FC = () => {
   // Visit summary
   const [visitSummary, setVisitSummary] = useState<{ weekly: Array<{ label: string; count: number }>; monthly: Array<{ label: string; count: number }> } | null>(null);
 
-  // Stale agents (not visited in 5+ days)
+  // Stale agents (not visited in 4+ days)
   const [staleAgents, setStaleAgents] = useState<Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null }>>([]);
+  const [staleAlertShown, setStaleAlertShown] = useState(false);
 
   // Agent detail drawer
   const [agentDetail, setAgentDetail] = useState<(Agent & { visits: Visit[] }) | null>(null);
@@ -151,13 +152,24 @@ export const TDRDashboardPage: React.FC = () => {
     tdrApi.getProspects().then(r => setProspects(r.data)).catch(() => {});
     tdrApi.getActivities().then(r => setActivities(r.data)).catch(() => {});
     tdrApi.getVisitSummary().then(r => setVisitSummary(r.data)).catch(() => {});
-    tdrApi.getStaleAgents().then(r => setStaleAgents(r.data)).catch(() => {});
+    tdrApi.getStaleAgents().then(r => setStaleAgents(r.data.stale ?? [])).catch(() => {});
     getQueue().then(q => setQueueCount(q.length)).catch(() => {});
   };
 
   useEffect(() => {
     refresh();
   }, []); // eslint-disable-line
+
+  // Alert TDR when stale agents load (once per session)
+  useEffect(() => {
+    if (!staleAlertShown && staleAgents.length > 0) {
+      setStaleAlertShown(true);
+      toast.error(
+        `🚨 ${staleAgents.length} outlet${staleAgents.length > 1 ? 's' : ''} not visited in 4+ days! Scroll down to see the list.`,
+        { duration: 8000, icon: '🔴' }
+      );
+    }
+  }, [staleAgents]); // eslint-disable-line
 
   // Check follow-up prospects and show in-app toast alert
   useEffect(() => {
@@ -464,7 +476,7 @@ export const TDRDashboardPage: React.FC = () => {
               {staleAgents.length}
             </span>
           </div>
-          <p className="text-xs text-red-500 mb-3 font-medium">Not visited in 5+ days — needs immediate follow-up</p>
+          <p className="text-xs text-red-500 mb-3 font-medium">Not visited in 4+ days — needs immediate follow-up</p>
           <div className="space-y-2">
             {staleAgents.map(a => (
               <div key={a.id} className="flex items-center gap-3 bg-white border border-red-100 rounded-xl px-3 py-2">

@@ -175,7 +175,7 @@ export const tdrApi = {
     }>('/tdr/visits/summary'),
 
   getStaleAgents: () =>
-    client.get<Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null; isStale: boolean }>>('/tdr/agents/stale'),
+    client.get<{ stale: Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null; isStale: boolean }>; total: number; staleCount: number }>('/tdr/agents/stale'),
 };
 
 // ─── ZBM ─────────────────────────────────────────────────────────────────────
