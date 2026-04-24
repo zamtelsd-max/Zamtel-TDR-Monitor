@@ -6,7 +6,7 @@ import path from 'path';
 // on mobile field devices. The app works fully without it.
 
 export default defineConfig({
-  base: '/tdr/',
+  base: process.env.VITE_BASE_URL || '/tdr/',
   plugins: [
     react(),
   ],
