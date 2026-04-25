@@ -131,6 +131,8 @@ export const TDRDashboardPage: React.FC = () => {
   // Stale agents (not visited in 4+ days)
   const [staleAgents, setStaleAgents] = useState<Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null }>>([]);
   const [staleAlertShown, setStaleAlertShown] = useState(false);
+  // Track which agent was just visited (for normalisation UI)
+  const [justVisited, setJustVisited] = useState<string | null>(null);
 
   // Agent detail drawer
   const [agentDetail, setAgentDetail] = useState<(Agent & { visits: Visit[] }) | null>(null);
@@ -157,7 +159,24 @@ export const TDRDashboardPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // Check if a visit was just recorded — pick up agent code + force fresh stale fetch
+    const visitedCode = localStorage.getItem('zamtel_tdr_visit_recorded');
+    if (visitedCode) {
+      setJustVisited(visitedCode);
+      localStorage.removeItem('zamtel_tdr_visit_recorded');
+      // Show brief normalisation toast
+      toast.success(`✅ Visit recorded — refreshing outlet status…`, { duration: 3000 });
+    }
     refresh();
+
+    // Re-fetch stale list whenever the tab regains focus (handles back-navigation)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        tdrApi.getStaleAgents().then(r => setStaleAgents(r.data.stale ?? [])).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []); // eslint-disable-line
 
   // Alert TDR when stale agents load (once per session)
@@ -473,32 +492,52 @@ export const TDRDashboardPage: React.FC = () => {
             <span className="text-lg">🚩</span>
             <h3 className="font-bold text-red-700 text-sm">Unvisited Agents / Merchants</h3>
             <span className="ml-auto bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              {staleAgents.length}
+              {staleAgents.filter(a => a.agentCode !== justVisited).length}
             </span>
           </div>
           <p className="text-xs text-red-500 mb-3 font-medium">Not visited in 4+ days — needs immediate follow-up</p>
           <div className="space-y-2">
-            {staleAgents.map(a => (
-              <div key={a.id} className="flex items-center gap-3 bg-white border border-red-100 rounded-xl px-3 py-2">
-                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm">🚩</span>
+            {staleAgents.map(a => {
+              const wasJustVisited = a.agentCode === justVisited;
+              return (
+                <div key={a.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 border transition-all ${
+                  wasJustVisited
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-white border-red-100'
+                }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    wasJustVisited ? 'bg-green-100' : 'bg-red-100'
+                  }`}>
+                    <span className="text-sm">{wasJustVisited ? '✅' : '🚩'}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{a.agentName}</p>
+                    <p className="text-xs text-gray-500">{a.type === 'merchant' ? '🏪 Merchant' : '👤 Normal Agent'} · {a.town}</p>
+                    <p className="text-xs font-mono text-gray-400">{a.agentCode}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    {wasJustVisited ? (
+                      <p className="text-xs font-bold text-green-600">✅ Visited today</p>
+                    ) : (
+                      <>
+                        <p className="text-xs font-bold text-red-600">
+                          {a.daysAgo === null ? 'Never visited' : `${a.daysAgo}d ago`}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                          {a.lastVisitedAt ? new Date(a.lastVisitedAt).toLocaleDateString() : '—'}
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{a.agentName}</p>
-                  <p className="text-xs text-gray-500">{a.type === 'merchant' ? '🏪 Merchant' : '👤 Normal Agent'} · {a.town}</p>
-                  <p className="text-xs font-mono text-gray-400">{a.agentCode}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xs font-bold text-red-600">
-                    {a.daysAgo === null ? 'Never visited' : `${a.daysAgo}d ago`}
-                  </p>
-                  <p className="text-[10px] text-gray-400">
-                    {a.lastVisitedAt ? new Date(a.lastVisitedAt).toLocaleDateString() : '—'}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {justVisited && staleAgents.some(a => a.agentCode === justVisited) && (
+            <p className="text-xs text-green-600 font-medium mt-3 text-center">
+              ✅ List will update on next refresh
+            </p>
+          )}
         </Card>
       )}
 

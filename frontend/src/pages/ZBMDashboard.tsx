@@ -226,12 +226,12 @@ export const ZBMDashboardPage: React.FC = () => {
         <Card className="mb-4 border-l-4 border-red-500 bg-red-50">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-lg">🚩</span>
-            <h3 className="font-bold text-red-700 text-sm">Unvisited Outlets (5+ days)</h3>
+            <h3 className="font-bold text-red-700 text-sm">Unvisited Outlets (4+ days)</h3>
             <span className="ml-auto bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
               {staleAgents.length}
             </span>
           </div>
-          <p className="text-xs text-red-500 mb-3">Agents / Merchants not visited in 5+ days — TDR action required</p>
+          <p className="text-xs text-red-500 mb-3">Agents / Merchants not visited in 4+ days — TDR action required</p>
           <div className="space-y-2">
             {(showAllStale ? staleAgents : staleAgents.slice(0, 5)).map((a: any) => (
               <div key={a.id} className="flex items-center gap-3 bg-white border border-red-100 rounded-xl px-3 py-2">

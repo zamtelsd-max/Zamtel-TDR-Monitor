@@ -355,7 +355,7 @@ zbmRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
     const daysAgo = lastVisitedAt
       ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
       : null;
-    const isStale = daysAgo === null ? true : daysAgo >= 5;
+    const isStale = daysAgo === null ? true : daysAgo >= 4;
     return { ...a, lastVisitedAt, daysAgo, isStale };
   }));
 

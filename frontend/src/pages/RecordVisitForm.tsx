@@ -95,6 +95,9 @@ export const RecordVisitForm: React.FC = () => {
         notes:        form.notes     || undefined,
       });
       localStorage.removeItem(DRAFT_KEY);
+      // Bust dashboard cache so stale list re-fetches on return
+      localStorage.removeItem('zamtel_tdr_dashboard');
+      localStorage.setItem('zamtel_tdr_visit_recorded', form.agentCode);
       toast.success('Visit recorded successfully!');
       navigate('/tdr');
     } catch (err: unknown) {
