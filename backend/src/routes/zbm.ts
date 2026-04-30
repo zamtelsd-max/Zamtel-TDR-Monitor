@@ -45,8 +45,8 @@ zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
     prisma.visits.count({ where: { ...zoneWhere, createdAt: { gte: start, lte: end } } }),
     prisma.float_issues.count({ where: { ...zoneWhere, status: { not: 'resolved' } } }),
     (zoneWhere.zone
-      ? prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects WHERE zone = ${zoneWhere.zone} GROUP BY status`
-      : prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`),
+      ? prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects WHERE zone = ${zoneWhere.zone} GROUP BY status`.catch(() => [])
+      : prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => [])),
   ]);
 
   const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;

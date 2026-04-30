@@ -57,7 +57,7 @@ hsdRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
         where: { status: { not: 'resolved' }, reportedAt: { lte: fortyEightHoursAgo } },
         orderBy: { reportedAt: 'asc' },
       }),
-      prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`,
+      prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => []),
     ]);
 
   const totalRecruits     = totalAgents + totalMerchants;
