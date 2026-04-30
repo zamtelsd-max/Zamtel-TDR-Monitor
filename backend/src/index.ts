@@ -50,6 +50,10 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Zamtel TDR Monitor API running on port ${PORT}`);
+  // Diagnostic: confirm Prisma client model keys
+  const { prisma } = require('./prisma');
+  const modelKeys = Object.keys(prisma).filter((k: string) => !k.startsWith('_') && !k.startsWith('$'));
+  console.log(`📋 Prisma models: ${modelKeys.join(', ')}`);
 });
 
 export default app;
