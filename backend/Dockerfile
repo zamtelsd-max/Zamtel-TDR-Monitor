@@ -9,14 +9,6 @@ COPY tsconfig.json ./
 COPY tsconfig.railway.json ./
 COPY src ./src
 RUN npm run build
-# Patch compiled JS: Prisma generates camelCase model names, code uses snake_case
-RUN find dist -name "*.js" | xargs sed -i \
-    -e 's/\.agent\b/.agents/g' \
-    -e 's/\.visit\b/.visits/g' \
-    -e 's/\.floatIssue\b/.float_issues/g' \
-    -e 's/\.salesTarget\b/.sales_targets/g' \
-    -e 's/\.prospect\b/.prospects/g' \
-    -e 's/\.user\b/.users/g'
 
 FROM node:20-alpine AS runner
 WORKDIR /app
