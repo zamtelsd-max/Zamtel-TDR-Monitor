@@ -10,7 +10,7 @@ const prismaClient =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prismaClient;
 
-// Export as `any` so snake_case model names (agents, visits, float_issues, etc.)
-// compile without TS errors — Prisma generates camelCase but DB schema uses snake_case aliases
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+
+
 export const prisma = prismaClient as any;

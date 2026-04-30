@@ -15,17 +15,17 @@ zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
   const { start, end } = mtdRange();
 
   // All TDRs in this zone (or all if zone is null)
-  const tdrs = await prisma.users.findMany({
+  const tdrs = await prisma.user.findMany({
     where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
   });
 
   // Per-TDR stats
   const tdrStats = await Promise.all(tdrs.map(async (tdr) => {
     const [agents, merchants, visits, floatIssues] = await Promise.all([
-      prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: start, lte: end } } }),
-      prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-      prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
-      prisma.float_issues.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
+      prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: start, lte: end } } }),
+      prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+      prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
+      prisma.floatIssue.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
     ]);
 
     const agentTarget    = prorateMtdTarget(96);
@@ -40,10 +40,10 @@ zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
 
   // Zone totals
   const [totalAgents, totalMerchants, totalVisits, floatIssuesPending, prospects] = await Promise.all([
-    prisma.agents.count({ where: { ...zoneWhere, type: 'normal',   createdAt: { gte: start, lte: end } } }),
-    prisma.agents.count({ where: { ...zoneWhere, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-    prisma.visits.count({ where: { ...zoneWhere, createdAt: { gte: start, lte: end } } }),
-    prisma.float_issues.count({ where: { ...zoneWhere, status: { not: 'resolved' } } }),
+    prisma.agent.count({ where: { ...zoneWhere, type: 'normal',   createdAt: { gte: start, lte: end } } }),
+    prisma.agent.count({ where: { ...zoneWhere, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+    prisma.visit.count({ where: { ...zoneWhere, createdAt: { gte: start, lte: end } } }),
+    prisma.floatIssue.count({ where: { ...zoneWhere, status: { not: 'resolved' } } }),
     (zoneWhere.zone
       ? prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects WHERE zone = ${zoneWhere.zone} GROUP BY status`.catch(() => [])
       : prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => [])),
@@ -51,7 +51,7 @@ zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
 
   const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const target = zone
-    ? await prisma.sales_targets.findUnique({ where: { zone_period: { zone, period } } })
+    ? await prisma.salesTarget.findUnique({ where: { zone_period: { zone, period } } })
     : null;
 
   res.json({
@@ -79,15 +79,15 @@ zbmRouter.get('/tdr/:tdrId', async (req: Request, res: Response): Promise<void> 
   const zone  = req.user!.zone!;
   const tdrId = req.params.tdrId;
 
-  const tdr = await prisma.users.findFirst({ where: { id: tdrId, zone, role: 'TDR' } });
+  const tdr = await prisma.user.findFirst({ where: { id: tdrId, zone, role: 'TDR' } });
   if (!tdr) { res.status(404).json({ error: 'TDR not found in your zone' }); return; }
 
   const { start, end } = mtdRange();
   const [agents, visits, floatIssues, prospects] = await Promise.all([
-    prisma.agents.findMany({ where: { tdrId, createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
-    prisma.visits.findMany({ where: { tdrId, createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
-    prisma.float_issues.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
-    prisma.prospects.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
+    prisma.agent.findMany({ where: { tdrId, createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
+    prisma.visit.findMany({ where: { tdrId, createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
+    prisma.floatIssue.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
+    prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
   ]);
 
   res.json({ tdr, agents, visits, floatIssues, prospects });
@@ -95,7 +95,7 @@ zbmRouter.get('/tdr/:tdrId', async (req: Request, res: Response): Promise<void> 
 
 // ─── GET /zbm/float-issues ────────────────────────────────────────────────────
 zbmRouter.get('/float-issues', async (req: Request, res: Response): Promise<void> => {
-  const issues = await prisma.float_issues.findMany({
+  const issues = await prisma.floatIssue.findMany({
     where: { zone: req.user!.zone! },
     orderBy: { reportedAt: 'desc' },
   });
@@ -104,13 +104,13 @@ zbmRouter.get('/float-issues', async (req: Request, res: Response): Promise<void
 
 // ─── PATCH /zbm/float-issues/:id ──────────────────────────────────────────────
 zbmRouter.patch('/float-issues/:id', async (req: Request, res: Response): Promise<void> => {
-  const issue = await prisma.float_issues.findUnique({ where: { id: req.params.id } });
+  const issue = await prisma.floatIssue.findUnique({ where: { id: req.params.id } });
   if (!issue || issue.zone !== req.user!.zone) { res.status(404).json({ error: 'Not found' }); return; }
 
   const { status, resolutionNotes } = req.body;
   const resolvedAt = status === 'resolved' ? new Date() : undefined;
 
-  const updated = await prisma.float_issues.update({
+  const updated = await prisma.floatIssue.update({
     where: { id: req.params.id },
     data: {
       status:          status || undefined,
@@ -124,7 +124,7 @@ zbmRouter.patch('/float-issues/:id', async (req: Request, res: Response): Promis
 
 // ─── GET /zbm/prospects ───────────────────────────────────────────────────────
 zbmRouter.get('/prospects', async (req: Request, res: Response): Promise<void> => {
-  const prospects = await prisma.prospects.findMany({
+  const prospects = await prisma.prospect.findMany({
     where: { zone: req.user!.zone! },
     orderBy: { createdAt: 'desc' },
   });
@@ -138,7 +138,7 @@ zbmRouter.get('/map', async (req: Request, res: Response): Promise<void> => {
     const zoneFilter = user.zone || null; // null zone (e.g. zbm-kuzanga) → all zones
 
     const [agents, visits] = await Promise.all([
-      prisma.agents.findMany({
+      prisma.agent.findMany({
         where: {
           ...(zoneFilter ? { zone: zoneFilter } : {}),
           latitude: { not: null },
@@ -153,7 +153,7 @@ zbmRouter.get('/map', async (req: Request, res: Response): Promise<void> => {
         orderBy: { createdAt: 'desc' },
         take: 2000,
       }),
-      prisma.visits.findMany({
+      prisma.visit.findMany({
         where: {
           ...(zoneFilter ? { zone: zoneFilter } : {}),
           latitude: { not: null },
@@ -200,19 +200,19 @@ zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
     const zoneWhere = zone ? { zone } : {};
 
     const [agents, visits, floatIssues, prospects] = await Promise.all([
-      prisma.agents.findMany({
+      prisma.agent.findMany({
         where: { ...zoneWhere, createdAt: { gte: start, lte: end } },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.visits.findMany({
+      prisma.visit.findMany({
         where: { ...zoneWhere, createdAt: { gte: start, lte: end } },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.float_issues.findMany({
+      prisma.floatIssue.findMany({
         where: zoneWhere,
         orderBy: { reportedAt: 'desc' },
       }),
-      prisma.prospects.findMany({
+      prisma.prospect.findMany({
         where: zoneWhere,
         orderBy: { createdAt: 'desc' },
       }),
@@ -270,13 +270,13 @@ zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospectRows), 'Prospects');
 
     // Sheet 5: Unvisited Outlets (never visited OR last visit > 4 days ago)
-    const allAgents = await prisma.agents.findMany({
+    const allAgents = await prisma.agent.findMany({
       where: zoneWhere,
       orderBy: [{ zone: 'asc' }, { tdrName: 'asc' }, { agentName: 'asc' }],
     });
     const unvisitedRows: object[] = [];
     for (const a of allAgents) {
-      const lastVisit = await prisma.visits.findFirst({
+      const lastVisit = await prisma.visit.findFirst({
         where: { agentCode: a.agentCode },
         orderBy: { createdAt: 'desc' },
         select: { createdAt: true },
@@ -316,10 +316,10 @@ zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
 // ─── POST /zbm/prospects/:id/approve-closure ──────────────────────────────────
 zbmRouter.post('/prospects/:id/approve-closure', async (req: Request, res: Response): Promise<void> => {
   try {
-    const prospect = await prisma.prospects.findUnique({ where: { id: req.params.id } });
+    const prospect = await prisma.prospect.findUnique({ where: { id: req.params.id } });
     if (!prospect) { res.status(404).json({ error: 'Not found' }); return; }
     if (prospect.zone !== req.user!.zone) { res.status(403).json({ error: 'Not in your zone' }); return; }
-    const updated = await prisma.prospects.update({
+    const updated = await prisma.prospect.update({
       where: { id: req.params.id },
       data: { status: 'converted', convertedAt: new Date(), closedByTdr: true, zbmApprovalRequired: false },
     });
@@ -337,14 +337,14 @@ zbmRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
   cutoff.setDate(cutoff.getDate() - 5);
 
   // All agents in zone
-  const agents = await prisma.agents.findMany({
+  const agents = await prisma.agent.findMany({
     where: zone ? { zone } : {},
     orderBy: { agentName: 'asc' },
   });
 
   // For each agent get the most recent visit
   const enriched = await Promise.all(agents.map(async (a) => {
-    const lastVisit = await prisma.visits.findFirst({
+    const lastVisit = await prisma.visit.findFirst({
       where:   { agentCode: a.agentCode },
       orderBy: { createdAt: 'desc' },
       select:  { createdAt: true },
@@ -368,7 +368,7 @@ zbmRouter.get('/leaderboard', async (req: Request, res: Response): Promise<void>
   const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
 
   // Get ZBM's zone
-  const zbm = await prisma.users.findUnique({ where: { id: zbmId }, select: { zone: true, name: true } });
+  const zbm = await prisma.user.findUnique({ where: { id: zbmId }, select: { zone: true, name: true } });
   const zone = zbm?.zone || null;
 
   // Date range for period
@@ -382,18 +382,18 @@ zbmRouter.get('/leaderboard', async (req: Request, res: Response): Promise<void>
   const vt = isCurrentMonth ? visitMtdTarget()     : visitMonthlyTarget();
 
   // All TDRs in this ZBM's zone
-  const tdrs = await prisma.users.findMany({
+  const tdrs = await prisma.user.findMany({
     where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
     orderBy: { name: 'asc' },
   });
 
   const rows = await Promise.all(tdrs.map(async (tdr) => {
     const [agents, merchants, visits, floatTotal, floatResolved] = await Promise.all([
-      prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: start, lte: end } } }),
-      prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-      prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
-      prisma.float_issues.count({ where: { tdrId: tdr.id, reportedAt: { gte: start, lte: end } } }),
-      prisma.float_issues.count({ where: { tdrId: tdr.id, status: 'resolved', reportedAt: { gte: start, lte: end } } }),
+      prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: start, lte: end } } }),
+      prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+      prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
+      prisma.floatIssue.count({ where: { tdrId: tdr.id, reportedAt: { gte: start, lte: end } } }),
+      prisma.floatIssue.count({ where: { tdrId: tdr.id, status: 'resolved', reportedAt: { gte: start, lte: end } } }),
     ]);
     const agentPct    = Math.min(Math.round(agents    / Math.max(at, 1) * 100), 100);
     const merchantPct = Math.min(Math.round(merchants / Math.max(mt, 1) * 100), 100);
