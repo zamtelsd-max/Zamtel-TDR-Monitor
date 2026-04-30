@@ -6,6 +6,7 @@ RUN npm install
 COPY prisma ./prisma
 RUN npx prisma generate
 COPY tsconfig.json ./
+COPY tsconfig.railway.json ./
 COPY src ./src
 RUN npm run build
 
@@ -20,4 +21,4 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY prisma ./prisma
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "DATABASE_URL=$DIRECT_URL npx prisma migrate deploy --schema prisma/schema.prisma && node dist/index.js"]
