@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type {
   AuthUser, TDRDashboard, ZBMDashboard, HSDDashboard,
-  Agent, Visit, FloatIssue, Prospect, ZoneStat, SalesTarget,
+  Agent, Visit, FloatIssue, Prospect, ZoneStat, SalesTarget, TDRFlag,
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -225,6 +225,18 @@ export const zbmApi = {
       targets: { agents: number; merchants: number; visits: number };
       mtd: { workingDaysElapsed: number; workingDaysTotal: number } | null;
     }>('/zbm/leaderboard', { params: period ? { period } : {} }),
+
+  getASEs: () =>
+    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; tdrCount: number }> }>('/zbm/ases'),
+
+  addASE: (data: { id: string; name: string; pin: string }) =>
+    client.post('/zbm/ases', data),
+
+  getTDRs: () =>
+    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; aseId: string | null }> }>('/zbm/tdrs'),
+
+  assignTDR: (tdrId: string, aseId: string | null) =>
+    client.post('/zbm/assign-tdr', { tdrId, aseId }),
 };
 
 // ─── HSD ─────────────────────────────────────────────────────────────────────
@@ -293,4 +305,18 @@ export const aseApi = {
 
   getTDR: (id: string) =>
     client.get(`/ase/tdr/${id}`),
+
+  availableTDRs: () =>
+    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; aseId: string | null; mine: boolean }> }>('/ase/available-tdrs'),
+
+  pickTDR: (tdrId: string) =>
+    client.post('/ase/pick-tdr', { tdrId }),
+
+  releaseTDR: (tdrId: string) =>
+    client.delete(`/ase/pick-tdr/${tdrId}`),
+};
+
+// ─── Flags ───────────────────────────────────────────────────────────────────
+export const flagsApi = {
+  get: () => client.get<{ success: boolean; total: number; data: TDRFlag[] }>('/flags'),
 };

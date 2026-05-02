@@ -60,3 +60,56 @@ aseRouter.get('/tdr/:id', async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ error: 'Failed to load TDR data' });
   }
 });
+
+// ─── GET /ase/available-tdrs — TDRs in same zone not yet assigned to another ASE ──
+aseRouter.get('/available-tdrs', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseId = req.user!.userId;
+    const zone  = req.user!.zone;
+    const tdrs  = await prisma.user.findMany({
+      where: {
+        role: 'TDR',
+        active: true,
+        ...(zone ? { zone } : {}),
+        OR: [{ aseId: null }, { aseId: aseId }],
+      },
+      select: { id: true, name: true, zone: true, aseId: true },
+      orderBy: { name: 'asc' },
+    });
+    const result = tdrs.map(t => ({ ...t, mine: t.aseId === aseId }));
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load available TDRs' });
+  }
+});
+
+// ─── POST /ase/pick-tdr — ASE picks a TDR ────────────────────────────────────
+aseRouter.post('/pick-tdr', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseId = req.user!.userId;
+    const { tdrId } = req.body as { tdrId: string };
+    if (!tdrId) { res.status(400).json({ error: 'tdrId required' }); return; }
+    const tdr = await prisma.user.findUnique({ where: { id: tdrId } });
+    if (!tdr) { res.status(404).json({ error: 'TDR not found' }); return; }
+    if (tdr.aseId && tdr.aseId !== aseId) {
+      res.status(409).json({ error: 'TDR already assigned to another ASE' }); return;
+    }
+    await prisma.user.update({ where: { id: tdrId }, data: { aseId } });
+    res.json({ success: true, message: 'TDR assigned to you' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to pick TDR' });
+  }
+});
+
+// ─── DELETE /ase/pick-tdr/:tdrId — ASE releases a TDR ────────────────────────
+aseRouter.delete('/pick-tdr/:tdrId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseId = req.user!.userId;
+    const tdr = await prisma.user.findUnique({ where: { id: req.params.tdrId } });
+    if (!tdr || tdr.aseId !== aseId) { res.status(403).json({ error: 'Not authorized' }); return; }
+    await prisma.user.update({ where: { id: req.params.tdrId }, data: { aseId: null } });
+    res.json({ success: true, message: 'TDR released' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to release TDR' });
+  }
+});

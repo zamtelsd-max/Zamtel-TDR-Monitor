@@ -8,16 +8,137 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  TDR
-  ZBM
-  HSD
-  ASE
+model agents {
+  id  String  @id  @default(cuid())
+  tdrId            String
+  tdrName          String
+  zone             String
+  zbmName          String
+  agentName        String
+  agentCode        String    @unique
+  contactPhone     String
+  type             AgentType
+  merchantCategory String?
+  initialFloat     Float     @default(0)
+  town             String
+  address          String?
+  cluster          String?
+  market           String?
+  latitude         Float?
+  longitude        Float?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  users            users     @relation(fields: [tdrId], references: [id])
+}
+
+model float_issues {
+  id  String  @id  @default(cuid())
+  tdrId           String
+  tdrName         String
+  zone            String
+  agentCode       String
+  agentName       String
+  contactPhone    String
+  issueType       IssueType
+  reportedFloat   Float       @default(0)
+  description     String
+  status          IssueStatus @default(reported)
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  resolutionNotes String?
+  reportedAt      DateTime    @default(now())
+  updatedAt  DateTime  @updatedAt
+  users           users       @relation(fields: [tdrId], references: [id])
+}
+
+model prospects {
+  id  String  @id  @default(cuid())
+  tdrId               String
+  tdrName             String
+  zone                String
+  prospectType        ProspectType
+  businessName        String
+  ownerName           String
+  contactPhone        String
+  town                String
+  address             String?
+  merchantCategory    String?
+  estimatedFloat      Float?
+  status              ProspectStatus @default(identified)
+  notes               String?
+  followUpDate        DateTime?
+  convertedAt         DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt  DateTime  @updatedAt
+  closedByTdr         Boolean        @default(false)
+  zbmApprovalRequired Boolean        @default(false)
+  users               users          @relation(fields: [tdrId], references: [id])
+}
+
+model sales_targets {
+  id  String  @id  @default(cuid())
+  zone            String
+  period          String
+  targetAgents    Int      @default(96)
+  targetMerchants Int      @default(96)
+  targetOutlets   Int      @default(20)
+  setByHsdId      String
+  createdAt       DateTime @default(now())
+  updatedAt  DateTime  @updatedAt
+  users           users    @relation(fields: [setByHsdId], references: [id])
+
+  @@unique([zone, period])
+}
+
+model users {
+  id  String  @id  @default(cuid())
+  name          String
+  pin           String
+  role          Role
+  zone          String?
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt  DateTime  @updatedAt
+  aseId         String?
+  agents        agents[]
+  float_issues  float_issues[]
+  prospects     prospects[]
+  sales_targets sales_targets[]
+  visits        visits[]
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model visits {
+  id  String  @id  @default(cuid())
+  tdrId        String
+  tdrName      String
+  zone         String
+  zbmName      String
+  outletName   String
+  agentCode    String
+  contactPhone String
+  town         String
+  cluster      String?
+  market       String?
+  floatAmount  Float    @default(0)
+  latitude     Float?
+  longitude    Float?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt  DateTime  @updatedAt
+  users        users    @relation(fields: [tdrId], references: [id])
 }
 
 enum AgentType {
   normal
   merchant
+}
+
+enum IssueStatus {
+  reported
+  in_progress
+  resolved
 }
 
 enum IssueType {
@@ -27,10 +148,13 @@ enum IssueType {
   other
 }
 
-enum IssueStatus {
-  reported
-  in_progress
-  resolved
+enum ProspectStatus {
+  identified
+  contacted
+  interested
+  converted
+  follow_up
+  rejected
 }
 
 enum ProspectType {
@@ -38,171 +162,9 @@ enum ProspectType {
   merchant
 }
 
-enum ProspectStatus {
-  identified
-  contacted
-  interested
-  converted
-  rejected
-}
-
-model User {
-  id        String   @id
-  name      String
-  pin       String
-  role      Role
-  zone      String?
-  aseId     String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  agents       Agent[]
-  visits       Visit[]
-  floatIssues  FloatIssue[]
-  prospects    Prospect[]
-  targets      SalesTarget[] @relation("SetByHsd")
-
-  @@map("users")
-}
-
-model Agent {
-  id               String    @id @default(uuid())
-  tdrId            String
-  tdrName          String
-  zone             String
-  zbmName          String
-
-  agentName        String
-  agentCode        String    @unique
-  contactPhone     String
-
-  type             AgentType
-  merchantCategory String?
-
-  initialFloat     Float     @default(0)
-
-  town             String
-  address          String?
-  cluster          String?
-  market           String?
-
-  latitude         Float?
-  longitude        Float?
-
-  notes            String?
-
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  tdr              User      @relation(fields: [tdrId], references: [id])
-
-  @@map("agents")
-}
-
-model Visit {
-  id           String   @id @default(uuid())
-  tdrId        String
-  tdrName      String
-  zone         String
-  zbmName      String
-
-  outletName   String
-  agentCode    String
-  contactPhone String
-
-  town         String
-  cluster      String?
-  market       String?
-
-  floatAmount  Float    @default(0)
-
-  latitude     Float?
-  longitude    Float?
-
-  notes        String?
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  tdr          User     @relation(fields: [tdrId], references: [id])
-
-  @@map("visits")
-}
-
-model FloatIssue {
-  id              String      @id @default(uuid())
-  tdrId           String
-  tdrName         String
-  zone            String
-
-  agentCode       String
-  agentName       String
-  contactPhone    String
-
-  issueType       IssueType
-  reportedFloat   Float       @default(0)
-  description     String
-
-  status          IssueStatus @default(reported)
-  resolvedAt      DateTime?
-  resolvedBy      String?
-  resolutionNotes String?
-
-  reportedAt      DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  tdr             User        @relation(fields: [tdrId], references: [id])
-
-  @@map("float_issues")
-}
-
-model Prospect {
-  id               String         @id @default(uuid())
-  tdrId            String
-  tdrName          String
-  zone             String
-
-  prospectType     ProspectType
-  businessName     String
-  ownerName        String
-  contactPhone     String
-
-  town             String
-  address          String?
-  merchantCategory String?
-  estimatedFloat   Float?
-
-  status               ProspectStatus @default(identified)
-  notes                String?
-  followUpDate         DateTime?
-  convertedAt          DateTime?
-  closedByTdr          Boolean        @default(false)
-  zbmApprovalRequired  Boolean        @default(false)
-
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-
-  tdr              User           @relation(fields: [tdrId], references: [id])
-
-  @@map("prospects")
-}
-
-model SalesTarget {
-  id             String   @id @default(uuid())
-  zone           String
-  period         String   // YYYY-MM
-
-  targetAgents   Int      @default(96)
-  targetMerchants Int     @default(96)
-  targetOutlets  Int      @default(20)
-
-  setByHsdId     String
-  setByHsd       User     @relation("SetByHsd", fields: [setByHsdId], references: [id])
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@unique([zone, period])
-  @@map("sales_targets")
+enum Role {
+  TDR
+  ZBM
+  HSD
+  ASE
 }

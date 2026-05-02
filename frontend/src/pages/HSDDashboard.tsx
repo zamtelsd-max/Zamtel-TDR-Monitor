@@ -3,8 +3,8 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { hsdApi } from '../services/api';
-import type { HSDDashboard, ZoneStat, FloatIssue } from '../types';
+import { hsdApi, flagsApi } from '../services/api';
+import type { HSDDashboard, ZoneStat, FloatIssue, TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button, StatCard } from '../components/UI';
 import { ISSUE_TYPE_LABELS } from '../types';
@@ -63,6 +63,10 @@ export const HSDDashboardPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [mapData,   setMapData]   = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
   const [showMap,   setShowMap]   = useState(true);
+  const [mainTab,   setMainTab]   = useState<'dashboard' | 'flags'>('dashboard');
+  const [tdrFlags,  setTdrFlags]  = useState<TDRFlag[]>([]);
+  const [flagsLoading, setFlagsLoading] = useState(false);
+  const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
 
   const fetchData = async () => {
     setLoading(true);
@@ -94,6 +98,18 @@ export const HSDDashboardPage: React.FC = () => {
   };
 
   useEffect(() => { void fetchData(); }, [period]);
+
+  const loadFlags = () => {
+    setFlagsLoading(true);
+    flagsApi.get()
+      .then(r => setTdrFlags(r.data.data ?? []))
+      .catch(() => toast.error('Failed to load flags'))
+      .finally(() => setFlagsLoading(false));
+  };
+
+  useEffect(() => {
+    if (mainTab === 'flags') loadFlags();
+  }, [mainTab]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -171,6 +187,95 @@ export const HSDDashboardPage: React.FC = () => {
         </select>
       </PageHeader>
 
+      {/* Main Tab Bar */}
+      <div className="flex gap-2 px-4 pb-3">
+        {(['dashboard', 'flags'] as const).map(t => (
+          <button key={t} onClick={() => setMainTab(t)}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
+              mainTab === t ? 'bg-zamtel-green text-white shadow' : 'bg-white text-gray-500 border border-gray-200'
+            }`}>
+            {t === 'dashboard' ? '📊 Dashboard' : `🚩 Red Flags${tdrFlags.length > 0 ? ` (${tdrFlags.length})` : ''}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Red Flags Tab */}
+      {mainTab === 'flags' && (
+        <div className="px-4 pb-24">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold text-gray-700">
+              {flagsLoading ? 'Loading...' : `${tdrFlags.length} TDRs flagged nationally`}
+            </p>
+            <button onClick={loadFlags} className="p-2 rounded-xl hover:bg-gray-100">
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
+          {flagsLoading ? (
+            <div className="space-y-3">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
+          ) : tdrFlags.length === 0 ? (
+            <Card className="text-center py-10 text-gray-400">
+              <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No flagged TDRs at the moment. 🎉</p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {/* Group by zone */}
+              {Array.from(new Set(tdrFlags.map(f => f.zone || 'Unknown'))).sort().map(zone => {
+                const zoneFlags = tdrFlags.filter(f => (f.zone || 'Unknown') === zone);
+                const open = flagsOpen[zone] !== false;
+                return (
+                  <div key={zone} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+                      onClick={() => setFlagsOpen(p => ({ ...p, [zone]: !open }))}>
+                      <span className="font-bold text-sm text-gray-800">
+                        🗺 {zone} <span className="text-gray-400 font-normal">({zoneFlags.length})</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                          zoneFlags.some(f => f.severity === 'critical') ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {zoneFlags.filter(f => f.severity === 'critical').length} critical
+                        </span>
+                        {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                      </div>
+                    </button>
+                    {open && (
+                      <div className="px-4 pb-3 space-y-2 border-t border-gray-50">
+                        {zoneFlags.map(f => (
+                          <div key={f.tdrId} className={`rounded-xl p-3 mt-2 ${f.severity === 'critical' ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
+                            <p className="font-bold text-sm text-gray-800 flex items-center gap-1">
+                              {f.tdrName}
+                              <AlertTriangle className={`w-3 h-3 ${f.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
+                            </p>
+                            {f.flags.map((fl, i) => <p key={i} className="text-xs text-gray-700 mt-0.5">{fl}</p>)}
+                            <div className="grid grid-cols-3 gap-1 mt-2 text-center text-xs">
+                              <div className="bg-white/80 rounded-lg py-1">
+                                <span className="font-bold text-gray-700">{f.mtd.agents}/{f.mtd.agentTarget}</span>
+                                <p className="text-gray-500">Agents MTD</p>
+                              </div>
+                              <div className="bg-white/80 rounded-lg py-1">
+                                <span className="font-bold text-gray-700">{f.mtd.merchants}/{f.mtd.merchantTarget}</span>
+                                <p className="text-gray-500">Merchants MTD</p>
+                              </div>
+                              <div className="bg-white/80 rounded-lg py-1">
+                                <span className="font-bold text-gray-700">{f.mtd.visits}/{f.mtd.visitTarget}</span>
+                                <p className="text-gray-500">Visits MTD</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Dashboard Tab */}
+      {mainTab === 'dashboard' && (<>
       {/* MTD progress — shown only for current month */}
       {!period || period === `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}` ? (() => {
         const el = workingDaysElapsed(); const tot = workingDaysThisMonth(); const pct = Math.round(el/tot*100);
@@ -366,6 +471,7 @@ export const HSDDashboardPage: React.FC = () => {
           </div>
         </Card>
       )}
+      </>)}
     </Layout>
   );
 };

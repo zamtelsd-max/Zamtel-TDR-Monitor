@@ -188,6 +188,19 @@ export interface SalesTarget {
   setByHsdId:      string;
 }
 
+// ─── TDR Flag ─────────────────────────────────────────────────────────────────
+export interface TDRFlag {
+  tdrId:   string;
+  tdrName: string;
+  zone:    string | null;
+  aseId:   string | null;
+  flags:   string[];
+  severity: 'critical' | 'warning';
+  daily:   { agents: number; merchants: number; visits: number; target: number };
+  weekly:  { agents: number; merchants: number; visits: number };
+  mtd:     { agents: number; agentTarget: number; merchants: number; merchantTarget: number; visits: number; visitTarget: number };
+}
+
 // ─── Misc ─────────────────────────────────────────────────────────────────────
 export interface ApiError {
   error: string;

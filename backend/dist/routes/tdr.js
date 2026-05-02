@@ -52,16 +52,16 @@ exports.tdrRouter.get('/dashboard', async (req, res) => {
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits, agentsToday, merchantsToday, visitsToday] = await Promise.all([
-        prisma_1.prisma.agent.count({ where: { tdrId, type: 'normal', createdAt: { gte: start, lte: end } } }),
-        prisma_1.prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-        prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: start, lte: end } } }),
-        prisma_1.prisma.floatIssue.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
-        prisma_1.prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
-        prisma_1.prisma.agent.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
-        prisma_1.prisma.visit.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
-        prisma_1.prisma.agent.count({ where: { tdrId, type: 'normal', createdAt: { gte: todayStart, lte: todayEnd } } }),
-        prisma_1.prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
-        prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: todayStart, lte: todayEnd } } }),
+        prisma_1.prisma.agents.count({ where: { tdrId, type: 'normal', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.agents.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.visits.count({ where: { tdrId, createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.float_issues.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
+        prisma_1.prisma.prospects.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
+        prisma_1.prisma.agents.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
+        prisma_1.prisma.visits.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
+        prisma_1.prisma.agents.count({ where: { tdrId, type: 'normal', createdAt: { gte: todayStart, lte: todayEnd } } }),
+        prisma_1.prisma.agents.count({ where: { tdrId, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
+        prisma_1.prisma.visits.count({ where: { tdrId, createdAt: { gte: todayStart, lte: todayEnd } } }),
     ]);
     const floatResolved = floatIssues.filter(f => f.status === 'resolved').length;
     const floatPending = floatIssues.filter(f => f.status !== 'resolved').length;
@@ -69,7 +69,7 @@ exports.tdrRouter.get('/dashboard', async (req, res) => {
     const prospectsPending = prospects.filter(p => p.followUpDate && p.followUpDate <= new Date() && p.status !== 'converted' && p.status !== 'rejected').length;
     // Targets
     const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const target = await prisma_1.prisma.salesTarget.findUnique({ where: { zone_period: { zone: req.user.zone || '', period } } });
+    const target = await prisma_1.prisma.sales_targets.findUnique({ where: { zone_period: { zone: req.user.zone || '', period } } });
     res.json({
         tdr: { id: tdrId, name: req.user.name, zone: req.user.zone },
         month: period,
@@ -127,11 +127,20 @@ exports.tdrRouter.post('/agents', async (req, res) => {
         return;
     }
     try {
-        const zbm = await prisma_1.prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user.zone || '' } });
-        const agent = await prisma_1.prisma.agent.create({
+        const tdrId = req.user.userId;
+        // Check if agent code already exists anywhere in the system (globally unique)
+        const existing = await prisma_1.prisma.agents.findUnique({
+            where: { agentCode: parsed.data.agentCode },
+        });
+        if (existing) {
+            res.status(409).json({ error: `Agent code ${parsed.data.agentCode} is already registered in the system.` });
+            return;
+        }
+        const zbm = await prisma_1.prisma.users.findFirst({ where: { role: 'ZBM', zone: req.user.zone || '' } });
+        const agent = await prisma_1.prisma.agents.create({
             data: {
                 ...parsed.data,
-                tdrId: req.user.userId,
+                tdrId,
                 tdrName: req.user.name,
                 zone: req.user.zone || '',
                 zbmName: zbm?.name || '',
@@ -141,7 +150,7 @@ exports.tdrRouter.post('/agents', async (req, res) => {
     }
     catch (err) {
         if (err?.code === 'P2002') {
-            res.status(409).json({ error: 'Agent code already exists. Use a unique agent code.' });
+            res.status(409).json({ error: `Agent code ${req.body?.agentCode} is already registered in the system.` });
         }
         else {
             res.status(500).json({ error: 'Failed to create agent' });
@@ -173,7 +182,7 @@ exports.tdrRouter.post('/visits', async (req, res) => {
         todayStart.setHours(0, 0, 0, 0);
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
-        const existing = await prisma_1.prisma.visit.findFirst({
+        const existing = await prisma_1.prisma.visits.findFirst({
             where: {
                 tdrId: req.user.userId,
                 agentCode: parsed.data.agentCode,
@@ -184,8 +193,8 @@ exports.tdrRouter.post('/visits', async (req, res) => {
             res.status(409).json({ error: `You already recorded a visit for agent ${parsed.data.agentCode} today.` });
             return;
         }
-        const zbm = await prisma_1.prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user.zone || '' } });
-        const visit = await prisma_1.prisma.visit.create({
+        const zbm = await prisma_1.prisma.users.findFirst({ where: { role: 'ZBM', zone: req.user.zone || '' } });
+        const visit = await prisma_1.prisma.visits.create({
             data: {
                 ...parsed.data,
                 tdrId: req.user.userId,
@@ -216,7 +225,7 @@ exports.tdrRouter.post('/float-issues', async (req, res) => {
         return;
     }
     try {
-        const issue = await prisma_1.prisma.floatIssue.create({
+        const issue = await prisma_1.prisma.float_issues.create({
             data: {
                 ...parsed.data,
                 tdrId: req.user.userId,
@@ -233,7 +242,7 @@ exports.tdrRouter.post('/float-issues', async (req, res) => {
 });
 // ─── GET /tdr/float-issues ────────────────────────────────────────────────────
 exports.tdrRouter.get('/float-issues', async (req, res) => {
-    const issues = await prisma_1.prisma.floatIssue.findMany({
+    const issues = await prisma_1.prisma.float_issues.findMany({
         where: { tdrId: req.user.userId },
         orderBy: { reportedAt: 'desc' },
     });
@@ -241,12 +250,12 @@ exports.tdrRouter.get('/float-issues', async (req, res) => {
 });
 // ─── PATCH /tdr/float-issues/:id ─────────────────────────────────────────────
 exports.tdrRouter.patch('/float-issues/:id', async (req, res) => {
-    const issue = await prisma_1.prisma.floatIssue.findUnique({ where: { id: req.params.id } });
+    const issue = await prisma_1.prisma.float_issues.findUnique({ where: { id: req.params.id } });
     if (!issue || issue.tdrId !== req.user.userId) {
         res.status(404).json({ error: 'Not found' });
         return;
     }
-    const updated = await prisma_1.prisma.floatIssue.update({
+    const updated = await prisma_1.prisma.float_issues.update({
         where: { id: req.params.id },
         data: {
             status: req.body.status === 'in_progress' ? 'in_progress' : undefined,
@@ -275,7 +284,7 @@ exports.tdrRouter.post('/prospects', async (req, res) => {
         return;
     }
     try {
-        const prospect = await prisma_1.prisma.prospect.create({
+        const prospect = await prisma_1.prisma.prospects.create({
             data: {
                 ...parsed.data,
                 followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
@@ -292,7 +301,7 @@ exports.tdrRouter.post('/prospects', async (req, res) => {
 });
 // ─── GET /tdr/prospects ───────────────────────────────────────────────────────
 exports.tdrRouter.get('/prospects', async (req, res) => {
-    const prospects = await prisma_1.prisma.prospect.findMany({
+    const prospects = await prisma_1.prisma.prospects.findMany({
         where: { tdrId: req.user.userId },
         orderBy: { createdAt: 'desc' },
     });
@@ -300,14 +309,14 @@ exports.tdrRouter.get('/prospects', async (req, res) => {
 });
 // ─── PATCH /tdr/prospects/:id ─────────────────────────────────────────────────
 exports.tdrRouter.patch('/prospects/:id', async (req, res) => {
-    const prospect = await prisma_1.prisma.prospect.findUnique({ where: { id: req.params.id } });
+    const prospect = await prisma_1.prisma.prospects.findUnique({ where: { id: req.params.id } });
     if (!prospect || prospect.tdrId !== req.user.userId) {
         res.status(404).json({ error: 'Not found' });
         return;
     }
     const { status, notes, followUpDate } = req.body;
     const convertedAt = status === 'converted' && prospect.status !== 'converted' ? new Date() : undefined;
-    const updated = await prisma_1.prisma.prospect.update({
+    const updated = await prisma_1.prisma.prospects.update({
         where: { id: req.params.id },
         data: {
             status: status || undefined,
@@ -318,8 +327,8 @@ exports.tdrRouter.patch('/prospects/:id', async (req, res) => {
     });
     // Auto-create Agent record when prospect converts
     if (convertedAt) {
-        const zbm = await prisma_1.prisma.user.findFirst({ where: { role: 'ZBM', zone: updated.zone } });
-        await prisma_1.prisma.agent.create({
+        const zbm = await prisma_1.prisma.users.findFirst({ where: { role: 'ZBM', zone: updated.zone } });
+        await prisma_1.prisma.agents.create({
             data: {
                 agentName: updated.businessName,
                 agentCode: `CONV-${updated.id.slice(0, 8).toUpperCase()}`,
@@ -341,12 +350,22 @@ exports.tdrRouter.patch('/prospects/:id', async (req, res) => {
 // ─── GET /tdr/agents/by-code/:code ────────────────────────────────────────────
 exports.tdrRouter.get('/agents/by-code/:code', async (req, res) => {
     try {
-        const agent = await prisma_1.prisma.agent.findUnique({ where: { agentCode: req.params.code } });
+        const agent = await prisma_1.prisma.agents.findUnique({ where: { agentCode: req.params.code } });
         if (!agent) {
             res.status(404).json({ error: 'Agent not found' });
             return;
         }
-        res.json(agent);
+        // Include last visit info for stale detection
+        const lastVisit = await prisma_1.prisma.visits.findFirst({
+            where: { agentCode: agent.agentCode },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+        });
+        const lastVisitedAt = lastVisit?.createdAt ?? null;
+        const daysAgo = lastVisitedAt
+            ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
+            : null;
+        res.json({ ...agent, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 4 });
     }
     catch (err) {
         res.status(500).json({ error: 'Lookup failed' });
@@ -355,12 +374,12 @@ exports.tdrRouter.get('/agents/by-code/:code', async (req, res) => {
 // ─── DELETE /tdr/agents/:id ───────────────────────────────────────────────────
 exports.tdrRouter.delete('/agents/:id', async (req, res) => {
     try {
-        const agent = await prisma_1.prisma.agent.findUnique({ where: { id: req.params.id } });
+        const agent = await prisma_1.prisma.agents.findUnique({ where: { id: req.params.id } });
         if (!agent || agent.tdrId !== req.user.userId) {
             res.status(404).json({ error: 'Not found' });
             return;
         }
-        await prisma_1.prisma.agent.delete({ where: { id: req.params.id } });
+        await prisma_1.prisma.agents.delete({ where: { id: req.params.id } });
         res.json({ ok: true });
     }
     catch (err) {
@@ -370,13 +389,13 @@ exports.tdrRouter.delete('/agents/:id', async (req, res) => {
 // ─── PATCH /tdr/agents/:id ────────────────────────────────────────────────────
 exports.tdrRouter.patch('/agents/:id', async (req, res) => {
     try {
-        const agent = await prisma_1.prisma.agent.findUnique({ where: { id: req.params.id } });
+        const agent = await prisma_1.prisma.agents.findUnique({ where: { id: req.params.id } });
         if (!agent || agent.tdrId !== req.user.userId) {
             res.status(404).json({ error: 'Not found' });
             return;
         }
         const { agentName, contactPhone, initialFloat, town, address, cluster, market, notes, latitude, longitude } = req.body;
-        const updated = await prisma_1.prisma.agent.update({
+        const updated = await prisma_1.prisma.agents.update({
             where: { id: req.params.id },
             data: { agentName, contactPhone, initialFloat, town, address, cluster, market, notes, latitude, longitude },
         });
@@ -389,12 +408,12 @@ exports.tdrRouter.patch('/agents/:id', async (req, res) => {
 // ─── DELETE /tdr/visits/:id ───────────────────────────────────────────────────
 exports.tdrRouter.delete('/visits/:id', async (req, res) => {
     try {
-        const visit = await prisma_1.prisma.visit.findUnique({ where: { id: req.params.id } });
+        const visit = await prisma_1.prisma.visits.findUnique({ where: { id: req.params.id } });
         if (!visit || visit.tdrId !== req.user.userId) {
             res.status(404).json({ error: 'Not found' });
             return;
         }
-        await prisma_1.prisma.visit.delete({ where: { id: req.params.id } });
+        await prisma_1.prisma.visits.delete({ where: { id: req.params.id } });
         res.json({ ok: true });
     }
     catch (err) {
@@ -404,12 +423,12 @@ exports.tdrRouter.delete('/visits/:id', async (req, res) => {
 // ─── DELETE /tdr/prospects/:id ────────────────────────────────────────────────
 exports.tdrRouter.delete('/prospects/:id', async (req, res) => {
     try {
-        const prospect = await prisma_1.prisma.prospect.findUnique({ where: { id: req.params.id } });
+        const prospect = await prisma_1.prisma.prospects.findUnique({ where: { id: req.params.id } });
         if (!prospect || prospect.tdrId !== req.user.userId) {
             res.status(404).json({ error: 'Not found' });
             return;
         }
-        await prisma_1.prisma.prospect.delete({ where: { id: req.params.id } });
+        await prisma_1.prisma.prospects.delete({ where: { id: req.params.id } });
         res.json({ ok: true });
     }
     catch (err) {
@@ -419,12 +438,12 @@ exports.tdrRouter.delete('/prospects/:id', async (req, res) => {
 // ─── POST /tdr/prospects/:id/request-closure ─────────────────────────────────
 exports.tdrRouter.post('/prospects/:id/request-closure', async (req, res) => {
     try {
-        const prospect = await prisma_1.prisma.prospect.findUnique({ where: { id: req.params.id } });
+        const prospect = await prisma_1.prisma.prospects.findUnique({ where: { id: req.params.id } });
         if (!prospect || prospect.tdrId !== req.user.userId) {
             res.status(404).json({ error: 'Not found' });
             return;
         }
-        const updated = await prisma_1.prisma.prospect.update({
+        const updated = await prisma_1.prisma.prospects.update({
             where: { id: req.params.id },
             data: { closedByTdr: true, zbmApprovalRequired: true },
         });
@@ -439,13 +458,13 @@ exports.tdrRouter.get('/activities', async (req, res) => {
     try {
         const tdrId = req.user.userId;
         const [agents, visits, floatIssues, prospects] = await Promise.all([
-            prisma_1.prisma.agent.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
-            prisma_1.prisma.visit.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
-            prisma_1.prisma.floatIssue.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' }, take: 10 }),
-            prisma_1.prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
+            prisma_1.prisma.agents.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
+            prisma_1.prisma.visits.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
+            prisma_1.prisma.float_issues.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' }, take: 10 }),
+            prisma_1.prisma.prospects.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 10 }),
         ]);
         const activities = [
-            ...agents.map(a => ({ type: 'agent', id: a.id, label: a.agentName, sub: `${a.type} · ${a.town}`, ts: a.createdAt })),
+            ...agents.map(a => ({ type: 'agent', id: a.id, label: a.agentName, sub: `${a.agentCode} · ${a.type} · ${a.town}`, ts: a.createdAt })),
             ...visits.map(v => ({ type: 'visit', id: v.id, label: v.outletName, sub: `Visit · ${v.town}`, ts: v.createdAt })),
             ...floatIssues.map(f => ({ type: 'float', id: f.id, label: f.agentName, sub: `Float Issue · ${f.status}`, ts: f.reportedAt })),
             ...prospects.map(p => ({ type: 'prospect', id: p.id, label: p.businessName, sub: `Prospect · ${p.status}`, ts: p.createdAt })),
@@ -461,10 +480,10 @@ exports.tdrRouter.get('/export', async (req, res) => {
     try {
         const tdrId = req.user.userId;
         const [agents, visits, floatIssues, prospects] = await Promise.all([
-            prisma_1.prisma.agent.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
-            prisma_1.prisma.visit.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
-            prisma_1.prisma.floatIssue.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
-            prisma_1.prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
+            prisma_1.prisma.agents.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
+            prisma_1.prisma.visits.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
+            prisma_1.prisma.float_issues.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
+            prisma_1.prisma.prospects.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
         ]);
         const XLSX = await Promise.resolve().then(() => __importStar(require('xlsx')));
         const wb = XLSX.utils.book_new();
@@ -521,7 +540,7 @@ exports.tdrRouter.get('/visits/summary', async (req, res) => {
     }
     const weeklyData = await Promise.all(weeks.map(async (w) => ({
         label: w.label,
-        count: await prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: w.start, lte: w.end } } }),
+        count: await prisma_1.prisma.visits.count({ where: { tdrId, createdAt: { gte: w.start, lte: w.end } } }),
     })));
     // Last 6 months
     const months = [];
@@ -533,35 +552,18 @@ exports.tdrRouter.get('/visits/summary', async (req, res) => {
     }
     const monthlyData = await Promise.all(months.map(async (m) => ({
         label: m.label,
-        count: await prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: m.start, lte: m.end } } }),
+        count: await prisma_1.prisma.visits.count({ where: { tdrId, createdAt: { gte: m.start, lte: m.end } } }),
     })));
     res.json({ weekly: weeklyData, monthly: monthlyData });
 });
-// ─── GET /tdr/agents/:id ──────────────────────────────────────────────────────
-// Returns full agent detail including recent visits (joined via agentCode)
-exports.tdrRouter.get('/agents/:id', async (req, res) => {
-    const tdrId = req.user.userId;
-    const agent = await prisma_1.prisma.agent.findUnique({ where: { id: req.params.id } });
-    if (!agent || agent.tdrId !== tdrId) {
-        res.status(404).json({ error: 'Not found' });
-        return;
-    }
-    const visits = await prisma_1.prisma.visit.findMany({
-        where: { tdrId, agentCode: agent.agentCode },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-    });
-    res.json({ ...agent, visits });
-});
 // ─── GET /tdr/agents/stale ────────────────────────────────────────────────────
-// This TDR's agents whose last visit was > 5 days ago
+// MUST be before /agents/:id — otherwise "stale" is treated as an ID
+// This TDR's agents whose last visit was > 4 days ago (threshold: 4 days)
 exports.tdrRouter.get('/agents/stale', async (req, res) => {
     const tdrId = req.user.userId;
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 5);
-    const agents = await prisma_1.prisma.agent.findMany({ where: { tdrId }, orderBy: { agentName: 'asc' } });
+    const agents = await prisma_1.prisma.agents.findMany({ where: { tdrId }, orderBy: { agentName: 'asc' } });
     const enriched = await Promise.all(agents.map(async (a) => {
-        const lastVisit = await prisma_1.prisma.visit.findFirst({
+        const lastVisit = await prisma_1.prisma.visits.findFirst({
             where: { tdrId, agentCode: a.agentCode },
             orderBy: { createdAt: 'desc' },
             select: { createdAt: true },
@@ -570,8 +572,25 @@ exports.tdrRouter.get('/agents/stale', async (req, res) => {
         const daysAgo = lastVisitedAt
             ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
             : null;
-        return { ...a, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 5 };
+        return { ...a, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 4 };
     }));
-    res.json(enriched.filter(a => a.isStale));
+    const stale = enriched.filter(a => a.isStale);
+    res.json({ stale, total: enriched.length, staleCount: stale.length });
+});
+// ─── GET /tdr/agents/:id ──────────────────────────────────────────────────────
+// Returns full agent detail including recent visits (joined via agentCode)
+exports.tdrRouter.get('/agents/:id', async (req, res) => {
+    const tdrId = req.user.userId;
+    const agent = await prisma_1.prisma.agents.findUnique({ where: { id: req.params.id } });
+    if (!agent || agent.tdrId !== tdrId) {
+        res.status(404).json({ error: 'Not found' });
+        return;
+    }
+    const visits = await prisma_1.prisma.visits.findMany({
+        where: { tdrId, agentCode: agent.agentCode },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+    });
+    res.json({ ...agent, visits });
 });
 //# sourceMappingURL=tdr.js.map

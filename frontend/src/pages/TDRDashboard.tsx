@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, UserPlus, MapPin, AlertTriangle, Target, Download, Wifi, WifiOff, Clock, CheckCircle, Trash2, Activity, Eye, X, Edit2 } from 'lucide-react';
+import { Plus, UserPlus, MapPin, AlertTriangle, Target, Download, Wifi, WifiOff, Clock, CheckCircle, Trash2, Activity, Eye, X, Edit2, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { tdrApi, getQueue, syncQueue } from '../services/api';
 import type { TDRDashboard, FloatIssue, Prospect, Agent, Visit } from '../types';
@@ -315,6 +315,16 @@ export const TDRDashboardPage: React.FC = () => {
         title={data?.tdr.name || 'My Dashboard'}
         subtitle={`${data?.tdr.zone || ''} · ${format(new Date(), 'MMMM yyyy')}`}
       />
+
+      {/* TDR ID info — share with ASE */}
+      {data?.tdr.id && (
+        <div className="px-4 pb-2">
+          <div className="bg-blue-50 rounded-xl px-4 py-2 flex items-center gap-2 text-xs text-blue-600">
+            <Link2 className="w-3 h-3 flex-shrink-0" />
+            <span>Your TDR ID: <strong>{data.tdr.id}</strong> — share this with your ASE to be picked</span>
+          </div>
+        </div>
+      )}
 
       {/* ── OFFLINE BANNER ───────────────────────────────────────── */}
       {!isOnline && (

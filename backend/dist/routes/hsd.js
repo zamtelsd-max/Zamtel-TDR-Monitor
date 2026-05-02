@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mapRouter = exports.hsdRouter = void 0;
 const express_1 = require("express");
@@ -43,18 +76,18 @@ exports.hsdRouter.get('/dashboard', async (req, res) => {
     const { start, end, isCurrentMonth } = monthRange(period);
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const [totalAgents, totalMerchants, totalVisits, openIssues, criticalIssues, prospectsBreakdown] = await Promise.all([
-        prisma_1.prisma.agent.count({ where: { type: 'normal', createdAt: { gte: start, lte: end } } }),
-        prisma_1.prisma.agent.count({ where: { type: 'merchant', createdAt: { gte: start, lte: end } } }),
-        prisma_1.prisma.visit.count({ where: { createdAt: { gte: start, lte: end } } }),
-        prisma_1.prisma.floatIssue.count({ where: { status: { not: 'resolved' } } }),
-        prisma_1.prisma.floatIssue.findMany({
+        prisma_1.prisma.agents.count({ where: { type: 'normal', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.agents.count({ where: { type: 'merchant', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.visits.count({ where: { createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.float_issues.count({ where: { status: { not: 'resolved' } } }),
+        prisma_1.prisma.float_issues.findMany({
             where: { status: { not: 'resolved' }, reportedAt: { lte: fortyEightHoursAgo } },
             orderBy: { reportedAt: 'asc' },
         }),
-        prisma_1.prisma.prospect.groupBy({ by: ['status'], _count: true }),
+        prisma_1.prisma.$queryRaw `SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => []),
     ]);
     const totalRecruits = totalAgents + totalMerchants;
-    const totalConversions = await prisma_1.prisma.prospect.count({ where: { status: 'converted', convertedAt: { gte: start, lte: end } } });
+    const totalConversions = await prisma_1.prisma.prospects.count({ where: { status: 'converted', convertedAt: { gte: start, lte: end } } });
     const conversionRate = totalRecruits > 0 ? Math.round(totalConversions / totalRecruits * 100) : 0;
     res.json({
         period,
@@ -69,14 +102,14 @@ exports.hsdRouter.get('/zones', async (req, res) => {
     const { start, end, isCurrentMonth } = monthRange(period);
     const zoneStats = await Promise.all(ZONES.map(async (zone) => {
         const [zbm, tdrs, agents, merchants, visits, floatIssues] = await Promise.all([
-            prisma_1.prisma.user.findFirst({ where: { role: 'ZBM', zone } }),
-            prisma_1.prisma.user.count({ where: { role: 'TDR', zone, active: true } }),
-            prisma_1.prisma.agent.count({ where: { zone, type: 'normal', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.agent.count({ where: { zone, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.visit.count({ where: { zone, createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.floatIssue.count({ where: { zone, status: { not: 'resolved' } } }),
+            prisma_1.prisma.users.findFirst({ where: { role: 'ZBM', zone } }),
+            prisma_1.prisma.users.count({ where: { role: 'TDR', zone, active: true } }),
+            prisma_1.prisma.agents.count({ where: { zone, type: 'normal', createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.agents.count({ where: { zone, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.visits.count({ where: { zone, createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.float_issues.count({ where: { zone, status: { not: 'resolved' } } }),
         ]);
-        const target = await prisma_1.prisma.salesTarget.findUnique({ where: { zone_period: { zone, period } } });
+        const target = await prisma_1.prisma.sales_targets.findUnique({ where: { zone_period: { zone, period } } });
         const agentTarget = isCurrentMonth
             ? (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96 * tdrs)
             : (target?.targetAgents || 96 * tdrs);
@@ -105,13 +138,13 @@ exports.hsdRouter.get('/zones/:zone', async (req, res) => {
     const zone = req.params.zone;
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end, isCurrentMonth } = monthRange(period);
-    const tdrs = await prisma_1.prisma.user.findMany({ where: { role: 'TDR', zone, active: true } });
+    const tdrs = await prisma_1.prisma.users.findMany({ where: { role: 'TDR', zone, active: true } });
     const tdrStats = await Promise.all(tdrs.map(async (tdr) => {
         const [agents, merchants, visits, floatIssues] = await Promise.all([
-            prisma_1.prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.floatIssue.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
+            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.float_issues.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
         ]);
         const at = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
         const mt = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
@@ -119,20 +152,20 @@ exports.hsdRouter.get('/zones/:zone', async (req, res) => {
         const pct = Math.round(((agents / at) + (merchants / mt) + (visits / vt)) / 3 * 100);
         return { tdr, agents, merchants, visits, floatIssues, pct };
     }));
-    const floatIssues = await prisma_1.prisma.floatIssue.findMany({ where: { zone }, orderBy: { reportedAt: 'desc' } });
-    const prospects = await prisma_1.prisma.prospect.findMany({ where: { zone }, orderBy: { createdAt: 'desc' } });
+    const floatIssues = await prisma_1.prisma.float_issues.findMany({ where: { zone }, orderBy: { reportedAt: 'desc' } });
+    const prospects = await prisma_1.prisma.prospects.findMany({ where: { zone }, orderBy: { createdAt: 'desc' } });
     res.json({ zone, period, tdrStats, floatIssues, prospects });
 });
 // ─── PATCH /hsd/float-issues/:id ──────────────────────────────────────────────
 exports.hsdRouter.patch('/float-issues/:id', async (req, res) => {
-    const issue = await prisma_1.prisma.floatIssue.findUnique({ where: { id: req.params.id } });
+    const issue = await prisma_1.prisma.float_issues.findUnique({ where: { id: req.params.id } });
     if (!issue) {
         res.status(404).json({ error: 'Not found' });
         return;
     }
     const { status, resolutionNotes } = req.body;
     const resolvedAt = status === 'resolved' ? new Date() : undefined;
-    const updated = await prisma_1.prisma.floatIssue.update({
+    const updated = await prisma_1.prisma.float_issues.update({
         where: { id: req.params.id },
         data: {
             status: status || undefined,
@@ -157,7 +190,7 @@ exports.hsdRouter.post('/targets', async (req, res) => {
         res.status(400).json({ error: parsed.error.flatten() });
         return;
     }
-    const target = await prisma_1.prisma.salesTarget.upsert({
+    const target = await prisma_1.prisma.sales_targets.upsert({
         where: { zone_period: { zone: parsed.data.zone, period: parsed.data.period } },
         update: { ...parsed.data, setByHsdId: req.user.userId },
         create: { ...parsed.data, setByHsdId: req.user.userId },
@@ -166,48 +199,98 @@ exports.hsdRouter.post('/targets', async (req, res) => {
 });
 // ─── GET /hsd/export ──────────────────────────────────────────────────────────
 exports.hsdRouter.get('/export', async (req, res) => {
-    const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const { start, end } = monthRange(period);
-    const [agents, visits, floatIssues, prospects] = await Promise.all([
-        prisma_1.prisma.agent.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
-        prisma_1.prisma.visit.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
-        prisma_1.prisma.floatIssue.findMany({ orderBy: { reportedAt: 'desc' } }),
-        prisma_1.prisma.prospect.findMany({ orderBy: { createdAt: 'desc' } }),
-    ]);
-    // Build CSV
-    const lines = [];
-    lines.push('=== AGENTS ===');
-    lines.push('id,tdrId,tdrName,zone,zbmName,agentName,agentCode,contactPhone,type,merchantCategory,initialFloat,town,address,cluster,market,latitude,longitude,notes,createdAt');
-    agents.forEach(a => {
-        lines.push([a.id, a.tdrId, a.tdrName, a.zone, a.zbmName, a.agentName, a.agentCode, a.contactPhone, a.type,
-            a.merchantCategory || '', a.initialFloat, a.town, a.address || '', a.cluster || '', a.market || '',
-            a.latitude || '', a.longitude || '', (a.notes || '').replace(/,/g, ';'), a.createdAt.toISOString()].join(','));
-    });
-    lines.push('\n=== VISITS ===');
-    lines.push('id,tdrId,tdrName,zone,zbmName,outletName,agentCode,contactPhone,town,cluster,market,floatAmount,latitude,longitude,notes,createdAt');
-    visits.forEach(v => {
-        lines.push([v.id, v.tdrId, v.tdrName, v.zone, v.zbmName, v.outletName, v.agentCode, v.contactPhone,
-            v.town, v.cluster || '', v.market || '', v.floatAmount, v.latitude || '', v.longitude || '',
-            (v.notes || '').replace(/,/g, ';'), v.createdAt.toISOString()].join(','));
-    });
-    lines.push('\n=== FLOAT ISSUES ===');
-    lines.push('id,tdrId,tdrName,zone,agentCode,agentName,contactPhone,issueType,reportedFloat,description,status,resolvedAt,resolvedBy,resolutionNotes,reportedAt');
-    floatIssues.forEach(f => {
-        lines.push([f.id, f.tdrId, f.tdrName, f.zone, f.agentCode, f.agentName, f.contactPhone, f.issueType,
-            f.reportedFloat, f.description.replace(/,/g, ';'), f.status, f.resolvedAt?.toISOString() || '',
-            f.resolvedBy || '', (f.resolutionNotes || '').replace(/,/g, ';'), f.reportedAt.toISOString()].join(','));
-    });
-    lines.push('\n=== PROSPECTS ===');
-    lines.push('id,tdrId,tdrName,zone,prospectType,businessName,ownerName,contactPhone,town,address,merchantCategory,estimatedFloat,status,followUpDate,convertedAt,notes,createdAt');
-    prospects.forEach(p => {
-        lines.push([p.id, p.tdrId, p.tdrName, p.zone, p.prospectType, p.businessName, p.ownerName, p.contactPhone,
-            p.town, p.address || '', p.merchantCategory || '', p.estimatedFloat || '', p.status,
-            p.followUpDate?.toISOString() || '', p.convertedAt?.toISOString() || '',
-            (p.notes || '').replace(/,/g, ';'), p.createdAt.toISOString()].join(','));
-    });
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="zamtel-tdr-export-${period}.csv"`);
-    res.send(lines.join('\n'));
+    try {
+        const XLSX = await Promise.resolve().then(() => __importStar(require('xlsx')));
+        const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+        const { start, end } = monthRange(period);
+        const [agents, visits, floatIssues, prospects] = await Promise.all([
+            prisma_1.prisma.agents.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: [{ zone: 'asc' }, { createdAt: 'desc' }] }),
+            prisma_1.prisma.visits.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
+            prisma_1.prisma.float_issues.findMany({ orderBy: { reportedAt: 'desc' } }),
+            prisma_1.prisma.prospects.findMany({ orderBy: { createdAt: 'desc' } }),
+        ]);
+        const wb = XLSX.utils.book_new();
+        // Sheet 1: Agents
+        const agentRows = agents.map(a => ({
+            'Zone': a.zone, 'ZBM': a.zbmName, 'TDR Name': a.tdrName,
+            'Agent Name': a.agentName, 'Agent Code': a.agentCode, 'Phone': a.contactPhone,
+            'Type': a.type, 'Category': a.merchantCategory || '',
+            'Initial Float': a.initialFloat, 'Town': a.town, 'Address': a.address || '',
+            'Cluster': a.cluster || '', 'Market': a.market || '',
+            'Latitude': a.latitude || '', 'Longitude': a.longitude || '',
+            'Notes': a.notes || '', 'Date': a.createdAt.toISOString().split('T')[0],
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(agentRows.length > 0 ? agentRows : [{}]), 'Agents');
+        // Sheet 2: Visits
+        const visitRows = visits.map(v => ({
+            'Zone': v.zone, 'ZBM': v.zbmName, 'TDR Name': v.tdrName,
+            'Outlet Name': v.outletName, 'Agent Code': v.agentCode, 'Phone': v.contactPhone,
+            'Town': v.town, 'Cluster': v.cluster || '', 'Market': v.market || '',
+            'Float Amount': v.floatAmount,
+            'Latitude': v.latitude || '', 'Longitude': v.longitude || '',
+            'Notes': v.notes || '', 'Date': v.createdAt.toISOString().split('T')[0],
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(visitRows.length > 0 ? visitRows : [{}]), 'Visits');
+        // Sheet 3: Float Issues
+        const issueRows = floatIssues.map(f => ({
+            'Zone': f.zone, 'TDR Name': f.tdrName,
+            'Agent Code': f.agentCode, 'Agent Name': f.agentName, 'Phone': f.contactPhone,
+            'Issue Type': f.issueType, 'Float Amount': f.reportedFloat,
+            'Description': f.description, 'Status': f.status,
+            'Resolved At': f.resolvedAt?.toISOString().split('T')[0] || '',
+            'Resolution Notes': f.resolutionNotes || '',
+            'Reported At': f.reportedAt.toISOString().split('T')[0],
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(issueRows.length > 0 ? issueRows : [{}]), 'Float Issues');
+        // Sheet 4: Prospects
+        const prospectRows = prospects.map(p => ({
+            'Zone': p.zone, 'TDR Name': p.tdrName,
+            'Prospect Type': p.prospectType, 'Business Name': p.businessName,
+            'Owner Name': p.ownerName, 'Phone': p.contactPhone, 'Town': p.town,
+            'Category': p.merchantCategory || '', 'Est. Float': p.estimatedFloat || '',
+            'Status': p.status,
+            'Follow-up Date': p.followUpDate?.toISOString().split('T')[0] || '',
+            'Converted At': p.convertedAt?.toISOString().split('T')[0] || '',
+            'Notes': p.notes || '', 'Date': p.createdAt.toISOString().split('T')[0],
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospectRows.length > 0 ? prospectRows : [{}]), 'Prospects');
+        // Sheet 5: Unvisited Outlets (all zones — last visit > 4 days or never)
+        const allAgents = await prisma_1.prisma.agents.findMany({
+            orderBy: [{ zone: 'asc' }, { tdrName: 'asc' }, { agentName: 'asc' }],
+        });
+        const unvisitedRows = [];
+        for (const a of allAgents) {
+            const lastVisit = await prisma_1.prisma.visits.findFirst({
+                where: { agentCode: a.agentCode },
+                orderBy: { createdAt: 'desc' },
+                select: { createdAt: true },
+            });
+            const lastVisitedAt = lastVisit?.createdAt ?? null;
+            const daysAgo = lastVisitedAt
+                ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
+                : null;
+            if (daysAgo === null || daysAgo >= 4) {
+                unvisitedRows.push({
+                    'Zone': a.zone, 'ZBM': a.zbmName, 'TDR Name': a.tdrName,
+                    'Agent Name': a.agentName, 'Agent Code': a.agentCode,
+                    'Type': a.type, 'Phone': a.contactPhone, 'Town': a.town,
+                    'Cluster': a.cluster || '', 'Market': a.market || '',
+                    'Last Visited': lastVisitedAt ? lastVisitedAt.toISOString().split('T')[0] : 'NEVER',
+                    'Days Since Visit': daysAgo === null ? 'Never' : daysAgo,
+                    'Status': daysAgo === null ? '🔴 Never Visited' : `🔴 ${daysAgo} days ago`,
+                });
+            }
+        }
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(unvisitedRows.length > 0 ? unvisitedRows : [{ 'Status': 'All outlets visited within 4 days ✅' }]), 'Unvisited Outlets');
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="zamtel-hsd-export-${period}.xlsx"`);
+        res.send(buf);
+    }
+    catch (err) {
+        console.error('HSD export error:', err);
+        res.status(500).json({ error: 'Export failed' });
+    }
 });
 // ─── GPS Map Data ──────────────────────────────────────────────────────────────
 exports.mapRouter.get('/', async (req, res) => {
@@ -218,7 +301,7 @@ exports.mapRouter.get('/', async (req, res) => {
         const zoneFilter = user.role === 'ZBM' ? user.zone :
             (zone && zone !== 'all' ? zone : undefined);
         const [agents, visits] = await Promise.all([
-            prisma_1.prisma.agent.findMany({
+            prisma_1.prisma.agents.findMany({
                 where: {
                     ...(zoneFilter ? { zone: zoneFilter } : {}),
                     latitude: { not: null },
@@ -233,7 +316,7 @@ exports.mapRouter.get('/', async (req, res) => {
                 orderBy: { createdAt: 'desc' },
                 take: 2000,
             }),
-            prisma_1.prisma.visit.findMany({
+            prisma_1.prisma.visits.findMany({
                 where: {
                     ...(zoneFilter ? { zone: zoneFilter } : {}),
                     latitude: { not: null },
@@ -266,9 +349,9 @@ exports.mapRouter.get('/', async (req, res) => {
 // ─── GET /hsd/agents/stale ────────────────────────────────────────────────────
 // All agents nationwide whose last visit was > 5 days ago (HSD national view)
 exports.hsdRouter.get('/agents/stale', async (req, res) => {
-    const agents = await prisma_1.prisma.agent.findMany({ orderBy: [{ zone: 'asc' }, { agentName: 'asc' }] });
+    const agents = await prisma_1.prisma.agents.findMany({ orderBy: [{ zone: 'asc' }, { agentName: 'asc' }] });
     const enriched = await Promise.all(agents.map(async (a) => {
-        const lastVisit = await prisma_1.prisma.visit.findFirst({
+        const lastVisit = await prisma_1.prisma.visits.findFirst({
             where: { agentCode: a.agentCode },
             orderBy: { createdAt: 'desc' },
             select: { createdAt: true },
@@ -281,5 +364,47 @@ exports.hsdRouter.get('/agents/stale', async (req, res) => {
     }));
     const stale = enriched.filter(a => a.isStale);
     res.json({ stale, total: agents.length, staleCount: stale.length });
+});
+// ─── GET /hsd/leaderboard ─────────────────────────────────────────────────────
+// Top TDRs (all zones) + Zone leaderboard ranked by % achievement
+exports.hsdRouter.get('/leaderboard', async (req, res) => {
+    const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end, isCurrentMonth } = monthRange(period);
+    const at = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
+    const mt = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
+    const vt = isCurrentMonth ? (0, mtd_1.visitMtdTarget)() : (0, mtd_1.visitMonthlyTarget)();
+    const tdrs = await prisma_1.prisma.users.findMany({ where: { role: 'TDR', active: true } });
+    const tdrRows = await Promise.all(tdrs.map(async (tdr) => {
+        const [agents, merchants, visits] = await Promise.all([
+            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
+        ]);
+        const pct = Math.round(((agents / at) + (merchants / mt) + (visits / vt)) / 3 * 100);
+        return { id: tdr.id, name: tdr.name, zone: tdr.zone || 'Unassigned', agents, merchants, visits, pct };
+    }));
+    // Top 30 TDRs by pct
+    const topTDRs = [...tdrRows].sort((a, b) => b.pct - a.pct || b.agents - a.agents).slice(0, 30);
+    // Zone leaderboard (aggregate per zone)
+    const zoneMap = {};
+    for (const r of tdrRows) {
+        if (!zoneMap[r.zone])
+            zoneMap[r.zone] = { zone: r.zone, agents: 0, merchants: 0, visits: 0, tdrCount: 0 };
+        zoneMap[r.zone].agents += r.agents;
+        zoneMap[r.zone].merchants += r.merchants;
+        zoneMap[r.zone].visits += r.visits;
+        zoneMap[r.zone].tdrCount += 1;
+    }
+    const zoneRows = Object.values(zoneMap).map(z => {
+        const zt = z.tdrCount;
+        const pct = zt > 0 ? Math.round(((z.agents / (at * zt)) + (z.merchants / (mt * zt)) + (z.visits / (vt * zt))) / 3 * 100) : 0;
+        return { ...z, pct };
+    }).sort((a, b) => b.pct - a.pct || b.agents - a.agents);
+    res.json({
+        period,
+        topTDRs,
+        zoneLeaderboard: zoneRows,
+        mtd: isCurrentMonth ? { workingDaysElapsed: (0, mtd_1.workingDaysElapsed)(), workingDaysTotal: (0, mtd_1.workingDaysThisMonth)() } : null,
+    });
 });
 //# sourceMappingURL=hsd.js.map

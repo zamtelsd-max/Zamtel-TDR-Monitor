@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download, Trophy } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download, Trophy, Users, RefreshCw, UserPlus, X } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import { zbmApi } from '../services/api';
-import type { ZBMDashboard, TDRStat, FloatIssue, Prospect } from '../types';
+import { zbmApi, flagsApi } from '../services/api';
+import type { ZBMDashboard, TDRStat, FloatIssue, Prospect, TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button } from '../components/UI';
 import { ISSUE_TYPE_LABELS } from '../types';
@@ -35,6 +35,7 @@ function tdrScore(row: TDRStat): number {
 
 export const ZBMDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs'>('dashboard');
   const [data,       setData]       = useState<ZBMDashboard | null>(null);
   const [issues,     setIssues]     = useState<FloatIssue[]>([]);
   const [prospects,  setProspects]  = useState<Prospect[]>([]);
@@ -46,6 +47,66 @@ export const ZBMDashboardPage: React.FC = () => {
   const [exporting,  setExporting]  = useState(false);
   const [staleAgents, setStaleAgents] = useState<Array<any>>([]);
   const [showAllStale, setShowAllStale] = useState(false);
+  // ASEs & TDRs tab state
+  const [ases,         setAses]         = useState<Array<{ id: string; name: string; zone: string | null; tdrCount: number }>>([]);
+  const [tdrs,         setTdrs]         = useState<Array<{ id: string; name: string; zone: string | null; aseId: string | null }>>([]);
+  const [aseTdrsLoading, setAseTdrsLoading] = useState(false);
+  const [showAddASE,   setShowAddASE]   = useState(false);
+  const [newASE,       setNewASE]       = useState({ id: '', name: '', pin: '' });
+  const [addingASE,    setAddingASE]    = useState(false);
+  const [assigningTDR, setAssigningTDR] = useState<string | null>(null);
+  const [tdrFlags,     setTdrFlags]     = useState<TDRFlag[]>([]);
+
+  const loadAseTdrs = async () => {
+    setAseTdrsLoading(true);
+    try {
+      const [asesRes, tdrsRes, flagsRes] = await Promise.all([
+        zbmApi.getASEs(),
+        zbmApi.getTDRs(),
+        flagsApi.get().catch(() => ({ data: { data: [] } })),
+      ]);
+      setAses(asesRes.data.data ?? []);
+      setTdrs(tdrsRes.data.data ?? []);
+      setTdrFlags(flagsRes.data.data ?? []);
+    } catch {
+      toast.error('Failed to load ASEs/TDRs');
+    } finally {
+      setAseTdrsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mainTab === 'ases-tdrs') loadAseTdrs();
+  }, [mainTab]);
+
+  const handleAddASE = async () => {
+    if (!newASE.id || !newASE.name || !newASE.pin) { toast.error('All fields required'); return; }
+    setAddingASE(true);
+    try {
+      await zbmApi.addASE(newASE);
+      toast.success(`ASE ${newASE.name} created!`);
+      setNewASE({ id: '', name: '', pin: '' });
+      setShowAddASE(false);
+      loadAseTdrs();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to create ASE');
+    } finally {
+      setAddingASE(false);
+    }
+  };
+
+  const handleAssignTDR = async (tdrId: string, aseId: string | null) => {
+    setAssigningTDR(tdrId);
+    try {
+      await zbmApi.assignTDR(tdrId, aseId);
+      toast.success(aseId ? 'TDR assigned' : 'TDR unassigned');
+      loadAseTdrs();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to assign');
+    } finally {
+      setAssigningTDR(null);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -135,6 +196,152 @@ export const ZBMDashboardPage: React.FC = () => {
         title={data ? (data.zbm.zone ? `${data.zbm.zone} Zone` : 'All Zones') : 'Loading...'}
         subtitle={data ? `${data.zbm.name} · ${format(new Date(), 'MMMM yyyy')}` : ''}
       />
+
+      {/* Main Tab Bar */}
+      <div className="flex gap-2 px-4 pb-3">
+        {(['dashboard', 'ases-tdrs'] as const).map(t => (
+          <button key={t} onClick={() => setMainTab(t)}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
+              mainTab === t ? 'bg-zamtel-green text-white shadow' : 'bg-white text-gray-500 border border-gray-200'
+            }`}>
+            {t === 'dashboard' ? '📊 Dashboard' : '👥 ASEs & TDRs'}
+          </button>
+        ))}
+      </div>
+
+      {/* ASEs & TDRs Tab */}
+      {mainTab === 'ases-tdrs' && (
+        <div className="px-4 pb-24">
+          {/* Add ASE button */}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold text-gray-700">Area Sales Executives ({ases.length})</p>
+            <div className="flex gap-2">
+              <button onClick={loadAseTdrs} className="p-2 rounded-xl hover:bg-gray-100">
+                <RefreshCw className="w-4 h-4 text-gray-500" />
+              </button>
+              <button onClick={() => setShowAddASE(true)}
+                className="flex items-center gap-1 text-xs bg-zamtel-green text-white font-bold px-3 py-1.5 rounded-xl">
+                <UserPlus className="w-3 h-3" /> Add ASE
+              </button>
+            </div>
+          </div>
+
+          {/* Add ASE Modal */}
+          {showAddASE && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-800">Add New ASE</h3>
+                  <button onClick={() => setShowAddASE(false)}><X className="w-4 h-4 text-gray-500" /></button>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">ASE ID (login username)</label>
+                    <input value={newASE.id} onChange={e => setNewASE(p => ({ ...p, id: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zamtel-green"
+                      placeholder="e.g. ase-cb-01" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">Full Name</label>
+                    <input value={newASE.name} onChange={e => setNewASE(p => ({ ...p, name: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zamtel-green"
+                      placeholder="e.g. John Banda" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 block mb-1">PIN</label>
+                    <input value={newASE.pin} onChange={e => setNewASE(p => ({ ...p, pin: e.target.value }))}
+                      type="password"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zamtel-green"
+                      placeholder="4-digit PIN" />
+                  </div>
+                  <button onClick={handleAddASE} disabled={addingASE}
+                    className="w-full bg-zamtel-green text-white font-bold py-2.5 rounded-xl disabled:opacity-50">
+                    {addingASE ? 'Creating...' : 'Create ASE'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ASE List */}
+          {aseTdrsLoading ? (
+            <div className="space-y-2 mb-4">{[1,2].map(i => <Skeleton key={i} className="h-14 rounded-xl" />)}</div>
+          ) : ases.length === 0 ? (
+            <Card className="text-center py-6 text-gray-400 mb-4">
+              <Users className="w-6 h-6 mx-auto mb-1 opacity-30" />
+              <p className="text-sm">No ASEs in your zone yet.</p>
+            </Card>
+          ) : (
+            <div className="space-y-2 mb-4">
+              {ases.map(ase => (
+                <div key={ase.id} className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">{ase.name}</p>
+                    <p className="text-xs text-gray-500">ID: {ase.id} · {ase.tdrCount} TDR{ase.tdrCount !== 1 ? 's' : ''}</p>
+                  </div>
+                  <span className="text-xs bg-green-100 text-zamtel-green font-bold px-2 py-0.5 rounded-full">ASE</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* TDR Assignment */}
+          <p className="text-sm font-bold text-gray-700 mb-3">TDR → ASE Assignment ({tdrs.length})</p>
+          {aseTdrsLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
+          ) : tdrs.length === 0 ? (
+            <Card className="text-center py-6 text-gray-400">
+              <p className="text-sm">No TDRs in your zone.</p>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {tdrs.map(tdr => {
+                const flag = tdrFlags.find(f => f.tdrId === tdr.id);
+                const assignedASE = ases.find(a => a.id === tdr.aseId);
+                return (
+                  <div key={tdr.id} className={`bg-white rounded-2xl border px-4 py-3 shadow-sm ${flag?.severity === 'critical' ? 'border-red-200' : flag ? 'border-amber-200' : 'border-gray-100'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                          {tdr.name}
+                          {flag && <AlertTriangle className={`w-3 h-3 ${flag.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {assignedASE ? `ASE: ${assignedASE.name}` : 'No ASE assigned'}
+                        </p>
+                      </div>
+                      {assigningTDR === tdr.id && <span className="text-xs text-gray-400">...</span>}
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {ases.map(ase => (
+                        <button key={ase.id} onClick={() => handleAssignTDR(tdr.id, tdr.aseId === ase.id ? null : ase.id)}
+                          disabled={assigningTDR === tdr.id}
+                          className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                            tdr.aseId === ase.id
+                              ? 'bg-zamtel-green text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}>
+                          {tdr.aseId === ase.id ? `✓ ${ase.name.split(' ')[0]}` : ase.name.split(' ')[0]}
+                        </button>
+                      ))}
+                      {tdr.aseId && (
+                        <button onClick={() => handleAssignTDR(tdr.id, null)}
+                          disabled={assigningTDR === tdr.id}
+                          className="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                          Unassign
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* DASHBOARD Tab */}
+      {mainTab === 'dashboard' && (<>
 
       {/* MTD progress */}
       {(() => { const el = workingDaysElapsed(); const tot = workingDaysThisMonth(); const pct = Math.round(el/tot*100); return (
@@ -444,6 +651,7 @@ export const ZBMDashboardPage: React.FC = () => {
           </div>
         )}
       </Card>
+      </>)}
     </Layout>
   );
 };

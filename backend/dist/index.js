@@ -15,6 +15,7 @@ const zbm_1 = require("./routes/zbm");
 const hsd_1 = require("./routes/hsd");
 const admin_1 = require("./routes/admin");
 const ase_1 = require("./routes/ase");
+const flags_1 = require("./routes/flags");
 const errorHandler_1 = require("./middleware/errorHandler");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
@@ -40,12 +41,14 @@ app.use('/api/v1/hsd', hsd_1.hsdRouter);
 app.use('/api/v1/hsd/map', hsd_1.mapRouter);
 app.use('/api/v1/admin', admin_1.adminRouter);
 app.use('/api/v1/ase', ase_1.aseRouter);
+app.use('/api/v1/flags', flags_1.flagsRouter);
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 // ─── Error handler ───────────────────────────────────────────────────────────
 app.use(errorHandler_1.errorHandler);
 app.listen(PORT, () => {
     console.log(`🚀 Zamtel TDR Monitor API running on port ${PORT}`);
+    // Diagnostic: confirm Prisma client model keys
 });
 exports.default = app;
 //# sourceMappingURL=index.js.map

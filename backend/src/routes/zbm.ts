@@ -416,3 +416,75 @@ zbmRouter.get('/leaderboard', async (req: Request, res: Response): Promise<void>
     mtd: isCurrentMonth ? { workingDaysElapsed: workingDaysElapsed(), workingDaysTotal: workingDaysThisMonth() } : null,
   });
 });
+
+// ─── GET /zbm/ases — list ASEs in this zone ───────────────────────────────────
+zbmRouter.get('/ases', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = req.user!.zone;
+    const ases = await prisma.user.findMany({
+      where: { role: 'ASE', active: true, ...(zone ? { zone } : {}) },
+      select: { id: true, name: true, zone: true },
+      orderBy: { name: 'asc' },
+    });
+    // For each ASE, count their TDRs
+    const result = await Promise.all(ases.map(async ase => ({
+      ...ase,
+      tdrCount: await prisma.user.count({ where: { aseId: ase.id, role: 'TDR' } }),
+    })));
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load ASEs' });
+  }
+});
+
+// ─── POST /zbm/ases — create a new ASE ────────────────────────────────────────
+zbmRouter.post('/ases', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = req.user!.zone;
+    const { id, name, pin } = req.body as { id: string; name: string; pin: string };
+    if (!id || !name || !pin) { res.status(400).json({ error: 'id, name and pin required' }); return; }
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (existing) { res.status(409).json({ error: 'User ID already exists' }); return; }
+    const user = await prisma.user.create({
+      data: { id, name, pin, role: 'ASE', zone: zone || null, active: true },
+    });
+    res.status(201).json({ success: true, data: { id: user.id, name: user.name, role: user.role, zone: user.zone } });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create ASE' });
+  }
+});
+
+// ─── GET /zbm/tdrs — list all TDRs in this zone with their ASE assignment ─────
+zbmRouter.get('/tdrs', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = req.user!.zone;
+    const tdrs = await prisma.user.findMany({
+      where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
+      select: { id: true, name: true, zone: true, aseId: true },
+      orderBy: { name: 'asc' },
+    });
+    res.json({ success: true, data: tdrs });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load TDRs' });
+  }
+});
+
+// ─── POST /zbm/assign-tdr — assign TDR to an ASE ─────────────────────────────
+zbmRouter.post('/assign-tdr', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = req.user!.zone;
+    const { tdrId, aseId } = req.body as { tdrId: string; aseId: string | null };
+    // Verify TDR is in this zone
+    const tdr = await prisma.user.findFirst({ where: { id: tdrId, role: 'TDR', ...(zone ? { zone } : {}) } });
+    if (!tdr) { res.status(404).json({ error: 'TDR not found in your zone' }); return; }
+    // Verify ASE is in this zone (if assigning)
+    if (aseId) {
+      const ase = await prisma.user.findFirst({ where: { id: aseId, role: 'ASE', ...(zone ? { zone } : {}) } });
+      if (!ase) { res.status(404).json({ error: 'ASE not found in your zone' }); return; }
+    }
+    await prisma.user.update({ where: { id: tdrId }, data: { aseId: aseId || null } });
+    res.json({ success: true, message: aseId ? 'TDR assigned to ASE' : 'TDR unassigned' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to assign TDR' });
+  }
+});
