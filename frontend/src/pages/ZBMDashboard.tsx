@@ -35,7 +35,7 @@ function tdrScore(row: TDRStat): number {
 
 export const ZBMDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs'>('dashboard');
+  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs' | 'flags'>('dashboard');
   const [data,       setData]       = useState<ZBMDashboard | null>(null);
   const [issues,     setIssues]     = useState<FloatIssue[]>([]);
   const [prospects,  setProspects]  = useState<Prospect[]>([]);
@@ -199,14 +199,20 @@ export const ZBMDashboardPage: React.FC = () => {
 
       {/* Main Tab Bar */}
       <div className="flex gap-2 px-4 pb-3">
-        {(['dashboard', 'ases-tdrs'] as const).map(t => (
-          <button key={t} onClick={() => setMainTab(t)}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
-              mainTab === t ? 'bg-zamtel-green text-white shadow' : 'bg-white text-gray-500 border border-gray-200'
-            }`}>
-            {t === 'dashboard' ? '📊 Dashboard' : '👥 ASEs & TDRs'}
-          </button>
-        ))}
+        {(['dashboard', 'ases-tdrs', 'flags'] as const).map(t => {
+          const critCount = tdrFlags.filter(f => f.severity === 'critical').length;
+          const label = t === 'dashboard' ? '📊 Dashboard'
+            : t === 'ases-tdrs' ? '👥 ASEs & TDRs'
+            : critCount > 0 ? `🔴 Flags (${tdrFlags.length})` : tdrFlags.length > 0 ? `⚠️ Flags (${tdrFlags.length})` : '🚩 Flags';
+          return (
+            <button key={t} onClick={() => setMainTab(t)}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
+                mainTab === t ? 'bg-zamtel-green text-white shadow' : 'bg-white text-gray-500 border border-gray-200'
+              }`}>
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ASEs & TDRs Tab */}
@@ -652,6 +658,83 @@ export const ZBMDashboardPage: React.FC = () => {
         )}
       </Card>
       </>)}
+
+      {/* FLAGS Tab */}
+      {mainTab === 'flags' && (
+        <div className="px-4 py-3 pb-24">
+          {loading ? (
+            <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+          ) : tdrFlags.length === 0 ? (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center mt-4">
+              <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+              <p className="font-bold text-green-700">All TDRs on track</p>
+              <p className="text-xs text-green-600 mt-1">No performance flags in your zone</p>
+            </div>
+          ) : (
+            <>
+              {/* Summary bar */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-center">
+                  <p className="text-2xl font-black text-red-600">{tdrFlags.filter(f => f.severity === 'critical').length}</p>
+                  <p className="text-xs text-red-500 font-semibold mt-0.5">🔴 Critical</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center">
+                  <p className="text-2xl font-black text-amber-600">{tdrFlags.filter(f => f.severity === 'warning').length}</p>
+                  <p className="text-xs text-amber-500 font-semibold mt-0.5">⚠️ Warning</p>
+                </div>
+              </div>
+
+              {/* Flag cards */}
+              <div className="space-y-3">
+                {tdrFlags.map(f => (
+                  <div key={f.tdrId} className={`bg-white rounded-2xl border-2 shadow-sm overflow-hidden ${f.severity === 'critical' ? 'border-red-300' : 'border-amber-300'}`}>
+                    {/* Header */}
+                    <div className={`px-4 py-2.5 flex items-center justify-between ${f.severity === 'critical' ? 'bg-red-50' : 'bg-amber-50'}`}>
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className={`w-4 h-4 ${f.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
+                        <div>
+                          <p className="font-bold text-sm text-gray-800">{f.tdrName}</p>
+                          <p className="text-xs text-gray-500">{f.zone || 'No zone'} · {f.tdrId}</p>
+                        </div>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${f.severity === 'critical' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {f.severity === 'critical' ? '🔴 Critical' : '⚠️ Warning'}
+                      </span>
+                    </div>
+                    {/* Flag reasons */}
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      {f.flags.map((fl, i) => (
+                        <p key={i} className="text-xs text-gray-700 py-0.5">{fl}</p>
+                      ))}
+                    </div>
+                    {/* MTD stats */}
+                    <div className="grid grid-cols-3 divide-x divide-gray-100 text-center py-2">
+                      <div className="px-2">
+                        <p className={`font-bold text-sm ${f.mtd.agents < f.mtd.agentTarget * 0.5 ? 'text-red-600' : 'text-gray-800'}`}>
+                          {f.mtd.agents}<span className="text-gray-400 font-normal text-xs">/{f.mtd.agentTarget}</span>
+                        </p>
+                        <p className="text-[10px] text-gray-400">Agents MTD</p>
+                      </div>
+                      <div className="px-2">
+                        <p className={`font-bold text-sm ${f.mtd.merchants < f.mtd.merchantTarget * 0.5 ? 'text-red-600' : 'text-gray-800'}`}>
+                          {f.mtd.merchants}<span className="text-gray-400 font-normal text-xs">/{f.mtd.merchantTarget}</span>
+                        </p>
+                        <p className="text-[10px] text-gray-400">Merchants MTD</p>
+                      </div>
+                      <div className="px-2">
+                        <p className={`font-bold text-sm ${f.mtd.visits < f.mtd.visitTarget * 0.5 ? 'text-red-600' : 'text-gray-800'}`}>
+                          {f.mtd.visits}<span className="text-gray-400 font-normal text-xs">/{f.mtd.visitTarget}</span>
+                        </p>
+                        <p className="text-[10px] text-gray-400">Visits MTD</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </Layout>
   );
 };
