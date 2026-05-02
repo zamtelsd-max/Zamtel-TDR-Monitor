@@ -21,7 +21,7 @@ exports.flagsRouter.get('/', async (req, res) => {
             userWhere.aseId = userId;
         else if (role === 'ZBM' && zone)
             userWhere.zone = zone;
-        const tdrs = await prisma_1.prisma.users.findMany({
+        const tdrs = await prisma_1.prisma.user.findMany({
             where: userWhere,
             select: { id: true, name: true, zone: true, aseId: true },
         });
@@ -42,15 +42,15 @@ exports.flagsRouter.get('/', async (req, res) => {
         weekStart.setHours(0, 0, 0, 0);
         // ── Batch all counts via groupBy ──────────────────────────────────────────
         const [dailyAgentsGrp, dailyMerchantsGrp, dailyVisitsGrp, weekAgentsGrp, weekMerchantsGrp, weekVisitsGrp, mtdAgentsGrp, mtdMerchantsGrp, mtdVisitsGrp,] = await Promise.all([
-            prisma_1.prisma.agents.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
-            prisma_1.prisma.agents.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
-            prisma_1.prisma.visits.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
-            prisma_1.prisma.agents.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: weekStart, lte: todayEnd } }, _count: true }),
-            prisma_1.prisma.agents.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: weekStart, lte: todayEnd } }, _count: true }),
-            prisma_1.prisma.visits.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, createdAt: { gte: weekStart, lte: todayEnd } }, _count: true }),
-            prisma_1.prisma.agents.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: mtdStart, lte: mtdEnd } }, _count: true }),
-            prisma_1.prisma.agents.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: mtdStart, lte: mtdEnd } }, _count: true }),
-            prisma_1.prisma.visits.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, createdAt: { gte: mtdStart, lte: mtdEnd } }, _count: true }),
+            prisma_1.prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
+            prisma_1.prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
+            prisma_1.prisma.visit.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
+            prisma_1.prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: weekStart, lte: todayEnd } }, _count: true }),
+            prisma_1.prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: weekStart, lte: todayEnd } }, _count: true }),
+            prisma_1.prisma.visit.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, createdAt: { gte: weekStart, lte: todayEnd } }, _count: true }),
+            prisma_1.prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: mtdStart, lte: mtdEnd } }, _count: true }),
+            prisma_1.prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: mtdStart, lte: mtdEnd } }, _count: true }),
+            prisma_1.prisma.visit.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, createdAt: { gte: mtdStart, lte: mtdEnd } }, _count: true }),
         ]);
         const get = (grp, id) => grp.find(g => g.tdrId === id)?._count ?? 0;
         const mtdAgentTarget = (0, mtd_1.prorateMtdTarget)(96);

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import bcrypt          from 'bcryptjs';
 import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
@@ -445,8 +446,9 @@ zbmRouter.post('/ases', async (req: Request, res: Response): Promise<void> => {
     if (!id || !name || !pin) { res.status(400).json({ error: 'id, name and pin required' }); return; }
     const existing = await prisma.user.findUnique({ where: { id } });
     if (existing) { res.status(409).json({ error: 'User ID already exists' }); return; }
+    const hashedPin = await bcrypt.hash(pin, 10);
     const user = await prisma.user.create({
-      data: { id, name, pin, role: 'ASE', zone: zone || null, active: true },
+      data: { id, name, pin: hashedPin, role: 'ASE', zone: zone || null, active: true },
     });
     res.status(201).json({ success: true, data: { id: user.id, name: user.name, role: user.role, zone: user.zone } });
   } catch (err) {
