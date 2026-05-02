@@ -9,104 +9,110 @@ flagsRouter.use(requireAuth('HSD', 'ZBM', 'ASE'));
 flagsRouter.use(apiRateLimit);
 
 interface TDRFlag {
-  tdrId:   string;
-  tdrName: string;
-  zone:    string | null;
-  aseId:   string | null;
-  flags:   string[];
+  tdrId:    string;
+  tdrName:  string;
+  zone:     string | null;
+  aseId:    string | null;
+  flags:    string[];
   severity: 'critical' | 'warning';
-  daily: { agents: number; merchants: number; visits: number; target: number };
+  daily:  { agents: number; merchants: number; visits: number; target: number };
   weekly: { agents: number; merchants: number; visits: number };
-  mtd:   { agents: number; agentTarget: number; merchants: number; merchantTarget: number; visits: number; visitTarget: number };
+  mtd:    { agents: number; agentTarget: number; merchants: number; merchantTarget: number; visits: number; visitTarget: number };
 }
 
-// ─── GET /flags — red-flagged TDRs based on caller's scope ───────────────────
+// GET /flags — red-flagged TDRs scoped by caller role
 flagsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const role   = req.user!.role;
     const zone   = req.user!.zone;
     const userId = req.user!.userId;
 
-    // Scope: ASE sees only their TDRs; ZBM sees their zone; HSD sees all
-    const where: Record<string, unknown> = { role: 'TDR', active: true };
-    if (role === 'ASE') {
-      where.aseId = userId;
-    } else if (role === 'ZBM' && zone) {
-      where.zone = zone;
-    }
+    // Scope TDRs
+    const userWhere: Record<string, unknown> = { role: 'TDR', active: true };
+    if (role === 'ASE')              userWhere.aseId = userId;
+    else if (role === 'ZBM' && zone) userWhere.zone  = zone;
 
-    const tdrs = await prisma.user.findMany({ where, select: { id: true, name: true, zone: true, aseId: true } });
+    const tdrs = await prisma.user.findMany({
+      where: userWhere,
+      select: { id: true, name: true, zone: true, aseId: true },
+    });
+    if (tdrs.length === 0) { res.json({ success: true, total: 0, data: [] }); return; }
 
-    const now      = new Date();
-    const { start: mtdStart, end: mtdEnd } = mtdRange();
+    const tdrIds = tdrs.map(t => t.id);
+    const now    = new Date();
 
-    // Today window
+    // Date boundaries
+    const todayStr   = now.toISOString().split('T')[0];
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-    // Week window (Mon–today)
-    const dayOfWeek  = now.getDay() === 0 ? 6 : now.getDay() - 1; // Mon=0
+    const { start: mtdStart, end: mtdEnd } = mtdRange();
+    const dayOfWeek  = now.getDay() === 0 ? 6 : now.getDay() - 1;
     const weekStart  = new Date(now); weekStart.setDate(now.getDate() - dayOfWeek); weekStart.setHours(0,0,0,0);
+
+    // ── Batch all counts via groupBy ──────────────────────────────────────────
+    const [
+      dailyAgentsGrp, dailyMerchantsGrp, dailyVisitsGrp,
+      weekAgentsGrp,  weekMerchantsGrp,  weekVisitsGrp,
+      mtdAgentsGrp,   mtdMerchantsGrp,   mtdVisitsGrp,
+    ] = await Promise.all([
+      prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal',   createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
+      prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
+      prisma.visit.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds },                   createdAt: { gte: todayStart, lte: todayEnd } }, _count: true }),
+      prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal',   createdAt: { gte: weekStart,  lte: todayEnd } }, _count: true }),
+      prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: weekStart,  lte: todayEnd } }, _count: true }),
+      prisma.visit.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds },                   createdAt: { gte: weekStart,  lte: todayEnd } }, _count: true }),
+      prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'normal',   createdAt: { gte: mtdStart,   lte: mtdEnd   } }, _count: true }),
+      prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: mtdStart,   lte: mtdEnd   } }, _count: true }),
+      prisma.visit.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds },                   createdAt: { gte: mtdStart,   lte: mtdEnd   } }, _count: true }),
+    ]);
+
+    const get = (grp: { tdrId: string; _count: number }[], id: string) =>
+      grp.find(g => g.tdrId === id)?._count ?? 0;
+
+    const mtdAgentTarget    = prorateMtdTarget(96);
+    const mtdMerchantTarget = prorateMtdTarget(96);
+    const mtdVisitTarget    = visitMtdTarget();
+    const dailyVisitTarget  = 20;
+    const daysElapsed       = workingDaysElapsed();
+    const weekDays          = Math.min(dayOfWeek + 1, daysElapsed);
+    const weekAgentTarget   = Math.max(1, Math.round(96 / 26 * weekDays));
+    const weekMerchantTarget = Math.max(1, Math.round(96 / 26 * weekDays));
 
     const flagged: TDRFlag[] = [];
 
     for (const tdr of tdrs) {
-      const [dailyAgents, dailyMerchants, dailyVisits, weeklyAgents, weeklyMerchants, weeklyVisits,
-             mtdAgents, mtdMerchants, mtdVisits] = await Promise.all([
-        prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: todayStart, lte: todayEnd } } }),
-        prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
-        prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: todayStart, lte: todayEnd } } }),
-        prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: weekStart, lte: todayEnd } } }),
-        prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: weekStart, lte: todayEnd } } }),
-        prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: weekStart, lte: todayEnd } } }),
-        prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal',   createdAt: { gte: mtdStart, lte: mtdEnd } } }),
-        prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: mtdStart, lte: mtdEnd } } }),
-        prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: mtdStart, lte: mtdEnd } } }),
-      ]);
-
-      const dailyVisitTarget  = 20;
-      const mtdAgentTarget    = prorateMtdTarget(96);
-      const mtdMerchantTarget = prorateMtdTarget(96);
-      const mtdVisitTarget    = visitMtdTarget();
+      const da = get(dailyAgentsGrp,    tdr.id);
+      const dm = get(dailyMerchantsGrp, tdr.id);
+      const dv = get(dailyVisitsGrp,    tdr.id);
+      const wa = get(weekAgentsGrp,     tdr.id);
+      const wm = get(weekMerchantsGrp,  tdr.id);
+      const wv = get(weekVisitsGrp,     tdr.id);
+      const ma = get(mtdAgentsGrp,      tdr.id);
+      const mm = get(mtdMerchantsGrp,   tdr.id);
+      const mv = get(mtdVisitsGrp,      tdr.id);
 
       const flags: string[] = [];
-
-      // Daily flags
-      if (dailyVisits < dailyVisitTarget * 0.5)                              flags.push('⚠ Daily visits < 50% target');
-      if (dailyAgents + dailyMerchants === 0 && workingDaysElapsed() >= 5)   flags.push('⚠ No registrations today');
-
-      // Weekly flags — if more than 3 working days elapsed
-      const daysElapsed = workingDaysElapsed();
+      if (dv < dailyVisitTarget * 0.5)                              flags.push('⚠ Daily visits < 50% target');
+      if (da + dm === 0 && daysElapsed >= 5)                        flags.push('⚠ No registrations today');
       if (daysElapsed >= 3) {
-        const weekDays           = Math.min(dayOfWeek + 1, daysElapsed);
-        const weekAgentTarget    = Math.round(96 / 26 * weekDays); // ~3.7/day
-        const weekMerchantTarget = Math.round(96 / 26 * weekDays);
-        if (weeklyAgents    < weekAgentTarget    * 0.5) flags.push('⚠ Weekly agents < 50% pace');
-        if (weeklyMerchants < weekMerchantTarget * 0.5) flags.push('⚠ Weekly merchants < 50% pace');
+        if (wa < weekAgentTarget    * 0.5) flags.push('⚠ Weekly agents < 50% pace');
+        if (wm < weekMerchantTarget * 0.5) flags.push('⚠ Weekly merchants < 50% pace');
       }
-
-      // MTD flags
-      if (mtdAgents    < mtdAgentTarget    * 0.5) flags.push('🔴 MTD agents critically behind');
-      if (mtdMerchants < mtdMerchantTarget * 0.5) flags.push('🔴 MTD merchants critically behind');
-      if (mtdVisits    < mtdVisitTarget    * 0.5) flags.push('🔴 MTD visits critically behind');
+      if (ma < mtdAgentTarget    * 0.5) flags.push('🔴 MTD agents critically behind');
+      if (mm < mtdMerchantTarget * 0.5) flags.push('🔴 MTD merchants critically behind');
+      if (mv < mtdVisitTarget    * 0.5) flags.push('🔴 MTD visits critically behind');
 
       if (flags.length > 0) {
-        const critical = flags.some(f => f.startsWith('🔴'));
         flagged.push({
-          tdrId:   tdr.id,
-          tdrName: tdr.name,
-          zone:    tdr.zone,
-          aseId:   tdr.aseId,
-          flags,
-          severity: critical ? 'critical' : 'warning',
-          daily:   { agents: dailyAgents, merchants: dailyMerchants, visits: dailyVisits, target: dailyVisitTarget },
-          weekly:  { agents: weeklyAgents, merchants: weeklyMerchants, visits: weeklyVisits },
-          mtd:     { agents: mtdAgents, agentTarget: mtdAgentTarget, merchants: mtdMerchants, merchantTarget: mtdMerchantTarget, visits: mtdVisits, visitTarget: mtdVisitTarget },
+          tdrId: tdr.id, tdrName: tdr.name, zone: tdr.zone, aseId: tdr.aseId, flags,
+          severity: flags.some(f => f.startsWith('🔴')) ? 'critical' : 'warning',
+          daily:  { agents: da, merchants: dm, visits: dv, target: dailyVisitTarget },
+          weekly: { agents: wa, merchants: wm, visits: wv },
+          mtd:    { agents: ma, agentTarget: mtdAgentTarget, merchants: mm, merchantTarget: mtdMerchantTarget, visits: mv, visitTarget: mtdVisitTarget },
         });
       }
     }
 
-    // Sort: critical first, then by number of flags
     flagged.sort((a, b) => {
       if (a.severity === 'critical' && b.severity !== 'critical') return -1;
       if (b.severity === 'critical' && a.severity !== 'critical') return 1;
