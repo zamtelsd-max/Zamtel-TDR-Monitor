@@ -23,7 +23,7 @@ exports.flagsRouter.get('/', async (req, res) => {
         else if (role === 'ZBM' && zone) {
             where.zone = zone;
         }
-        const tdrs = await prisma_1.prisma.users.findMany({ where, select: { id: true, name: true, zone: true, aseId: true } });
+        const tdrs = await prisma_1.prisma.user.findMany({ where, select: { id: true, name: true, zone: true, aseId: true } });
         const now = new Date();
         const { start: mtdStart, end: mtdEnd } = (0, mtd_1.mtdRange)();
         // Today window
@@ -37,15 +37,15 @@ exports.flagsRouter.get('/', async (req, res) => {
         const flagged = [];
         for (const tdr of tdrs) {
             const [dailyAgents, dailyMerchants, dailyVisits, weeklyAgents, weeklyMerchants, weeklyVisits, mtdAgents, mtdMerchants, mtdVisits] = await Promise.all([
-                prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: todayStart, lte: todayEnd } } }),
-                prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
-                prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: todayStart, lte: todayEnd } } }),
-                prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: weekStart, lte: todayEnd } } }),
-                prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: weekStart, lte: todayEnd } } }),
-                prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: weekStart, lte: todayEnd } } }),
-                prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: mtdStart, lte: mtdEnd } } }),
-                prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: mtdStart, lte: mtdEnd } } }),
-                prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: mtdStart, lte: mtdEnd } } }),
+                prisma_1.prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: todayStart, lte: todayEnd } } }),
+                prisma_1.prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
+                prisma_1.prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: todayStart, lte: todayEnd } } }),
+                prisma_1.prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: weekStart, lte: todayEnd } } }),
+                prisma_1.prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: weekStart, lte: todayEnd } } }),
+                prisma_1.prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: weekStart, lte: todayEnd } } }),
+                prisma_1.prisma.agent.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: mtdStart, lte: mtdEnd } } }),
+                prisma_1.prisma.agent.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: mtdStart, lte: mtdEnd } } }),
+                prisma_1.prisma.visit.count({ where: { tdrId: tdr.id, createdAt: { gte: mtdStart, lte: mtdEnd } } }),
             ]);
             const dailyVisitTarget = 20;
             const mtdAgentTarget = (0, mtd_1.prorateMtdTarget)(96);

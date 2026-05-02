@@ -22,7 +22,7 @@ exports.authRouter.post('/login', rateLimit_1.loginRateLimit, async (req, res) =
         return;
     }
     const { id, pin } = parsed.data;
-    const user = await prisma_1.prisma.users.findUnique({ where: { id } });
+    const user = await prisma_1.prisma.user.findUnique({ where: { id } });
     if (!user || !user.active) {
         res.status(401).json({ error: 'Invalid credentials' });
         return;
