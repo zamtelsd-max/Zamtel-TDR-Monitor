@@ -56,7 +56,15 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   const [showVisitLayer, setShowVisitLayer] = useState(false)
   const [activeZone, setActiveZone] = useState<string>('all')
 
-  const zones = ['all', ...Array.from(new Set(agents.map(a => a.zone).filter(Boolean))).sort()]
+  const zones = ['all', 'Lusaka (Both)', ...Array.from(new Set(agents.map(a => a.zone).filter(Boolean))).sort()]
+
+  // Lusaka zone manager mapping
+  const LUSAKA_ZBM: Record<string, { name: string; colour: string; accent: string }> = {
+    'Lusaka North': { name: 'Trebby Mando',  colour: '#7C3AED', accent: '#DDD6FE' }, // purple
+    'Lusaka South': { name: 'Sharon Zulu',   colour: '#0369A1', accent: '#BAE6FD' }, // blue
+  };
+
+  const isLusakaView = activeZone === 'Lusaka (Both)' || activeZone === 'Lusaka North' || activeZone === 'Lusaka South';
 
   const getOutletColour = (a: AgentPoint): string => {
     if (a.daysAgo === null || a.daysAgo === undefined) return '#DC2626';
@@ -97,8 +105,12 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     // Clear existing layers except tile
     map.eachLayer(layer => { if (!(layer instanceof L.TileLayer)) map.removeLayer(layer) })
 
-    const filteredAgents = activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone)
-    const filteredVisits = activeZone === 'all' ? visits : visits.filter(v => v.zone === activeZone)
+    const filteredAgents = activeZone === 'all' ? agents
+      : activeZone === 'Lusaka (Both)' ? agents.filter(a => a.zone === 'Lusaka North' || a.zone === 'Lusaka South')
+      : agents.filter(a => a.zone === activeZone)
+    const filteredVisits = activeZone === 'all' ? visits
+      : activeZone === 'Lusaka (Both)' ? visits.filter(v => v.zone === 'Lusaka North' || v.zone === 'Lusaka South')
+      : visits.filter(v => v.zone === activeZone)
 
     const bounds: L.LatLngTuple[] = []
 
@@ -108,16 +120,20 @@ export const GeoMap: React.FC<GeoMapProps> = ({
         if (!a.latitude || !a.longitude) return
         const isMerchant = a.type === 'merchant'
         const colour = getOutletColour(a);
-        const borderColour = isMerchant ? '#E4007C' : '#ffffff';
+        // In Lusaka view: outer ring shows ZBM territory colour
+        const lusZbm = (activeZone === 'Lusaka (Both)' || activeZone === 'Lusaka North' || activeZone === 'Lusaka South')
+          ? LUSAKA_ZBM[a.zone] : null;
+        const borderColour = lusZbm ? lusZbm.colour : (isMerchant ? '#E4007C' : '#ffffff');
+        const dotSize = lusZbm ? 13 : 12;
         const icon = L.divIcon({
           className: '',
           html: `<div style="
-            width:12px;height:12px;border-radius:50%;
-            background:${colour};border:2px solid ${borderColour};
+            width:${dotSize}px;height:${dotSize}px;border-radius:50%;
+            background:${colour};border:2.5px solid ${borderColour};
             box-shadow:0 1px 4px rgba(0,0,0,0.4);">
           </div>`,
-          iconSize: [12, 12],
-          iconAnchor: [6, 6],
+          iconSize: [dotSize, dotSize],
+          iconAnchor: [dotSize/2, dotSize/2],
         })
         const marker = L.marker([a.latitude, a.longitude], { icon })
           .bindPopup(`
@@ -129,6 +145,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
               <span style="color:#888;font-size:11px">Code: ${a.agentCode}</span><br/>
               <span style="font-size:12px">📍 ${a.town}, ${a.zone}</span><br/>
               <span style="font-size:12px">👤 TDR: ${a.tdrName}</span><br/>
+              ${lusZbm ? `<span style="font-size:12px;font-weight:600;color:${lusZbm.colour}">📋 ZBM: ${lusZbm.name} (${a.zone})</span><br/>` : ''}
               <span style="font-size:12px">💰 Float: K${Number(a.initialFloat).toLocaleString()}</span><br/>
               ${a.merchantCategory ? `<span style="font-size:12px">🏷️ ${a.merchantCategory}</span><br/>` : ''}
               <span style="font-size:11px;color:#666;display:block;margin-top:2px">
@@ -193,15 +210,21 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     return () => window.removeEventListener('zamtel-offline-synced', handler);
   }, []);
 
-  const agentCount = activeZone === 'all' ? agents.length : agents.filter(a => a.zone === activeZone).length
-  const visitCount = activeZone === 'all' ? visits.length : visits.filter(v => v.zone === activeZone).length
-  const merchantCount = (activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone)).filter(a => a.type === 'merchant').length
-  const neverOrOverdue = (activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone))
-    .filter(a => a.daysAgo == null || a.daysAgo >= 4).length;
-  const dueSoon = (activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone))
-    .filter(a => a.daysAgo != null && a.daysAgo >= 2 && a.daysAgo < 4).length;
-  const recentlyVisited = (activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone))
-    .filter(a => a.daysAgo != null && a.daysAgo < 2).length;
+  const scopedAgents = activeZone === 'all' ? agents
+    : activeZone === 'Lusaka (Both)' ? agents.filter(a => a.zone === 'Lusaka North' || a.zone === 'Lusaka South')
+    : agents.filter(a => a.zone === activeZone);
+  const scopedVisits = activeZone === 'all' ? visits
+    : activeZone === 'Lusaka (Both)' ? visits.filter(v => v.zone === 'Lusaka North' || v.zone === 'Lusaka South')
+    : visits.filter(v => v.zone === activeZone);
+  const agentCount    = scopedAgents.length;
+  const visitCount    = scopedVisits.length;
+  const merchantCount = scopedAgents.filter(a => a.type === 'merchant').length;
+  const neverOrOverdue  = scopedAgents.filter(a => a.daysAgo == null || a.daysAgo >= 4).length;
+  const dueSoon         = scopedAgents.filter(a => a.daysAgo != null && a.daysAgo >= 2 && a.daysAgo < 4).length;
+  const recentlyVisited = scopedAgents.filter(a => a.daysAgo != null && a.daysAgo < 2).length;
+  // Lusaka split counts
+  const lnCount = agents.filter(a => a.zone === 'Lusaka North').length;
+  const lsCount = agents.filter(a => a.zone === 'Lusaka South').length;
 
   return (
     <div className="bg-white rounded-2xl shadow overflow-hidden border border-gray-100">
@@ -277,9 +300,28 @@ export const GeoMap: React.FC<GeoMapProps> = ({
 
       {/* Legend */}
       <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex gap-4 text-xs text-gray-500 flex-wrap">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-red-600" /> Never / Overdue (&gt;4d)</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-amber-500" /> Due Soon (2–4d)</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-green-600" /> Visited (&lt;2d)</span>
+        {isLusakaView ? (
+          <>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3.5 h-3.5 rounded-full inline-block border-2" style={{background:'#9CA3AF', borderColor:'#7C3AED'}} />
+              Lusaka North — Trebby Mando ({lnCount})
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3.5 h-3.5 rounded-full inline-block border-2" style={{background:'#9CA3AF', borderColor:'#0369A1'}} />
+              Lusaka South — Sharon Zulu ({lsCount})
+            </span>
+            <span className="text-gray-300">|</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-red-600" /> Overdue</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-amber-500" /> Due Soon</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-green-600" /> OK</span>
+          </>
+        ) : (
+          <>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-red-600" /> Never / Overdue (&gt;4d)</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-amber-500" /> Due Soon (2–4d)</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-green-600" /> Visited (&lt;2d)</span>
+          </>
+        )}
         {showVisitLayer && <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-blue-600 opacity-75" /> Visit</span>}
         <span className="ml-auto text-gray-400">Click any marker for details</span>
       </div>
