@@ -6,32 +6,57 @@ import { Layout } from '../components/Layout';
 import { Input, Select, Textarea, Button } from '../components/UI';
 import { MERCHANT_CATEGORIES } from '../types';
 import type { ProspectType, ProspectStatus } from '../types';
+import { useGPS } from '../hooks/useGPS';
+import { useOfflineSync } from '../hooks/useOfflineSync';
+import { enqueueOffline } from '../utils/offlineQueue';
 
 export const AddProspectForm: React.FC = () => {
   const navigate    = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const { capture: captureGPS, loading: gpsLoading } = useGPS();
+  const { isOnline, pendingCount } = useOfflineSync();
+
   const DRAFT_KEY = 'draft_prospect';
-  type ProspectForm = { prospectType: ProspectType; businessName: string; ownerName: string; contactPhone: string; town: string; address: string; merchantCategory: string; estimatedFloat: string; status: ProspectStatus; notes: string; followUpDate: string; };
-  const savedDraft: ProspectForm | null = (() => { try { const d = localStorage.getItem(DRAFT_KEY); return d ? JSON.parse(d) as ProspectForm : null; } catch { return null; } })();
+  type ProspectForm = {
+    prospectType: ProspectType; businessName: string; ownerName: string;
+    contactPhone: string; town: string; address: string; merchantCategory: string;
+    estimatedFloat: string; status: ProspectStatus; notes: string; followUpDate: string;
+    latitude: string; longitude: string;
+  };
+  const savedDraft: ProspectForm | null = (() => {
+    try { const d = localStorage.getItem(DRAFT_KEY); return d ? JSON.parse(d) as ProspectForm : null; } catch { return null; }
+  })();
   useEffect(() => { if (savedDraft) toast('📋 Draft restored', { icon: '📋' }); }, []); // eslint-disable-line
+
   const [form, setForm] = useState<ProspectForm>(savedDraft || {
-    prospectType:    'agent' as ProspectType,
-    businessName:    '',
-    ownerName:       '',
-    contactPhone:    '',
-    town:            '',
-    address:         '',
-    merchantCategory: '',
-    estimatedFloat:  '',
-    status:          'identified' as ProspectStatus,
-    notes:           '',
-    followUpDate:    '',
+    prospectType: 'agent' as ProspectType,
+    businessName: '', ownerName: '', contactPhone: '', town: '', address: '',
+    merchantCategory: '', estimatedFloat: '', status: 'identified' as ProspectStatus,
+    notes: '', followUpDate: '', latitude: '', longitude: '',
   });
 
   const set = (key: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-      setForm(prev => { const next = { ...prev, [key]: e.target.value }; localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); return next; });
+      setForm(prev => {
+        const next = { ...prev, [key]: e.target.value };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+        return next;
+      });
     };
+
+  const handleGPS = async () => {
+    try {
+      const { latitude, longitude } = await captureGPS();
+      setForm(prev => {
+        const next = { ...prev, latitude: String(latitude), longitude: String(longitude) };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+        return next;
+      });
+      toast.success(`📍 Location captured`);
+    } catch (err) {
+      toast.error((err as Error).message || 'GPS capture failed');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,28 +64,46 @@ export const AddProspectForm: React.FC = () => {
       toast.error('Please fill in required fields');
       return;
     }
-
     setSubmitting(true);
+    const payload = {
+      prospectType:     form.prospectType,
+      businessName:     form.businessName,
+      ownerName:        form.ownerName,
+      contactPhone:     form.contactPhone,
+      town:             form.town,
+      address:          form.address           || undefined,
+      merchantCategory: form.prospectType === 'merchant' ? form.merchantCategory || undefined : undefined,
+      estimatedFloat:   form.estimatedFloat     ? parseFloat(form.estimatedFloat) : undefined,
+      status:           form.status,
+      notes:            form.notes              || undefined,
+      followUpDate:     form.followUpDate        || undefined,
+      latitude:         form.latitude            ? parseFloat(form.latitude)  : undefined,
+      longitude:        form.longitude           ? parseFloat(form.longitude) : undefined,
+    };
+
     try {
-      await tdrApi.createProspect({
-        prospectType:    form.prospectType,
-        businessName:    form.businessName,
-        ownerName:       form.ownerName,
-        contactPhone:    form.contactPhone,
-        town:            form.town,
-        address:         form.address         || undefined,
-        merchantCategory: form.prospectType === 'merchant' ? form.merchantCategory || undefined : undefined,
-        estimatedFloat:  form.estimatedFloat  ? parseFloat(form.estimatedFloat)  : undefined,
-        status:          form.status,
-        notes:           form.notes           || undefined,
-        followUpDate:    form.followUpDate     || undefined,
-      });
+      if (!navigator.onLine) {
+        await enqueueOffline('prospect', payload as Record<string, unknown>);
+        localStorage.removeItem(DRAFT_KEY);
+        toast.success('📴 Saved offline — will sync when internet restores', { duration: 5000 });
+        navigate('/tdr');
+        return;
+      }
+      await tdrApi.createProspect(payload);
       localStorage.removeItem(DRAFT_KEY);
       toast.success('Prospect added to pipeline!');
       navigate('/tdr');
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      toast.error(typeof msg === 'string' ? msg : 'Failed to add prospect');
+      const isNetworkError = !(err as any)?.response;
+      if (isNetworkError) {
+        await enqueueOffline('prospect', payload as Record<string, unknown>);
+        localStorage.removeItem(DRAFT_KEY);
+        toast.success('📴 Saved offline — will sync when internet restores', { duration: 5000 });
+        navigate('/tdr');
+      } else {
+        const msg = (err as any)?.response?.data?.error;
+        toast.error(typeof msg === 'string' ? msg : 'Failed to add prospect');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -70,6 +113,23 @@ export const AddProspectForm: React.FC = () => {
     <Layout title="Add Prospect" showBack backTo="/tdr">
       <form onSubmit={handleSubmit} className="space-y-4 max-w-lg mx-auto pb-8">
         <h2 className="text-lg font-bold text-zamtel-dark mb-2">Add to Prospects Pipeline</h2>
+
+        {/* Offline banner */}
+        {!isOnline && (
+          <div className="flex items-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-3">
+            <span className="text-lg">📵</span>
+            <div>
+              <p className="text-sm font-bold text-orange-700">You are offline</p>
+              <p className="text-xs text-orange-600">Data will be saved on your device and synced when you reconnect</p>
+            </div>
+          </div>
+        )}
+        {pendingCount > 0 && isOnline && (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+            <span className="text-base">🔄</span>
+            <p className="text-sm text-blue-700">{pendingCount} record{pendingCount > 1 ? 's' : ''} pending sync</p>
+          </div>
+        )}
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
           <p className="text-sm text-blue-800">
@@ -113,9 +173,7 @@ export const AddProspectForm: React.FC = () => {
 
         <Input
           label="Estimated Starting Float (ZMW)"
-          type="number"
-          min="0"
-          step="0.01"
+          type="number" min="0" step="0.01"
           value={form.estimatedFloat}
           onChange={set('estimatedFloat')}
           placeholder="0.00"
@@ -151,8 +209,40 @@ export const AddProspectForm: React.FC = () => {
           rows={4}
         />
 
+        {/* GPS coordinates */}
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-700">📍 GPS Location</span>
+            <button
+              type="button"
+              onClick={handleGPS}
+              disabled={gpsLoading}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition"
+              style={{ background: form.latitude ? '#dcfce7' : '#00843D', color: form.latitude ? '#15803d' : 'white' }}
+            >
+              {gpsLoading ? '⏳ Getting location…' : form.latitude ? '✅ Location captured' : '📡 Capture GPS'}
+            </button>
+          </div>
+          {form.latitude && form.longitude ? (
+            <p className="text-xs text-green-700 font-mono bg-green-50 rounded-lg px-3 py-1.5">
+              {parseFloat(form.latitude).toFixed(6)}, {parseFloat(form.longitude).toFixed(6)}
+              <button
+                type="button"
+                onClick={() => setForm(p => ({ ...p, latitude: '', longitude: '' }))}
+                className="ml-2 text-red-400 hover:text-red-600"
+              >✕ clear</button>
+            </p>
+          ) : (
+            <p className="text-xs text-gray-400">No location captured yet. GPS works offline too — coordinates are saved with the record.</p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <Input label="Latitude (manual)" value={form.latitude} onChange={set('latitude')} placeholder="-15.416724" />
+            <Input label="Longitude (manual)" value={form.longitude} onChange={set('longitude')} placeholder="28.281510" />
+          </div>
+        </div>
+
         <Button type="submit" loading={submitting} className="w-full" size="lg">
-          Add to Pipeline
+          {!isOnline ? '💾 Save Offline' : 'Add to Pipeline'}
         </Button>
       </form>
     </Layout>

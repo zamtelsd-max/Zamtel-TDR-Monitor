@@ -217,6 +217,8 @@ const floatIssueSchema = zod_1.z.object({
     issueType: zod_1.z.enum(['low_float', 'stuck_transaction', 'system_error', 'other']),
     reportedFloat: zod_1.z.number().default(0),
     description: zod_1.z.string().min(1),
+    latitude: zod_1.z.number().optional(),
+    longitude: zod_1.z.number().optional(),
 });
 exports.tdrRouter.post('/float-issues', async (req, res) => {
     const parsed = floatIssueSchema.safeParse(req.body);
@@ -276,6 +278,8 @@ const prospectSchema = zod_1.z.object({
     status: zod_1.z.enum(['identified', 'contacted', 'interested', 'converted', 'rejected']).default('identified'),
     notes: zod_1.z.string().optional(),
     followUpDate: zod_1.z.string().optional(),
+    latitude: zod_1.z.number().optional(),
+    longitude: zod_1.z.number().optional(),
 });
 exports.tdrRouter.post('/prospects', async (req, res) => {
     const parsed = prospectSchema.safeParse(req.body);

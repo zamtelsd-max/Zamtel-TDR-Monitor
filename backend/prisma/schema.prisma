@@ -47,6 +47,8 @@ model float_issues {
   resolvedAt      DateTime?
   resolvedBy      String?
   resolutionNotes String?
+  latitude        Float?
+  longitude       Float?
   reportedAt      DateTime    @default(now())
   updatedAt  DateTime  @updatedAt
   users           users       @relation(fields: [tdrId], references: [id])
@@ -69,6 +71,8 @@ model prospects {
   notes               String?
   followUpDate        DateTime?
   convertedAt         DateTime?
+  latitude            Float?
+  longitude           Float?
   createdAt           DateTime       @default(now())
   updatedAt  DateTime  @updatedAt
   closedByTdr         Boolean        @default(false)
