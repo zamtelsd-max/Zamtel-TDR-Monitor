@@ -23,6 +23,8 @@ interface AgentPoint {
   initialFloat: number
   merchantCategory?: string
   createdAt: string
+  lastVisitedAt?: string | null
+  daysAgo?: number | null
 }
 
 interface VisitPoint {
@@ -55,6 +57,13 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   const [activeZone, setActiveZone] = useState<string>('all')
 
   const zones = ['all', ...Array.from(new Set(agents.map(a => a.zone).filter(Boolean))).sort()]
+
+  const getOutletColour = (a: AgentPoint): string => {
+    if (a.daysAgo === null || a.daysAgo === undefined) return '#DC2626';
+    if (a.daysAgo >= 4) return '#DC2626';
+    if (a.daysAgo >= 2) return '#D97706';
+    return '#16A34A';
+  };
 
   useEffect(() => {
     if (!mapRef.current) return
@@ -98,12 +107,13 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       filteredAgents.forEach(a => {
         if (!a.latitude || !a.longitude) return
         const isMerchant = a.type === 'merchant'
-        const colour = isMerchant ? '#E4007C' : '#00843D'
+        const colour = getOutletColour(a);
+        const borderColour = isMerchant ? '#E4007C' : '#ffffff';
         const icon = L.divIcon({
           className: '',
           html: `<div style="
             width:12px;height:12px;border-radius:50%;
-            background:${colour};border:2px solid white;
+            background:${colour};border:2px solid ${borderColour};
             box-shadow:0 1px 4px rgba(0,0,0,0.4);">
           </div>`,
           iconSize: [12, 12],
@@ -121,6 +131,16 @@ export const GeoMap: React.FC<GeoMapProps> = ({
               <span style="font-size:12px">👤 TDR: ${a.tdrName}</span><br/>
               <span style="font-size:12px">💰 Float: K${Number(a.initialFloat).toLocaleString()}</span><br/>
               ${a.merchantCategory ? `<span style="font-size:12px">🏷️ ${a.merchantCategory}</span><br/>` : ''}
+              <span style="font-size:11px;color:#666;display:block;margin-top:2px">
+                ${a.daysAgo === null || a.daysAgo === undefined
+                  ? '🔴 Never visited'
+                  : a.daysAgo >= 4
+                    ? `🔴 Last visited ${a.daysAgo} days ago — OVERDUE`
+                    : a.daysAgo >= 2
+                      ? `🟡 Last visited ${a.daysAgo} days ago — due soon`
+                      : `🟢 Visited ${a.daysAgo === 0 ? 'today' : a.daysAgo + ' day' + (a.daysAgo > 1 ? 's' : '') + ' ago'}`
+                }
+              </span>
               <span style="color:#aaa;font-size:10px">${new Date(a.createdAt).toLocaleDateString()}</span>
             </div>
           `, { maxWidth: 260 })
@@ -167,9 +187,21 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     }
   }, [agents, visits, showAgents, showVisitLayer, activeZone])
 
+  useEffect(() => {
+    const handler = () => window.dispatchEvent(new Event('resize'));
+    window.addEventListener('zamtel-offline-synced', handler);
+    return () => window.removeEventListener('zamtel-offline-synced', handler);
+  }, []);
+
   const agentCount = activeZone === 'all' ? agents.length : agents.filter(a => a.zone === activeZone).length
   const visitCount = activeZone === 'all' ? visits.length : visits.filter(v => v.zone === activeZone).length
   const merchantCount = (activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone)).filter(a => a.type === 'merchant').length
+  const neverOrOverdue = (activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone))
+    .filter(a => a.daysAgo == null || a.daysAgo >= 4).length;
+  const dueSoon = (activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone))
+    .filter(a => a.daysAgo != null && a.daysAgo >= 2 && a.daysAgo < 4).length;
+  const recentlyVisited = (activeZone === 'all' ? agents : agents.filter(a => a.zone === activeZone))
+    .filter(a => a.daysAgo != null && a.daysAgo < 2).length;
 
   return (
     <div className="bg-white rounded-2xl shadow overflow-hidden border border-gray-100">
@@ -177,7 +209,9 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-gray-700">🗺️ Field Map</span>
-          <span className="text-xs text-gray-400">{agentCount} agents · {merchantCount} merchants · {visitCount} visits</span>
+          <span className="text-xs text-gray-400">
+            🔴 {neverOrOverdue} overdue · 🟡 {dueSoon} due soon · 🟢 {recentlyVisited} ok · {visitCount} visits
+          </span>
         </div>
 
         <div className="flex-1" />
@@ -243,8 +277,9 @@ export const GeoMap: React.FC<GeoMapProps> = ({
 
       {/* Legend */}
       <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 flex gap-4 text-xs text-gray-500 flex-wrap">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block" style={{background:'#00843D'}} /> Agent</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block" style={{background:'#E4007C'}} /> Merchant</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-red-600" /> Never / Overdue (&gt;4d)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-amber-500" /> Due Soon (2–4d)</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-green-600" /> Visited (&lt;2d)</span>
         {showVisitLayer && <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-blue-600 opacity-75" /> Visit</span>}
         <span className="ml-auto text-gray-400">Click any marker for details</span>
       </div>

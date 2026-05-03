@@ -8,6 +8,8 @@ import { Input, Select, Textarea, Button } from '../components/UI';
 import { MERCHANT_CATEGORIES, ZAMBIA_ZONES } from '../types';
 import { useAppSelector } from '../hooks/useAppDispatch';
 import { useGPS } from '../hooks/useGPS';
+import { useOfflineSync } from '../hooks/useOfflineSync';
+import { enqueueOffline } from '../utils/offlineQueue';
 
 export const AddAgentForm: React.FC = () => {
   const navigate  = useNavigate();
@@ -15,6 +17,7 @@ export const AddAgentForm: React.FC = () => {
   const { capture: captureGPS, loading: gpsLoading } = useGPS();
 
   const [submitting, setSubmitting] = useState(false);
+  const { isOnline, pendingCount } = useOfflineSync();
   const DRAFT_KEY = 'draft_agent';
   type AgentForm = { agentName: string; agentCode: string; contactPhone: string; type: 'normal'|'merchant'; merchantCategory: string; initialFloat: string; town: string; address: string; cluster: string; market: string; latitude: string; longitude: string; notes: string; };
   const defaultForm: AgentForm = { agentName: '', agentCode: '', contactPhone: '', type: 'normal', merchantCategory: '', initialFloat: '', town: '', address: '', cluster: '', market: '', latitude: '', longitude: '', notes: '' };
@@ -42,31 +45,45 @@ export const AddAgentForm: React.FC = () => {
       toast.error('Please fill in required fields');
       return;
     }
-
     setSubmitting(true);
+    const payload = {
+      agentName:        form.agentName,
+      agentCode:        form.agentCode,
+      contactPhone:     form.contactPhone,
+      type:             form.type,
+      merchantCategory: form.type === 'merchant' ? form.merchantCategory : undefined,
+      initialFloat:     parseFloat(form.initialFloat) || 0,
+      town:             form.town,
+      address:          form.address  || undefined,
+      cluster:          form.cluster  || undefined,
+      market:           form.market   || undefined,
+      latitude:         form.latitude  ? parseFloat(form.latitude)  : undefined,
+      longitude:        form.longitude ? parseFloat(form.longitude) : undefined,
+      notes:            form.notes    || undefined,
+    };
     try {
-      await tdrApi.createAgent({
-        agentName:        form.agentName,
-        agentCode:        form.agentCode,
-        contactPhone:     form.contactPhone,
-        type:             form.type,
-        merchantCategory: form.type === 'merchant' ? form.merchantCategory : undefined,
-        initialFloat:     parseFloat(form.initialFloat) || 0,
-        town:             form.town,
-        address:          form.address || undefined,
-        cluster:          form.cluster || undefined,
-        market:           form.market  || undefined,
-        latitude:         form.latitude  ? parseFloat(form.latitude)  : undefined,
-        longitude:        form.longitude ? parseFloat(form.longitude) : undefined,
-        notes:            form.notes || undefined,
-      });
+      if (!navigator.onLine) {
+        await enqueueOffline('agent', payload as Record<string, unknown>);
+        localStorage.removeItem(DRAFT_KEY);
+        toast.success('📴 Saved offline — will sync when internet restores', { duration: 5000 });
+        navigate('/tdr');
+        return;
+      }
+      await tdrApi.createAgent(payload);
       localStorage.removeItem(DRAFT_KEY);
       toast.success('Agent recruited successfully!');
       navigate('/tdr');
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      if (typeof msg === 'string') toast.error(msg);
-      else toast.error('Failed to save. Try again.');
+      const isNetworkError = !(err as any)?.response;
+      if (isNetworkError) {
+        await enqueueOffline('agent', payload as Record<string, unknown>);
+        localStorage.removeItem(DRAFT_KEY);
+        toast.success('📴 Saved offline — will sync when internet restores', { duration: 5000 });
+        navigate('/tdr');
+      } else {
+        const msg = (err as any)?.response?.data?.error;
+        toast.error(typeof msg === 'string' ? msg : 'Failed to save. Try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -76,6 +93,22 @@ export const AddAgentForm: React.FC = () => {
     <Layout title="Add Agent" showBack backTo="/tdr">
       <form onSubmit={handleSubmit} className="space-y-4 max-w-lg mx-auto pb-8">
         <h2 className="text-lg font-bold text-zamtel-dark mb-2">New Agent Recruitment</h2>
+
+        {!isOnline && (
+          <div className="flex items-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-3">
+            <span className="text-lg">📵</span>
+            <div>
+              <p className="text-sm font-bold text-orange-700">You are offline</p>
+              <p className="text-xs text-orange-600">Data will be saved on your device and synced when you reconnect</p>
+            </div>
+          </div>
+        )}
+        {pendingCount > 0 && isOnline && (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+            <span className="text-base">🔄</span>
+            <p className="text-sm text-blue-700">{pendingCount} record{pendingCount > 1 ? 's' : ''} pending sync</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">

@@ -6,10 +6,13 @@ import { tdrApi } from '../services/api';
 import { Layout } from '../components/Layout';
 import { Input, Textarea, Button } from '../components/UI';
 import { useGPS } from '../hooks/useGPS';
+import { useOfflineSync } from '../hooks/useOfflineSync';
+import { enqueueOffline } from '../utils/offlineQueue';
 
 export const RecordVisitForm: React.FC = () => {
   const navigate = useNavigate();
   const { capture: captureGPS, loading: gpsLoading } = useGPS();
+  const { isOnline, pendingCount } = useOfflineSync();
   const [submitting, setSubmitting] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
   const [agentStale, setAgentStale] = useState<{ daysAgo: number | null } | null>(null);
@@ -79,30 +82,46 @@ export const RecordVisitForm: React.FC = () => {
       toast.error('Please fill in required fields');
       return;
     }
-
     setSubmitting(true);
+    const payload = {
+      outletName:   form.outletName,
+      agentCode:    form.agentCode,
+      contactPhone: form.contactPhone,
+      town:         form.town,
+      cluster:      form.cluster   || undefined,
+      market:       form.market    || undefined,
+      floatAmount:  parseFloat(form.floatAmount) || 0,
+      latitude:     form.latitude  ? parseFloat(form.latitude)  : undefined,
+      longitude:    form.longitude ? parseFloat(form.longitude) : undefined,
+      notes:        form.notes     || undefined,
+    };
     try {
-      await tdrApi.createVisit({
-        outletName:   form.outletName,
-        agentCode:    form.agentCode,
-        contactPhone: form.contactPhone,
-        town:         form.town,
-        cluster:      form.cluster   || undefined,
-        market:       form.market    || undefined,
-        floatAmount:  parseFloat(form.floatAmount) || 0,
-        latitude:     form.latitude  ? parseFloat(form.latitude)  : undefined,
-        longitude:    form.longitude ? parseFloat(form.longitude) : undefined,
-        notes:        form.notes     || undefined,
-      });
+      if (!navigator.onLine) {
+        await enqueueOffline('visit', payload as Record<string, unknown>);
+        localStorage.removeItem(DRAFT_KEY);
+        localStorage.removeItem('zamtel_tdr_dashboard');
+        toast.success('📴 Saved offline — will sync when internet restores', { duration: 5000 });
+        navigate('/tdr');
+        return;
+      }
+      await tdrApi.createVisit(payload);
       localStorage.removeItem(DRAFT_KEY);
-      // Bust dashboard cache so stale list re-fetches on return
       localStorage.removeItem('zamtel_tdr_dashboard');
       localStorage.setItem('zamtel_tdr_visit_recorded', form.agentCode);
       toast.success('Visit recorded successfully!');
       navigate('/tdr');
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      toast.error(typeof msg === 'string' ? msg : 'Failed to record visit');
+      const isNetworkError = !(err as any)?.response;
+      if (isNetworkError) {
+        await enqueueOffline('visit', payload as Record<string, unknown>);
+        localStorage.removeItem(DRAFT_KEY);
+        localStorage.removeItem('zamtel_tdr_dashboard');
+        toast.success('📴 Saved offline — will sync when internet restores', { duration: 5000 });
+        navigate('/tdr');
+      } else {
+        const msg = (err as any)?.response?.data?.error;
+        toast.error(typeof msg === 'string' ? msg : 'Failed to record visit');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -112,6 +131,22 @@ export const RecordVisitForm: React.FC = () => {
     <Layout title="Record Visit" showBack backTo="/tdr">
       <form onSubmit={handleSubmit} className="space-y-4 max-w-lg mx-auto pb-8">
         <h2 className="text-lg font-bold text-zamtel-dark mb-2">Outlet Visitation Record</h2>
+
+        {!isOnline && (
+          <div className="flex items-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-3">
+            <span className="text-lg">📵</span>
+            <div>
+              <p className="text-sm font-bold text-orange-700">You are offline</p>
+              <p className="text-xs text-orange-600">Data will be saved on your device and synced when you reconnect</p>
+            </div>
+          </div>
+        )}
+        {pendingCount > 0 && isOnline && (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+            <span className="text-base">🔄</span>
+            <p className="text-sm text-blue-700">{pendingCount} record{pendingCount > 1 ? 's' : ''} pending sync</p>
+          </div>
+        )}
 
         {/* Red alert banner when agent hasn't been visited in 4+ days */}
         {agentStale && (

@@ -8,6 +8,7 @@ import { Layout, PageHeader } from '../components/Layout';
 import { Card, ProgressRing, Skeleton, Badge } from '../components/UI';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 import {
   getBand, calcWeightedScore, floatResolutionPct,
   WEIGHT_PCT, WEIGHT_LABELS, visitMtdTarget, prorateMtdTarget,
@@ -124,6 +125,7 @@ export const TDRDashboardPage: React.FC = () => {
   const [syncing,     setSyncing]     = useState(false);
   const [exporting,   setExporting]   = useState(false);
   const isOnline = useOnlineStatus();
+  const { isOnline: isOnlineSync, pendingCount: offlinePendingCount, syncing: offlineSyncing, sync: offlineSync } = useOfflineSync();
 
   // Visit summary
   const [visitSummary, setVisitSummary] = useState<{ weekly: Array<{ label: string; count: number }>; monthly: Array<{ label: string; count: number }> } | null>(null);
@@ -341,6 +343,24 @@ export const TDRDashboardPage: React.FC = () => {
             {syncing ? 'Syncing…' : `${queueCount} pending offline ${queueCount === 1 ? 'entry' : 'entries'} — Tap to sync`}
           </span>
         </button>
+      )}
+
+      {/* ── OFFLINE SYNC BANNER (new IndexedDB queue) ────────────── */}
+      {(!isOnlineSync || offlinePendingCount > 0) && (
+        <div className={`mx-4 mb-3 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2
+          ${!isOnlineSync ? 'bg-orange-50 border border-orange-200' : 'bg-blue-50 border border-blue-200'}`}>
+          <span className={`text-sm ${!isOnlineSync ? 'text-orange-700' : 'text-blue-700'}`}>
+            {!isOnlineSync
+              ? '📵 Offline — new data will be saved locally'
+              : `🔄 ${offlinePendingCount} record${offlinePendingCount > 1 ? 's' : ''} pending sync`}
+          </span>
+          {isOnlineSync && offlinePendingCount > 0 && !offlineSyncing && (
+            <button onClick={offlineSync} className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg font-semibold">
+              Sync Now
+            </button>
+          )}
+          {offlineSyncing && <span className="text-xs text-blue-500 animate-pulse">Syncing...</span>}
+        </div>
       )}
 
       {/* ── EXPORT BUTTON ────────────────────────────────────────── */}

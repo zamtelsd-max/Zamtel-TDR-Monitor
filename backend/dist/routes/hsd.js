@@ -332,13 +332,34 @@ exports.mapRouter.get('/', async (req, res) => {
                 take: 2000,
             }),
         ]);
+        // Enrich each agent with last visit info (batched by agentCode)
+        const agentCodes = agents.map((a) => a.agentCode);
+        const recentVisits = agentCodes.length > 0 ? await prisma_1.prisma.visits.findMany({
+            where: { agentCode: { in: agentCodes } },
+            select: { agentCode: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+        }) : [];
+        // Build a map: agentCode -> most recent visit date
+        const lastVisitMap = {};
+        for (const v of recentVisits) {
+            if (!lastVisitMap[v.agentCode]) {
+                lastVisitMap[v.agentCode] = v.createdAt;
+            }
+        }
+        const enrichedAgents = agents.map((a) => {
+            const lastVisitedAt = lastVisitMap[a.agentCode] ?? null;
+            const daysAgo = lastVisitedAt
+                ? Math.floor((Date.now() - new Date(lastVisitedAt).getTime()) / 86400000)
+                : null;
+            return { ...a, lastVisitedAt, daysAgo };
+        });
         res.json({
             success: true,
-            data: { agents, visits },
+            data: { agents: enrichedAgents, visits },
             summary: {
-                totalAgents: agents.length,
+                totalAgents: enrichedAgents.length,
                 totalVisits: visits.length,
-                zones: [...new Set([...agents.map(a => a.zone), ...visits.map(v => v.zone)])].filter(Boolean),
+                zones: [...new Set([...enrichedAgents.map((a) => a.zone), ...visits.map((v) => v.zone)])].filter(Boolean),
             }
         });
     }

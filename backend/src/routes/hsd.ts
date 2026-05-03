@@ -332,15 +332,39 @@ mapRouter.get('/', async (req: Request, res: Response): Promise<void> => {
       }),
     ])
 
+    // Enrich each agent with last visit info (batched by agentCode)
+    const agentCodes = agents.map((a: any) => a.agentCode);
+    const recentVisits = agentCodes.length > 0 ? await prisma.visits.findMany({
+      where: { agentCode: { in: agentCodes } },
+      select: { agentCode: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    }) : [];
+
+    // Build a map: agentCode -> most recent visit date
+    const lastVisitMap: Record<string, Date> = {};
+    for (const v of recentVisits) {
+      if (!lastVisitMap[v.agentCode]) {
+        lastVisitMap[v.agentCode] = v.createdAt;
+      }
+    }
+
+    const enrichedAgents = agents.map((a: any) => {
+      const lastVisitedAt = lastVisitMap[a.agentCode] ?? null;
+      const daysAgo = lastVisitedAt
+        ? Math.floor((Date.now() - new Date(lastVisitedAt).getTime()) / 86400000)
+        : null;
+      return { ...a, lastVisitedAt, daysAgo };
+    });
+
     res.json({
       success: true,
-      data: { agents, visits },
+      data: { agents: enrichedAgents, visits },
       summary: {
-        totalAgents: agents.length,
+        totalAgents: enrichedAgents.length,
         totalVisits: visits.length,
-        zones: [...new Set([...agents.map(a => a.zone), ...visits.map(v => v.zone)])].filter(Boolean),
+        zones: [...new Set([...enrichedAgents.map((a: any) => a.zone), ...visits.map((v: any) => v.zone)])].filter(Boolean),
       }
-    })
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to fetch map data' })
   }
