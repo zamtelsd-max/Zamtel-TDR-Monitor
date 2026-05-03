@@ -54,20 +54,41 @@ exports.zbmRouter.get('/dashboard', async (req, res) => {
     const tdrs = await prisma_1.prisma.users.findMany({
         where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
     });
-    // Per-TDR stats
-    const tdrStats = await Promise.all(tdrs.map(async (tdr) => {
-        const [agents, merchants, visits, floatIssues] = await Promise.all([
-            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.float_issues.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
-        ]);
-        const agentTarget = (0, mtd_1.prorateMtdTarget)(96);
-        const merchantTarget = (0, mtd_1.prorateMtdTarget)(96);
-        const visitTarget = (0, mtd_1.visitMtdTarget)();
+    const tdrIds = tdrs.map(t => t.id);
+    // ── Batched groupBy — 4 queries instead of 4×N ──────────────────────────
+    const [agentsByTdr, merchantsByTdr, visitsByTdr, floatsByTdr] = await Promise.all([
+        prisma_1.prisma.agents.groupBy({
+            by: ['tdrId'], _count: true,
+            where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: start, lte: end } },
+        }),
+        prisma_1.prisma.agents.groupBy({
+            by: ['tdrId'], _count: true,
+            where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: start, lte: end } },
+        }),
+        prisma_1.prisma.visits.groupBy({
+            by: ['tdrId'], _count: true,
+            where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } },
+        }),
+        prisma_1.prisma.float_issues.groupBy({
+            by: ['tdrId'], _count: true,
+            where: { tdrId: { in: tdrIds }, status: { not: 'resolved' } },
+        }),
+    ]);
+    const agentMap = Object.fromEntries(agentsByTdr.map((r) => [r.tdrId, r._count]));
+    const merchantMap = Object.fromEntries(merchantsByTdr.map((r) => [r.tdrId, r._count]));
+    const visitMap = Object.fromEntries(visitsByTdr.map((r) => [r.tdrId, r._count]));
+    const floatMap = Object.fromEntries(floatsByTdr.map((r) => [r.tdrId, r._count]));
+    const agentTarget = (0, mtd_1.prorateMtdTarget)(96);
+    const merchantTarget = (0, mtd_1.prorateMtdTarget)(96);
+    const visitTarget = (0, mtd_1.visitMtdTarget)();
+    const tdrStats = tdrs.map(tdr => {
+        const agents = agentMap[tdr.id] || 0;
+        const merchants = merchantMap[tdr.id] || 0;
+        const visits = visitMap[tdr.id] || 0;
+        const floatIssues = floatMap[tdr.id] || 0;
         const pct = Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100);
         return { tdr, agents, merchants, visits, floatIssues, pct };
-    }));
+    });
     const zoneWhere = zone ? { zone } : {};
     // Zone totals
     const [totalAgents, totalMerchants, totalVisits, floatIssuesPending, prospects] = await Promise.all([
@@ -395,23 +416,33 @@ exports.zbmRouter.get('/leaderboard', async (req, res) => {
         where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
         orderBy: { name: 'asc' },
     });
-    const rows = await Promise.all(tdrs.map(async (tdr) => {
-        const [agents, merchants, visits, floatTotal, floatResolved] = await Promise.all([
-            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.float_issues.count({ where: { tdrId: tdr.id, reportedAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.float_issues.count({ where: { tdrId: tdr.id, status: 'resolved', reportedAt: { gte: start, lte: end } } }),
-        ]);
+    const lbTdrIds = tdrs.map(t => t.id);
+    const [lbAgents, lbMerchants, lbVisits, lbFloatAll, lbFloatRes] = await Promise.all([
+        prisma_1.prisma.agents.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: lbTdrIds }, type: 'normal', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.agents.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: lbTdrIds }, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.visits.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: lbTdrIds }, createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.float_issues.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: lbTdrIds }, reportedAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.float_issues.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: lbTdrIds }, status: 'resolved', reportedAt: { gte: start, lte: end } } }),
+    ]);
+    const lbAm = Object.fromEntries(lbAgents.map((r) => [r.tdrId, r._count]));
+    const lbMm = Object.fromEntries(lbMerchants.map((r) => [r.tdrId, r._count]));
+    const lbVm = Object.fromEntries(lbVisits.map((r) => [r.tdrId, r._count]));
+    const lbFm = Object.fromEntries(lbFloatAll.map((r) => [r.tdrId, r._count]));
+    const lbFrm = Object.fromEntries(lbFloatRes.map((r) => [r.tdrId, r._count]));
+    const rows = tdrs.map(tdr => {
+        const agents = lbAm[tdr.id] || 0;
+        const merchants = lbMm[tdr.id] || 0;
+        const visits = lbVm[tdr.id] || 0;
+        const floatTotal = lbFm[tdr.id] || 0;
+        const floatResolved = lbFrm[tdr.id] || 0;
         const agentPct = Math.min(Math.round(agents / Math.max(at, 1) * 100), 100);
         const merchantPct = Math.min(Math.round(merchants / Math.max(mt, 1) * 100), 100);
         const visitPct = Math.min(Math.round(visits / Math.max(vt, 1) * 100), 100);
         const floatPct = floatTotal > 0 ? Math.round(floatResolved / floatTotal * 100) : 100;
-        // Weighted score: agents 40%, merchants 20%, float 30%, visits 10%
         const score = Math.round(agentPct * 0.4 + merchantPct * 0.2 + floatPct * 0.3 + visitPct * 0.1);
         const pct = Math.round((agentPct + merchantPct + visitPct) / 3);
         return { id: tdr.id, name: tdr.name, zone: tdr.zone || 'Unassigned', agents, merchants, visits, floatTotal, floatResolved, agentPct, merchantPct, visitPct, floatPct, score, pct };
-    }));
+    });
     const ranked = [...rows].sort((a, b) => b.score - a.score || b.agents - a.agents);
     res.json({
         period,
