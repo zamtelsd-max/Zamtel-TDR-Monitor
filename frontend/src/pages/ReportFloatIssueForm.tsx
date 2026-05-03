@@ -6,6 +6,7 @@ import { Layout } from '../components/Layout';
 import { Input, Select, Textarea, Button } from '../components/UI';
 import type { IssueType } from '../types';
 import { ISSUE_TYPE_LABELS } from '../types';
+import { MapPin, Loader } from 'lucide-react';
 import { useGPS } from '../hooks/useGPS';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { enqueueOffline } from '../utils/offlineQueue';
@@ -160,36 +161,22 @@ export const ReportFloatIssueForm: React.FC = () => {
           rows={4}
         />
 
-        {/* GPS coordinates */}
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">📍 Agent Location (GPS)</span>
-            <button
-              type="button"
-              onClick={handleGPS}
-              disabled={gpsLoading}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition"
-              style={{ background: form.latitude ? '#dcfce7' : '#00843D', color: form.latitude ? '#15803d' : 'white' }}
-            >
-              {gpsLoading ? '⏳ Getting location…' : form.latitude ? '✅ Location captured' : '📡 Capture GPS'}
-            </button>
+        {/* GPS */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Agent GPS Location</label>
+          <div className="flex gap-2">
+            <Input value={form.latitude} onChange={set('latitude')} placeholder="Latitude" className="flex-1" type="number" step="any" />
+            <Input value={form.longitude} onChange={set('longitude')} placeholder="Longitude" className="flex-1" type="number" step="any" />
           </div>
-          {form.latitude && form.longitude ? (
-            <p className="text-xs text-green-700 font-mono bg-green-50 rounded-lg px-3 py-1.5">
-              {parseFloat(form.latitude).toFixed(6)}, {parseFloat(form.longitude).toFixed(6)}
-              <button
-                type="button"
-                onClick={() => setForm((p: typeof form) => ({ ...p, latitude: '', longitude: '' }))}
-                className="ml-2 text-red-400 hover:text-red-600"
-              >✕ clear</button>
-            </p>
-          ) : (
-            <p className="text-xs text-gray-400">Capture GPS to record the agent's location at the time of reporting. Works offline.</p>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            <Input label="Latitude (manual)" value={form.latitude} onChange={set('latitude')} placeholder="-15.416724" />
-            <Input label="Longitude (manual)" value={form.longitude} onChange={set('longitude')} placeholder="28.281510" />
-          </div>
+          <button
+            type="button"
+            onClick={handleGPS}
+            disabled={gpsLoading}
+            className="mt-2 flex items-center gap-2 text-sm text-zamtel-pink font-medium hover:underline disabled:opacity-60"
+          >
+            {gpsLoading ? <Loader className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+            {gpsLoading ? 'Capturing...' : 'Auto-capture GPS'}
+          </button>
         </div>
 
         <Button type="submit" loading={submitting} className="w-full" size="lg" variant="danger">
