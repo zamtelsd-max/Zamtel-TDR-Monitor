@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { responseCache, invalidateCache } from '../middleware/responseCache';
 import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
@@ -11,7 +12,7 @@ tdrRouter.use(requireAuth('TDR'));
 tdrRouter.use(apiRateLimit);
 
 // ─── GET /tdr/dashboard ───────────────────────────────────────────────────────
-tdrRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
+tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Response): Promise<void> => {
   const tdrId = req.user!.userId;
   const { start, end } = mtdRange();
 
@@ -126,6 +127,7 @@ tdrRouter.post('/agents', async (req: Request, res: Response): Promise<void> => 
         zbmName: zbm?.name || '',
       },
     });
+    invalidateCache(`${req.user!.userId}::`);
     res.status(201).json(agent);
   } catch (err: any) {
     if (err?.code === 'P2002') {
@@ -179,6 +181,7 @@ tdrRouter.post('/visits', async (req: Request, res: Response): Promise<void> => 
         zbmName: zbm?.name || '',
       },
     });
+    invalidateCache(`${req.user!.userId}::`);
     res.status(201).json(visit);
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to record visit' });

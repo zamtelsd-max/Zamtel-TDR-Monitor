@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { responseCache } from '../middleware/responseCache';
 import bcrypt          from 'bcryptjs';
 import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
@@ -11,7 +12,7 @@ zbmRouter.use(requireAuth('ZBM'));
 zbmRouter.use(apiRateLimit);
 
 // ─── GET /zbm/dashboard ───────────────────────────────────────────────────────
-zbmRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
+zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Response): Promise<void> => {
   const zone = req.user!.zone || null; // null = no zone filter (e.g. zbm-kuzanga sees all)
   const { start, end } = mtdRange();
 
@@ -156,7 +157,7 @@ zbmRouter.get('/prospects', async (req: Request, res: Response): Promise<void> =
 });
 
 // ─── GPS Map Data (ZBM — zone-scoped) ─────────────────────────────────────────
-zbmRouter.get('/map', async (req: Request, res: Response): Promise<void> => {
+zbmRouter.get('/map', responseCache(45), async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user!;
     const zoneFilter = user.zone || null; // null zone (e.g. zbm-kuzanga) → all zones
@@ -387,7 +388,7 @@ zbmRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
 
 // ─── GET /zbm/leaderboard ─────────────────────────────────────────────────────
 // TDR performance leaderboard scoped to this ZBM's zone
-zbmRouter.get('/leaderboard', async (req: Request, res: Response): Promise<void> => {
+zbmRouter.get('/leaderboard', responseCache(60), async (req: Request, res: Response): Promise<void> => {
   const zbmId = req.user!.userId;
   const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
 

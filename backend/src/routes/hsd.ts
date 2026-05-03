@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { responseCache } from '../middleware/responseCache';
 import { z } from 'zod';
 import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
@@ -41,7 +42,7 @@ function monthRange(period?: string) {
 }
 
 // ─── GET /hsd/dashboard ───────────────────────────────────────────────────────
-hsdRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
+hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Response): Promise<void> => {
   const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const { start, end, isCurrentMonth } = monthRange(period);
 
@@ -73,7 +74,7 @@ hsdRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
 });
 
 // ─── GET /hsd/zones ───────────────────────────────────────────────────────────
-hsdRouter.get('/zones', async (req: Request, res: Response): Promise<void> => {
+hsdRouter.get('/zones', responseCache(30), async (req: Request, res: Response): Promise<void> => {
   const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const { start, end, isCurrentMonth } = monthRange(period);
 
@@ -123,7 +124,7 @@ hsdRouter.get('/zones', async (req: Request, res: Response): Promise<void> => {
 });
 
 // ─── GET /hsd/zones/:zone ─────────────────────────────────────────────────────
-hsdRouter.get('/zones/:zone', async (req: Request, res: Response): Promise<void> => {
+hsdRouter.get('/zones/:zone', responseCache(30), async (req: Request, res: Response): Promise<void> => {
   const zone   = req.params.zone;
   const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const { start, end, isCurrentMonth } = monthRange(period);
@@ -309,7 +310,7 @@ hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
 });
 
 // ─── GPS Map Data ──────────────────────────────────────────────────────────────
-mapRouter.get('/', async (req: Request, res: Response): Promise<void> => {
+mapRouter.get('/', responseCache(45), async (req: Request, res: Response): Promise<void> => {
   try {
     const { zone } = req.query
     const user = (req as any).user
@@ -413,7 +414,7 @@ hsdRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
 
 // ─── GET /hsd/leaderboard ─────────────────────────────────────────────────────
 // Top TDRs (all zones) + Zone leaderboard ranked by % achievement
-hsdRouter.get('/leaderboard', async (req: Request, res: Response): Promise<void> => {
+hsdRouter.get('/leaderboard', responseCache(60), async (req: Request, res: Response): Promise<void> => {
   const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const { start, end, isCurrentMonth } = monthRange(period);
 

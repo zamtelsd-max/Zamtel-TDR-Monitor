@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mapRouter = exports.hsdRouter = void 0;
 const express_1 = require("express");
+const responseCache_1 = require("../middleware/responseCache");
 const zod_1 = require("zod");
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
@@ -71,7 +72,7 @@ function monthRange(period) {
     return { start, end, isCurrentMonth };
 }
 // ─── GET /hsd/dashboard ───────────────────────────────────────────────────────
-exports.hsdRouter.get('/dashboard', async (req, res) => {
+exports.hsdRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), async (req, res) => {
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end, isCurrentMonth } = monthRange(period);
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
@@ -97,7 +98,7 @@ exports.hsdRouter.get('/dashboard', async (req, res) => {
     });
 });
 // ─── GET /hsd/zones ───────────────────────────────────────────────────────────
-exports.hsdRouter.get('/zones', async (req, res) => {
+exports.hsdRouter.get('/zones', (0, responseCache_1.responseCache)(30), async (req, res) => {
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end, isCurrentMonth } = monthRange(period);
     // Batch queries for all zones at once
@@ -142,7 +143,7 @@ exports.hsdRouter.get('/zones', async (req, res) => {
     });
 });
 // ─── GET /hsd/zones/:zone ─────────────────────────────────────────────────────
-exports.hsdRouter.get('/zones/:zone', async (req, res) => {
+exports.hsdRouter.get('/zones/:zone', (0, responseCache_1.responseCache)(30), async (req, res) => {
     const zone = req.params.zone;
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end, isCurrentMonth } = monthRange(period);
@@ -310,7 +311,7 @@ exports.hsdRouter.get('/export', async (req, res) => {
     }
 });
 // ─── GPS Map Data ──────────────────────────────────────────────────────────────
-exports.mapRouter.get('/', async (req, res) => {
+exports.mapRouter.get('/', (0, responseCache_1.responseCache)(45), async (req, res) => {
     try {
         const { zone } = req.query;
         const user = req.user;
@@ -405,7 +406,7 @@ exports.hsdRouter.get('/agents/stale', async (req, res) => {
 });
 // ─── GET /hsd/leaderboard ─────────────────────────────────────────────────────
 // Top TDRs (all zones) + Zone leaderboard ranked by % achievement
-exports.hsdRouter.get('/leaderboard', async (req, res) => {
+exports.hsdRouter.get('/leaderboard', (0, responseCache_1.responseCache)(60), async (req, res) => {
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end, isCurrentMonth } = monthRange(period);
     const at = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;

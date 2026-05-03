@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma }      from '../prisma';
+import { responseCache } from '../middleware/responseCache';
 import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
 import { mtdRange, prorateMtdTarget, visitMtdTarget, workingDaysElapsed } from '../utils/mtd';
@@ -21,7 +22,7 @@ interface TDRFlag {
 }
 
 // GET /flags — red-flagged TDRs scoped by caller role
-flagsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
+flagsRouter.get('/', responseCache(120), async (req: Request, res: Response): Promise<void> => {
   try {
     const role   = req.user!.role;
     const zone   = req.user!.zone;

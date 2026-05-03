@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.tdrRouter = void 0;
 const express_1 = require("express");
 const zod_1 = require("zod");
+const responseCache_1 = require("../middleware/responseCache");
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
 const rateLimit_1 = require("../middleware/rateLimit");
@@ -44,7 +45,7 @@ exports.tdrRouter = (0, express_1.Router)();
 exports.tdrRouter.use((0, auth_1.requireAuth)('TDR'));
 exports.tdrRouter.use(rateLimit_1.apiRateLimit);
 // ─── GET /tdr/dashboard ───────────────────────────────────────────────────────
-exports.tdrRouter.get('/dashboard', async (req, res) => {
+exports.tdrRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), async (req, res) => {
     const tdrId = req.user.userId;
     const { start, end } = (0, mtd_1.mtdRange)();
     // Today's window (midnight → now)
@@ -146,6 +147,7 @@ exports.tdrRouter.post('/agents', async (req, res) => {
                 zbmName: zbm?.name || '',
             },
         });
+        (0, responseCache_1.invalidateCache)(`${req.user.userId}::`);
         res.status(201).json(agent);
     }
     catch (err) {
@@ -203,6 +205,7 @@ exports.tdrRouter.post('/visits', async (req, res) => {
                 zbmName: zbm?.name || '',
             },
         });
+        (0, responseCache_1.invalidateCache)(`${req.user.userId}::`);
         res.status(201).json(visit);
     }
     catch (err) {

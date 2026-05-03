@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.zbmRouter = void 0;
 const express_1 = require("express");
+const responseCache_1 = require("../middleware/responseCache");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
@@ -47,7 +48,7 @@ exports.zbmRouter = (0, express_1.Router)();
 exports.zbmRouter.use((0, auth_1.requireAuth)('ZBM'));
 exports.zbmRouter.use(rateLimit_1.apiRateLimit);
 // ─── GET /zbm/dashboard ───────────────────────────────────────────────────────
-exports.zbmRouter.get('/dashboard', async (req, res) => {
+exports.zbmRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), async (req, res) => {
     const zone = req.user.zone || null; // null = no zone filter (e.g. zbm-kuzanga sees all)
     const { start, end } = (0, mtd_1.mtdRange)();
     // All TDRs in this zone (or all if zone is null)
@@ -178,7 +179,7 @@ exports.zbmRouter.get('/prospects', async (req, res) => {
     res.json(prospects);
 });
 // ─── GPS Map Data (ZBM — zone-scoped) ─────────────────────────────────────────
-exports.zbmRouter.get('/map', async (req, res) => {
+exports.zbmRouter.get('/map', (0, responseCache_1.responseCache)(45), async (req, res) => {
     try {
         const user = req.user;
         const zoneFilter = user.zone || null; // null zone (e.g. zbm-kuzanga) → all zones
@@ -397,7 +398,7 @@ exports.zbmRouter.get('/agents/stale', async (req, res) => {
 });
 // ─── GET /zbm/leaderboard ─────────────────────────────────────────────────────
 // TDR performance leaderboard scoped to this ZBM's zone
-exports.zbmRouter.get('/leaderboard', async (req, res) => {
+exports.zbmRouter.get('/leaderboard', (0, responseCache_1.responseCache)(60), async (req, res) => {
     const zbmId = req.user.userId;
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     // Get ZBM's zone

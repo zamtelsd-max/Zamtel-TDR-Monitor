@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.flagsRouter = void 0;
 const express_1 = require("express");
 const prisma_1 = require("../prisma");
+const responseCache_1 = require("../middleware/responseCache");
 const auth_1 = require("../middleware/auth");
 const rateLimit_1 = require("../middleware/rateLimit");
 const mtd_1 = require("../utils/mtd");
@@ -10,7 +11,7 @@ exports.flagsRouter = (0, express_1.Router)();
 exports.flagsRouter.use((0, auth_1.requireAuth)('HSD', 'ZBM', 'ASE'));
 exports.flagsRouter.use(rateLimit_1.apiRateLimit);
 // GET /flags — red-flagged TDRs scoped by caller role
-exports.flagsRouter.get('/', async (req, res) => {
+exports.flagsRouter.get('/', (0, responseCache_1.responseCache)(120), async (req, res) => {
     try {
         const role = req.user.role;
         const zone = req.user.zone;
