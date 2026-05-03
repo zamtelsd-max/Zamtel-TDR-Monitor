@@ -137,6 +137,28 @@ export const ReportFloatIssueForm: React.FC = () => {
 
         <Input label="Contact Phone" value={form.contactPhone} onChange={set('contactPhone')} placeholder="+260..." />
 
+        {/* GPS — prominent */}
+        <div className="rounded-xl border-2 border-dashed border-zamtel-green bg-green-50 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-zamtel-dark">📍 Agent GPS Location</span>
+            {form.latitude && form.longitude && (
+              <span className="text-xs text-green-700 font-mono">
+                {parseFloat(form.latitude).toFixed(5)}, {parseFloat(form.longitude).toFixed(5)}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleGPS}
+            disabled={gpsLoading}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-60"
+            style={{ background: form.latitude ? '#16A34A' : '#00843D', color: 'white' }}
+          >
+            {gpsLoading ? <Loader className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+            {gpsLoading ? 'Getting location…' : form.latitude ? '✅ Location captured — tap to update' : 'Capture GPS Location'}
+          </button>
+        </div>
+
         <Select
           label="Issue Type *"
           value={form.issueType}
@@ -160,24 +182,6 @@ export const ReportFloatIssueForm: React.FC = () => {
           placeholder="Describe the issue in detail. What happened? What did the agent experience?"
           rows={4}
         />
-
-        {/* GPS */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Agent GPS Location</label>
-          <div className="flex gap-2">
-            <Input value={form.latitude} onChange={set('latitude')} placeholder="Latitude" className="flex-1" type="number" step="any" />
-            <Input value={form.longitude} onChange={set('longitude')} placeholder="Longitude" className="flex-1" type="number" step="any" />
-          </div>
-          <button
-            type="button"
-            onClick={handleGPS}
-            disabled={gpsLoading}
-            className="mt-2 flex items-center gap-2 text-sm text-zamtel-pink font-medium hover:underline disabled:opacity-60"
-          >
-            {gpsLoading ? <Loader className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-            {gpsLoading ? 'Capturing...' : 'Auto-capture GPS'}
-          </button>
-        </div>
 
         <Button type="submit" loading={submitting} className="w-full" size="lg" variant="danger">
           {!isOnline ? '💾 Save Offline' : 'Report Float Issue'}
