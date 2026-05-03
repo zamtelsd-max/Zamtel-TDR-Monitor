@@ -100,30 +100,38 @@ exports.hsdRouter.get('/dashboard', async (req, res) => {
 exports.hsdRouter.get('/zones', async (req, res) => {
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end, isCurrentMonth } = monthRange(period);
-    const zoneStats = await Promise.all(ZONES.map(async (zone) => {
-        const [zbm, tdrs, agents, merchants, visits, floatIssues] = await Promise.all([
-            prisma_1.prisma.users.findFirst({ where: { role: 'ZBM', zone } }),
-            prisma_1.prisma.users.count({ where: { role: 'TDR', zone, active: true } }),
-            prisma_1.prisma.agents.count({ where: { zone, type: 'normal', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.agents.count({ where: { zone, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.visits.count({ where: { zone, createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.float_issues.count({ where: { zone, status: { not: 'resolved' } } }),
-        ]);
-        const target = await prisma_1.prisma.sales_targets.findUnique({ where: { zone_period: { zone, period } } });
-        const agentTarget = isCurrentMonth
-            ? (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96 * tdrs)
-            : (target?.targetAgents || 96 * tdrs);
-        const merchantTarget = isCurrentMonth
-            ? (0, mtd_1.prorateMtdTarget)(target?.targetMerchants || 96 * tdrs)
-            : (target?.targetMerchants || 96 * tdrs);
-        const visitTarget = isCurrentMonth
-            ? (0, mtd_1.visitMtdTarget)() * tdrs
-            : (target?.targetOutlets || (0, mtd_1.visitMonthlyTarget)() * tdrs);
+    // Batch queries for all zones at once
+    const [zbmUsers, tdrCounts, zAgents, zMerchants, zVisits, zFloats, zTargets] = await Promise.all([
+        prisma_1.prisma.users.findMany({ where: { role: 'ZBM', active: true } }),
+        prisma_1.prisma.users.groupBy({ by: ['zone'], _count: true, where: { role: 'TDR', active: true } }),
+        prisma_1.prisma.agents.groupBy({ by: ['zone'], _count: true, where: { zone: { in: ZONES }, type: 'normal', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.agents.groupBy({ by: ['zone'], _count: true, where: { zone: { in: ZONES }, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.visits.groupBy({ by: ['zone'], _count: true, where: { zone: { in: ZONES }, createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.float_issues.groupBy({ by: ['zone'], _count: true, where: { zone: { in: ZONES }, status: { not: 'resolved' } } }),
+        prisma_1.prisma.sales_targets.findMany({ where: { period, zone: { in: ZONES } } }),
+    ]);
+    const zbmMap = Object.fromEntries(zbmUsers.map((u) => [u.zone, u.name]));
+    const tdrMap = Object.fromEntries(tdrCounts.map((r) => [r.zone, r._count]));
+    const agentZMap = Object.fromEntries(zAgents.map((r) => [r.zone, r._count]));
+    const mchZMap = Object.fromEntries(zMerchants.map((r) => [r.zone, r._count]));
+    const visitZMap = Object.fromEntries(zVisits.map((r) => [r.zone, r._count]));
+    const floatZMap = Object.fromEntries(zFloats.map((r) => [r.zone, r._count]));
+    const targetMap = Object.fromEntries(zTargets.map((t) => [t.zone, t]));
+    const zoneStats = ZONES.map(zone => {
+        const tdrs = tdrMap[zone] || 0;
+        const agents = agentZMap[zone] || 0;
+        const merchants = mchZMap[zone] || 0;
+        const visits = visitZMap[zone] || 0;
+        const floatIssues = floatZMap[zone] || 0;
+        const target = targetMap[zone];
+        const agentTarget = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96 * tdrs) : (target?.targetAgents || 96 * tdrs);
+        const merchantTarget = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(target?.targetMerchants || 96 * tdrs) : (target?.targetMerchants || 96 * tdrs);
+        const visitTarget = isCurrentMonth ? (0, mtd_1.visitMtdTarget)() * tdrs : (target?.targetOutlets || (0, mtd_1.visitMonthlyTarget)() * tdrs);
         const pct = tdrs > 0
-            ? Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100)
+            ? Math.round(((agents / Math.max(agentTarget, 1)) + (merchants / Math.max(merchantTarget, 1)) + (visits / Math.max(visitTarget, 1))) / 3 * 100)
             : 0;
-        return { zone, zbm: zbm?.name || 'Unassigned', tdrs, agents, merchants, visits, floatIssues, pct };
-    }));
+        return { zone, zbm: zbmMap[zone] || 'Unassigned', tdrs, agents, merchants, visits, floatIssues, pct };
+    });
     res.json({
         period,
         zones: zoneStats,
@@ -139,19 +147,28 @@ exports.hsdRouter.get('/zones/:zone', async (req, res) => {
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end, isCurrentMonth } = monthRange(period);
     const tdrs = await prisma_1.prisma.users.findMany({ where: { role: 'TDR', zone, active: true } });
-    const tdrStats = await Promise.all(tdrs.map(async (tdr) => {
-        const [agents, merchants, visits, floatIssues] = await Promise.all([
-            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.float_issues.count({ where: { tdrId: tdr.id, status: { not: 'resolved' } } }),
-        ]);
-        const at = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
-        const mt = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
-        const vt = isCurrentMonth ? (0, mtd_1.visitMtdTarget)() : (0, mtd_1.visitMonthlyTarget)();
-        const pct = Math.round(((agents / at) + (merchants / mt) + (visits / vt)) / 3 * 100);
+    const zoneTdrIds = tdrs.map((t) => t.id);
+    const zat = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
+    const zmt = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
+    const zvt = isCurrentMonth ? (0, mtd_1.visitMtdTarget)() : (0, mtd_1.visitMonthlyTarget)();
+    const [ztAgents, ztMerchants, ztVisits, ztFloats] = await Promise.all([
+        prisma_1.prisma.agents.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: zoneTdrIds }, type: 'normal', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.agents.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: zoneTdrIds }, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.visits.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: zoneTdrIds }, createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.float_issues.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: zoneTdrIds }, status: { not: 'resolved' } } }),
+    ]);
+    const ztAm = Object.fromEntries(ztAgents.map((r) => [r.tdrId, r._count]));
+    const ztMm = Object.fromEntries(ztMerchants.map((r) => [r.tdrId, r._count]));
+    const ztVm = Object.fromEntries(ztVisits.map((r) => [r.tdrId, r._count]));
+    const ztFm = Object.fromEntries(ztFloats.map((r) => [r.tdrId, r._count]));
+    const tdrStats = tdrs.map((tdr) => {
+        const agents = ztAm[tdr.id] || 0;
+        const merchants = ztMm[tdr.id] || 0;
+        const visits = ztVm[tdr.id] || 0;
+        const floatIssues = ztFm[tdr.id] || 0;
+        const pct = Math.round(((agents / zat) + (merchants / zmt) + (visits / zvt)) / 3 * 100);
         return { tdr, agents, merchants, visits, floatIssues, pct };
-    }));
+    });
     const floatIssues = await prisma_1.prisma.float_issues.findMany({ where: { zone }, orderBy: { reportedAt: 'desc' } });
     const prospects = await prisma_1.prisma.prospects.findMany({ where: { zone }, orderBy: { createdAt: 'desc' } });
     res.json({ zone, period, tdrStats, floatIssues, prospects });
@@ -395,15 +412,23 @@ exports.hsdRouter.get('/leaderboard', async (req, res) => {
     const mt = isCurrentMonth ? (0, mtd_1.prorateMtdTarget)(96) : 96;
     const vt = isCurrentMonth ? (0, mtd_1.visitMtdTarget)() : (0, mtd_1.visitMonthlyTarget)();
     const tdrs = await prisma_1.prisma.users.findMany({ where: { role: 'TDR', active: true } });
-    const tdrRows = await Promise.all(tdrs.map(async (tdr) => {
-        const [agents, merchants, visits] = await Promise.all([
-            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'normal', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.agents.count({ where: { tdrId: tdr.id, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.visits.count({ where: { tdrId: tdr.id, createdAt: { gte: start, lte: end } } }),
-        ]);
+    const allTdrIds = tdrs.map((t) => t.id);
+    // Batch: 3 groupBy queries instead of 3×309 individual counts
+    const [lbAgents, lbMerchants, lbVisits] = await Promise.all([
+        prisma_1.prisma.agents.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: allTdrIds }, type: 'normal', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.agents.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: allTdrIds }, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+        prisma_1.prisma.visits.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: allTdrIds }, createdAt: { gte: start, lte: end } } }),
+    ]);
+    const lbAm = Object.fromEntries(lbAgents.map((r) => [r.tdrId, r._count]));
+    const lbMm = Object.fromEntries(lbMerchants.map((r) => [r.tdrId, r._count]));
+    const lbVm = Object.fromEntries(lbVisits.map((r) => [r.tdrId, r._count]));
+    const tdrRows = tdrs.map((tdr) => {
+        const agents = lbAm[tdr.id] || 0;
+        const merchants = lbMm[tdr.id] || 0;
+        const visits = lbVm[tdr.id] || 0;
         const pct = Math.round(((agents / at) + (merchants / mt) + (visits / vt)) / 3 * 100);
         return { id: tdr.id, name: tdr.name, zone: tdr.zone || 'Unassigned', agents, merchants, visits, pct };
-    }));
+    });
     // Top 30 TDRs by pct
     const topTDRs = [...tdrRows].sort((a, b) => b.pct - a.pct || b.agents - a.agents).slice(0, 30);
     // Zone leaderboard (aggregate per zone)
