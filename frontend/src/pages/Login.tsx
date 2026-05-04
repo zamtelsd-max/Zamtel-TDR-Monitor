@@ -72,12 +72,14 @@ export const Login: React.FC = () => {
     dispatch(loginStart());
     try {
       const res  = await authApi.login(id, pinStr);
-      dispatch(loginSuccess(res.data));
-      // Force PIN change if flagged
+      // Force PIN change BEFORE saving token to Redux/localStorage
       if (res.data.mustChangePin) {
+        // Store token temporarily for the change-pin call, but do NOT log in yet
+        sessionStorage.setItem('tdr_pending_token', res.data.token);
         navigate('/change-pin', { replace: true });
         return;
       }
+      dispatch(loginSuccess(res.data));
       const dest = roleRoute(res.data.user.role);
       if (dest) navigate(dest, { replace: true });
     } catch (err: unknown) {
