@@ -48,7 +48,13 @@ app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 app.use(errorHandler_1.errorHandler);
 app.listen(PORT, () => {
     console.log(`🚀 Zamtel TDR Monitor API running on port ${PORT}`);
-    // Diagnostic: confirm Prisma client model keys
+});
+// Prevent crash loops from uncaught errors — log and keep running
+process.on('uncaughtException', (err) => {
+    console.error('[uncaughtException] — NOT exiting:', err);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[unhandledRejection] — NOT exiting:', reason);
 });
 exports.default = app;
 //# sourceMappingURL=index.js.map
