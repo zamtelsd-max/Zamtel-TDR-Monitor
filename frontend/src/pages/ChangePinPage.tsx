@@ -58,7 +58,11 @@ export const ChangePinPage: React.FC = () => {
 
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h1 className="text-xl font-bold text-gray-900 mb-1">Change Your PIN</h1>
-          <p className="text-sm text-gray-500 mb-6">Choose a new 4-digit PIN that only you know.</p>
+          <p className="text-sm text-gray-500 mb-2">Choose a new 4-digit PIN that only you know.</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-4">
+            <p className="text-xs text-blue-800 font-medium">💡 What is my current PIN?</p>
+            <p className="text-xs text-blue-700 mt-0.5">Your current PIN is the one you used to log in just now — e.g. <strong>1234</strong> (TDR/ZBM) or <strong>9999</strong> (HSD/management). Enter it above, then choose a new personal PIN.</p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
