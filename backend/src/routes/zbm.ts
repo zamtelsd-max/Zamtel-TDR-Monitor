@@ -294,19 +294,23 @@ zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospectRows), 'Prospects');
 
-    // Sheet 5: Unvisited Outlets (never visited OR last visit > 4 days ago)
-    const allAgents = await prisma.agent.findMany({
+    // Sheet 5: Unvisited Outlets — batched (no N+1)
+    const allAgentsForUnvisited = await prisma.agent.findMany({
       where: zoneWhere,
       orderBy: [{ zone: 'asc' }, { tdrName: 'asc' }, { agentName: 'asc' }],
     });
+    const latestVisitsZone = await prisma.visit.groupBy({
+      by: ['agentCode'],
+      where: zoneWhere,
+      _max: { createdAt: true },
+    });
+    const lastVisitMapZone = new Map<string, Date>();
+    for (const v of latestVisitsZone) {
+      if (v._max.createdAt) lastVisitMapZone.set(v.agentCode, v._max.createdAt);
+    }
     const unvisitedRows: object[] = [];
-    for (const a of allAgents) {
-      const lastVisit = await prisma.visit.findFirst({
-        where: { agentCode: a.agentCode },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true },
-      });
-      const lastVisitedAt = lastVisit?.createdAt ?? null;
+    for (const a of allAgentsForUnvisited) {
+      const lastVisitedAt = lastVisitMapZone.get(a.agentCode) ?? null;
       const daysAgo = lastVisitedAt
         ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
         : null;
@@ -322,10 +326,25 @@ zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
         });
       }
     }
-    const unvisitedSheet = XLSX.utils.json_to_sheet(
-      unvisitedRows.length > 0 ? unvisitedRows : [{ 'Status': 'All outlets visited within 4 days ✅' }]
-    );
-    XLSX.utils.book_append_sheet(wb, unvisitedSheet, 'Unvisited Outlets');
+    XLSX.utils.book_append_sheet(wb,
+      XLSX.utils.json_to_sheet(unvisitedRows.length > 0 ? unvisitedRows : [{ 'Status': 'All outlets visited within 4 days ✅' }]),
+      'Unvisited Outlets');
+
+    // Sheet 6: TDR User IDs & Names (scoped to this zone)
+    const zoneUsers = await prisma.user.findMany({
+      where: zone ? { zone } : {},
+      orderBy: [{ role: 'asc' }, { name: 'asc' }],
+    });
+    const userRows = zoneUsers.map((u: any) => ({
+      'User ID':   u.id,
+      'Full Name': u.name,
+      'Role':      u.role,
+      'Zone':      u.zone || '',
+      'Active':    u.active ? 'Yes' : 'No',
+    }));
+    XLSX.utils.book_append_sheet(wb,
+      XLSX.utils.json_to_sheet(userRows.length > 0 ? userRows : [{}]),
+      'System Users');
 
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const scope = zone || 'ALL-ZONES';
