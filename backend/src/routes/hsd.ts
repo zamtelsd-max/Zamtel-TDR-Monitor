@@ -303,6 +303,25 @@ hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
       unvisitedRows.length > 0 ? unvisitedRows : [{ 'Status': 'All outlets visited within 4 days ✅' }]
     ), 'Unvisited Outlets');
 
+    // Sheet 6: All System Users (all roles)
+    const allUsers = await prisma.user.findMany({
+      orderBy: [{ role: 'asc' }, { name: 'asc' }],
+    });
+    const userRows = allUsers.map((u: any) => ({
+      'User ID':   u.id,
+      'Full Name': u.name,
+      'Role':      u.role,
+      'Zone':      u.zone || '',
+      'Active':    u.active ? 'Yes' : 'No',
+      'Must Change PIN': (u as any).mustChangePin ? 'Yes' : 'No',
+      'Created':   u.createdAt?.toISOString().split('T')[0] || '',
+    }));
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(userRows.length > 0 ? userRows : [{}]),
+      'System Users'
+    );
+
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="zamtel-hsd-export-${period}.xlsx"`);
