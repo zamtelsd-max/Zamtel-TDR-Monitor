@@ -26,12 +26,7 @@ exports.authRouter.post('/login', rateLimit_1.loginRateLimit, async (req, res) =
         return;
     }
     const { id, pin } = parsed.data;
-    // Raw query to include mustChangePin without requiring Prisma regen on Railway
-    const rows = await prisma_1.prisma.$queryRaw `
-    SELECT id, name, pin, role, zone, active, "mustChangePin"
-    FROM users WHERE id = ${id} LIMIT 1
-  `;
-    const user = rows[0];
+    const user = await prisma_1.prisma.user.findUnique({ where: { id } });
     if (!user || !user.active) {
         res.status(401).json({ error: 'Invalid credentials' });
         return;
@@ -67,8 +62,7 @@ exports.authRouter.post('/change-pin', (0, auth_1.requireAuth)('TDR', 'ZBM', 'HS
     }
     const { currentPin, newPin } = parsed.data;
     const userId = req.user?.userId;
-    const rows2 = await prisma_1.prisma.$queryRaw `SELECT id, pin, active FROM users WHERE id = ${userId} LIMIT 1`;
-    const user = rows2[0];
+    const user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.active) {
         res.status(401).json({ error: 'User not found.' });
         return;
@@ -83,10 +77,10 @@ exports.authRouter.post('/change-pin', (0, auth_1.requireAuth)('TDR', 'ZBM', 'HS
         return;
     }
     const hashed = await bcryptjs_1.default.hash(newPin, 10);
-    await prisma_1.prisma.$executeRaw `
-    UPDATE users SET pin = ${hashed}, "mustChangePin" = false, "updatedAt" = NOW()
-    WHERE id = ${userId}
-  `;
+    await prisma_1.prisma.user.update({
+        where: { id: userId },
+        data: { pin: hashed, mustChangePin: false },
+    });
     res.json({ success: true, message: 'PIN changed successfully.' });
 });
 //# sourceMappingURL=auth.js.map

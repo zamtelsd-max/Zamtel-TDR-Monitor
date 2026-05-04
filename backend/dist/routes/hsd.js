@@ -371,7 +371,7 @@ exports.mapRouter.get('/', (0, responseCache_1.responseCache)(45), async (req, r
         ]);
         // Enrich each agent with last visit info (batched by agentCode)
         const agentCodes = agents.map((a) => a.agentCode);
-        const recentVisits = agentCodes.length > 0 ? await prisma_1.prisma.visits.findMany({
+        const recentVisits = agentCodes.length > 0 ? await prisma_1.prisma.visit.findMany({
             where: { agentCode: { in: agentCodes } },
             select: { agentCode: true, createdAt: true },
             orderBy: { createdAt: 'desc' },
