@@ -26,7 +26,12 @@ authRouter.post('/login', loginRateLimit, async (req: Request, res: Response): P
 
   const { id, pin } = parsed.data;
 
-  const user = await prisma.user.findUnique({ where: { id } });
+  // Raw query to include mustChangePin without requiring Prisma regen on Railway
+  const rows = await prisma.$queryRaw<any[]>`
+    SELECT id, name, pin, role, zone, active, "mustChangePin"
+    FROM users WHERE id = ${id} LIMIT 1
+  `;
+  const user = rows[0];
   if (!user || !user.active) {
     res.status(401).json({ error: 'Invalid credentials' });
     return;
@@ -47,7 +52,7 @@ authRouter.post('/login', loginRateLimit, async (req: Request, res: Response): P
 
   res.json({
     token,
-    mustChangePin: !!(user as any).mustChangePin,
+    mustChangePin: !!user.mustChangePin,
     user: {
       id:   user.id,
       name: user.name,
@@ -68,7 +73,8 @@ authRouter.post('/change-pin', requireAuth('TDR', 'ZBM', 'HSD', 'ASE'), async (r
   const { currentPin, newPin } = parsed.data;
   const userId = (req as any).user?.userId;
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const rows2 = await prisma.$queryRaw<any[]>`SELECT id, pin, active FROM users WHERE id = ${userId} LIMIT 1`;
+  const user = rows2[0];
   if (!user || !user.active) {
     res.status(401).json({ error: 'User not found.' });
     return;
@@ -86,10 +92,10 @@ authRouter.post('/change-pin', requireAuth('TDR', 'ZBM', 'HSD', 'ASE'), async (r
   }
 
   const hashed = await bcrypt.hash(newPin, 10);
-  await prisma.user.update({
-    where: { id: userId },
-    data:  { pin: hashed, mustChangePin: false, updatedAt: new Date() } as any,
-  });
+  await prisma.$executeRaw`
+    UPDATE users SET pin = ${hashed}, "mustChangePin" = false, "updatedAt" = NOW()
+    WHERE id = ${userId}
+  `;
 
   res.json({ success: true, message: 'PIN changed successfully.' });
 });
