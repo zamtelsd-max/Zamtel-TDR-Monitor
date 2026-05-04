@@ -182,37 +182,37 @@ export const tdrApi = {
 
 // ─── ZBM ─────────────────────────────────────────────────────────────────────
 export const zbmApi = {
-  dashboard: () =>
-    client.get<ZBMDashboard>('/zbm/dashboard'),
+  dashboard: (zone?: string) =>
+    client.get<ZBMDashboard>('/zbm/dashboard', { params: zone ? { zone } : {} }),
 
-  getTDR: (tdrId: string) =>
-    client.get(`/zbm/tdr/${tdrId}`),
+  getTDR: (tdrId: string, zone?: string) =>
+    client.get(`/zbm/tdr/${tdrId}`, { params: zone ? { zone } : {} }),
 
-  getFloatIssues: () =>
-    client.get<FloatIssue[]>('/zbm/float-issues'),
+  getFloatIssues: (zone?: string) =>
+    client.get<FloatIssue[]>('/zbm/float-issues', { params: zone ? { zone } : {} }),
 
   updateFloatIssue: (id: string, data: { status: string; resolutionNotes?: string }) =>
     client.patch<FloatIssue>(`/zbm/float-issues/${id}`, data),
 
-  getProspects: () =>
-    client.get<Prospect[]>('/zbm/prospects'),
+  getProspects: (zone?: string) =>
+    client.get<Prospect[]>('/zbm/prospects', { params: zone ? { zone } : {} }),
 
   approveProspectClosure: (id: string) =>
     client.post(`/zbm/prospects/${id}/approve-closure`),
 
-  getStaleAgents: () =>
-    client.get<{ stale: Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null }>; total: number; staleCount: number }>('/zbm/agents/stale'),
+  getStaleAgents: (zone?: string) =>
+    client.get<{ stale: Array<Agent & { lastVisitedAt: string | null; daysAgo: number | null }>; total: number; staleCount: number }>('/zbm/agents/stale', { params: zone ? { zone } : {} }),
 
-  getMap: () =>
-    client.get('/zbm/map'),
+  getMap: (zone?: string) =>
+    client.get('/zbm/map', { params: zone ? { zone } : {} }),
 
-  export: (period?: string) =>
+  export: (period?: string, zone?: string) =>
     client.get('/zbm/export', {
-      params: period ? { period } : {},
+      params: { ...(period ? { period } : {}), ...(zone ? { zone } : {}) },
       responseType: 'blob',
     }),
 
-  getLeaderboard: (period?: string) =>
+  getLeaderboard: (period?: string, zone?: string) =>
     client.get<{
       period: string;
       zone: string;
@@ -226,16 +226,16 @@ export const zbmApi = {
       }>;
       targets: { agents: number; merchants: number; visits: number };
       mtd: { workingDaysElapsed: number; workingDaysTotal: number } | null;
-    }>('/zbm/leaderboard', { params: period ? { period } : {} }),
+    }>('/zbm/leaderboard', { params: { ...(period ? { period } : {}), ...(zone ? { zone } : {}) } }),
 
-  getASEs: () =>
-    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; tdrCount: number }> }>('/zbm/ases'),
+  getASEs: (zone?: string) =>
+    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; tdrCount: number }> }>('/zbm/ases', { params: zone ? { zone } : {} }),
 
   addASE: (data: { id: string; name: string; pin: string }) =>
     client.post('/zbm/ases', data),
 
-  getTDRs: () =>
-    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; aseId: string | null }> }>('/zbm/tdrs'),
+  getTDRs: (zone?: string) =>
+    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; aseId: string | null }> }>('/zbm/tdrs', { params: zone ? { zone } : {} }),
 
   assignTDR: (tdrId: string, aseId: string | null) =>
     client.post('/zbm/assign-tdr', { tdrId, aseId }),

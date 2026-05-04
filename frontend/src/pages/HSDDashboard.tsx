@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy } from 'lucide-react';
+import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy, ArrowLeft, Map } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { hsdApi, flagsApi } from '../services/api';
 import type { HSDDashboard, ZoneStat, FloatIssue, TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button, StatCard } from '../components/UI';
 import { ISSUE_TYPE_LABELS } from '../types';
+import { ZoneDrillDownView } from '../components/ZoneDrillDownView';
 import { format, differenceInHours } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
 import { useAppSelector } from '../hooks/useAppDispatch';
@@ -67,6 +68,7 @@ export const HSDDashboardPage: React.FC = () => {
   const [tdrFlags,  setTdrFlags]  = useState<TDRFlag[]>([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -162,6 +164,16 @@ export const HSDDashboardPage: React.FC = () => {
   };
 
   const monthOpts = monthOptions();
+
+  // ── Zone Drill-Down: render full ZBM view for selected zone ────────────────
+  if (selectedZone) {
+    return (
+      <ZoneDrillDownView
+        zone={selectedZone}
+        onBack={() => setSelectedZone(null)}
+      />
+    );
+  }
 
   return (
     <Layout
@@ -391,6 +403,7 @@ export const HSDDashboardPage: React.FC = () => {
                 <th className="text-right py-2 pl-2 font-medium cursor-pointer" onClick={() => handleSort('score')}>
                   Score <SortIcon col="score" />
                 </th>
+                <th className="py-2 pl-2 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -398,7 +411,7 @@ export const HSDDashboardPage: React.FC = () => {
                 const sc = zoneScore(z);
                 const b  = getBand(sc);
                 return (
-                <tr key={z.zone} className="border-b border-gray-50 hover:bg-gray-50">
+                <tr key={z.zone} className="border-b border-gray-50 hover:bg-zamtel-green/5 transition-colors">
                   <td className="py-2.5 pr-3 font-semibold text-gray-800">{z.zone}</td>
                   <td className="py-2.5 pr-3 text-gray-600 truncate max-w-[70px]">{z.zbm}</td>
                   <td className="text-right py-2.5 px-2 text-gray-700 text-xs">{z.tdrs}</td>
@@ -425,6 +438,15 @@ export const HSDDashboardPage: React.FC = () => {
                     <span className={clsx('px-2 py-0.5 rounded-full font-bold text-xs', b.bg, b.color)}>
                       {sc}%
                     </span>
+                  </td>
+                  <td className="py-2.5 pl-2">
+                    <button
+                      onClick={() => setSelectedZone(z.zone)}
+                      className="text-xs text-zamtel-green font-semibold hover:underline whitespace-nowrap flex items-center gap-0.5"
+                      title={`Open full ZBM dashboard for ${z.zone}`}
+                    >
+                      <Map className="w-3 h-3" /> View
+                    </button>
                   </td>
                 </tr>
                 );

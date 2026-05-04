@@ -8,12 +8,22 @@ import { mtdRange, visitMtdTarget, prorateMtdTarget, visitMonthlyTarget,
          workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
 
 export const zbmRouter = Router();
-zbmRouter.use(requireAuth('ZBM'));
+zbmRouter.use(requireAuth('ZBM', 'HSD'));
 zbmRouter.use(apiRateLimit);
+
+// Helper: resolve zone for a request.
+// ZBM → always their own zone (from JWT).
+// HSD → can pass ?zone=Copperbelt to drill into any zone; omit for all-zones (null).
+function resolveZone(req: Request): string | null {
+  if (req.user!.role === 'HSD') {
+    return (req.query.zone as string) || null; // null = all zones
+  }
+  return req.user!.zone || null;
+}
 
 // ─── GET /zbm/dashboard ───────────────────────────────────────────────────────
 zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Response): Promise<void> => {
-  const zone = req.user!.zone || null; // null = no zone filter (e.g. zbm-kuzanga sees all)
+  const zone = resolveZone(req); // HSD can pass ?zone=; ZBM always sees own zone
   const { start, end } = mtdRange();
 
   // All TDRs in this zone (or all if zone is null)
@@ -101,11 +111,11 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
 
 // ─── GET /zbm/tdr/:tdrId ──────────────────────────────────────────────────────
 zbmRouter.get('/tdr/:tdrId', async (req: Request, res: Response): Promise<void> => {
-  const zone  = req.user!.zone!;
+  const zone  = resolveZone(req);
   const tdrId = req.params.tdrId;
 
-  const tdr = await prisma.user.findFirst({ where: { id: tdrId, zone, role: 'TDR' } });
-  if (!tdr) { res.status(404).json({ error: 'TDR not found in your zone' }); return; }
+  const tdr = await prisma.user.findFirst({ where: { id: tdrId, ...(zone ? { zone } : {}), role: 'TDR' } });
+  if (!tdr) { res.status(404).json({ error: 'TDR not found' }); return; }
 
   const { start, end } = mtdRange();
   const [agents, visits, floatIssues, prospects] = await Promise.all([
@@ -121,7 +131,7 @@ zbmRouter.get('/tdr/:tdrId', async (req: Request, res: Response): Promise<void> 
 // ─── GET /zbm/float-issues ────────────────────────────────────────────────────
 zbmRouter.get('/float-issues', async (req: Request, res: Response): Promise<void> => {
   const issues = await prisma.floatIssue.findMany({
-    where: { zone: req.user!.zone! },
+    where: { ...(resolveZone(req) ? { zone: resolveZone(req)! } : {}) },
     orderBy: { reportedAt: 'desc' },
   });
   res.json(issues);
@@ -130,7 +140,7 @@ zbmRouter.get('/float-issues', async (req: Request, res: Response): Promise<void
 // ─── PATCH /zbm/float-issues/:id ──────────────────────────────────────────────
 zbmRouter.patch('/float-issues/:id', async (req: Request, res: Response): Promise<void> => {
   const issue = await prisma.floatIssue.findUnique({ where: { id: req.params.id } });
-  if (!issue || issue.zone !== req.user!.zone) { res.status(404).json({ error: 'Not found' }); return; }
+  if (!issue || (resolveZone(req) && issue.zone !== resolveZone(req))) { res.status(404).json({ error: 'Not found' }); return; }
 
   const { status, resolutionNotes } = req.body;
   const resolvedAt = status === 'resolved' ? new Date() : undefined;
@@ -150,7 +160,7 @@ zbmRouter.patch('/float-issues/:id', async (req: Request, res: Response): Promis
 // ─── GET /zbm/prospects ───────────────────────────────────────────────────────
 zbmRouter.get('/prospects', async (req: Request, res: Response): Promise<void> => {
   const prospects = await prisma.prospect.findMany({
-    where: { zone: req.user!.zone! },
+    where: { ...(resolveZone(req) ? { zone: resolveZone(req)! } : {}) },
     orderBy: { createdAt: 'desc' },
   });
   res.json(prospects);
@@ -160,7 +170,7 @@ zbmRouter.get('/prospects', async (req: Request, res: Response): Promise<void> =
 zbmRouter.get('/map', responseCache(45), async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user!;
-    const zoneFilter = user.zone || null; // null zone (e.g. zbm-kuzanga) → all zones
+    const zoneFilter = resolveZone(req);
 
     const [agents, visits] = await Promise.all([
       prisma.agent.findMany({
@@ -214,7 +224,7 @@ zbmRouter.get('/map', responseCache(45), async (req: Request, res: Response): Pr
 zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
   try {
     const XLSX = await import('xlsx');
-    const zone = req.user!.zone || null;
+    const zone = resolveZone(req);
     const period = (req.query.period as string) ||
       `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
 
@@ -362,7 +372,7 @@ zbmRouter.post('/prospects/:id/approve-closure', async (req: Request, res: Respo
   try {
     const prospect = await prisma.prospect.findUnique({ where: { id: req.params.id } });
     if (!prospect) { res.status(404).json({ error: 'Not found' }); return; }
-    if (prospect.zone !== req.user!.zone) { res.status(403).json({ error: 'Not in your zone' }); return; }
+    const _zone = resolveZone(req); if (_zone && prospect.zone !== _zone) { res.status(403).json({ error: 'Not in your zone' }); return; }
     const updated = await prisma.prospect.update({
       where: { id: req.params.id },
       data: { status: 'converted', convertedAt: new Date(), closedByTdr: true, zbmApprovalRequired: false },
@@ -376,7 +386,7 @@ zbmRouter.post('/prospects/:id/approve-closure', async (req: Request, res: Respo
 // ─── GET /zbm/agents/stale ────────────────────────────────────────────────────
 // Agents + merchants in this ZBM's zone whose last visit was > 5 days ago (red flag)
 zbmRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void> => {
-  const zone    = req.user!.zone ?? undefined;
+  const zone    = resolveZone(req) ?? undefined;
   const cutoff  = new Date();
   cutoff.setDate(cutoff.getDate() - 5);
 
@@ -475,7 +485,7 @@ zbmRouter.get('/leaderboard', responseCache(60), async (req: Request, res: Respo
 // ─── GET /zbm/ases — list ASEs in this zone ───────────────────────────────────
 zbmRouter.get('/ases', async (req: Request, res: Response): Promise<void> => {
   try {
-    const zone = req.user!.zone;
+    const zone = resolveZone(req);
     const ases = await prisma.user.findMany({
       where: { role: 'ASE', active: true, ...(zone ? { zone } : {}) },
       select: { id: true, name: true, zone: true },
@@ -495,7 +505,7 @@ zbmRouter.get('/ases', async (req: Request, res: Response): Promise<void> => {
 // ─── POST /zbm/ases — create a new ASE ────────────────────────────────────────
 zbmRouter.post('/ases', async (req: Request, res: Response): Promise<void> => {
   try {
-    const zone = req.user!.zone;
+    const zone = resolveZone(req);
     const { id, name, pin } = req.body as { id: string; name: string; pin: string };
     if (!id || !name || !pin) { res.status(400).json({ error: 'id, name and pin required' }); return; }
     const existing = await prisma.user.findUnique({ where: { id } });
@@ -513,7 +523,7 @@ zbmRouter.post('/ases', async (req: Request, res: Response): Promise<void> => {
 // ─── GET /zbm/tdrs — list all TDRs in this zone with their ASE assignment ─────
 zbmRouter.get('/tdrs', async (req: Request, res: Response): Promise<void> => {
   try {
-    const zone = req.user!.zone;
+    const zone = resolveZone(req);
     const tdrs = await prisma.user.findMany({
       where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
       select: { id: true, name: true, zone: true, aseId: true },
@@ -528,7 +538,7 @@ zbmRouter.get('/tdrs', async (req: Request, res: Response): Promise<void> => {
 // ─── POST /zbm/assign-tdr — assign TDR to an ASE ─────────────────────────────
 zbmRouter.post('/assign-tdr', async (req: Request, res: Response): Promise<void> => {
   try {
-    const zone = req.user!.zone;
+    const zone = resolveZone(req);
     const { tdrId, aseId } = req.body as { tdrId: string; aseId: string | null };
     // Verify TDR is in this zone
     const tdr = await prisma.user.findFirst({ where: { id: tdrId, role: 'TDR', ...(zone ? { zone } : {}) } });
