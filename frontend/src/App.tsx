@@ -6,6 +6,7 @@ import { store } from './store';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PageErrorBoundary } from './components/PageErrorBoundary';
 import { Login }                from './pages/Login';
+import { ChangePinPage }        from './pages/ChangePinPage';
 import { TDRDashboardPage }     from './pages/TDRDashboard';
 import { ZBMDashboardPage }     from './pages/ZBMDashboard';
 import { ZBMLeaderboardPage }  from './pages/ZBMLeaderboardPage';
@@ -33,7 +34,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/"      element={<RootRedirect />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/login"      element={<Login />} />
+      <Route path="/change-pin" element={<ChangePinPage />} />
 
       {/* TDR */}
       <Route path="/tdr" element={

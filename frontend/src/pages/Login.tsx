@@ -73,6 +73,11 @@ export const Login: React.FC = () => {
     try {
       const res  = await authApi.login(id, pinStr);
       dispatch(loginSuccess(res.data));
+      // Force PIN change if flagged
+      if (res.data.mustChangePin) {
+        navigate('/change-pin', { replace: true });
+        return;
+      }
       const dest = roleRoute(res.data.user.role);
       if (dest) navigate(dest, { replace: true });
     } catch (err: unknown) {

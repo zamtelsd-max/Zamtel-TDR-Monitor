@@ -109,7 +109,9 @@ export async function syncQueue(): Promise<number> {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
   login: (id: string, pin: string) =>
-    client.post<{ token: string; user: AuthUser }>('/auth/login', { id, pin }),
+    client.post<{ token: string; mustChangePin: boolean; user: AuthUser }>('/auth/login', { id, pin }),
+  changePin: (data: { currentPin: string; newPin: string }) =>
+    client.post<{ success: boolean; message: string }>('/auth/change-pin', data),
 };
 
 // ─── TDR ─────────────────────────────────────────────────────────────────────
