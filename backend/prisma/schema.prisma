@@ -8,7 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model agents {
+model Agent {
   id  String  @id  @default(cuid())
   tdrId            String
   tdrName          String
@@ -28,11 +28,13 @@ model agents {
   longitude        Float?
   notes            String?
   createdAt        DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  users            users     @relation(fields: [tdrId], references: [id])
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [tdrId], references: [id])
+
+  @@map("agents")
 }
 
-model float_issues {
+model FloatIssue {
   id  String  @id  @default(cuid())
   tdrId           String
   tdrName         String
@@ -50,11 +52,13 @@ model float_issues {
   latitude        Float?
   longitude       Float?
   reportedAt      DateTime    @default(now())
-  updatedAt  DateTime  @updatedAt
-  users           users       @relation(fields: [tdrId], references: [id])
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [tdrId], references: [id])
+
+  @@map("float_issues")
 }
 
-model prospects {
+model Prospect {
   id  String  @id  @default(cuid())
   tdrId               String
   tdrName             String
@@ -74,13 +78,15 @@ model prospects {
   latitude            Float?
   longitude           Float?
   createdAt           DateTime       @default(now())
-  updatedAt  DateTime  @updatedAt
+  updatedAt           DateTime       @updatedAt
   closedByTdr         Boolean        @default(false)
   zbmApprovalRequired Boolean        @default(false)
-  users               users          @relation(fields: [tdrId], references: [id])
+  user                User           @relation(fields: [tdrId], references: [id])
+
+  @@map("prospects")
 }
 
-model sales_targets {
+model SalesTarget {
   id  String  @id  @default(cuid())
   zone            String
   period          String
@@ -89,32 +95,35 @@ model sales_targets {
   targetOutlets   Int      @default(20)
   setByHsdId      String
   createdAt       DateTime @default(now())
-  updatedAt  DateTime  @updatedAt
-  users           users    @relation(fields: [setByHsdId], references: [id])
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [setByHsdId], references: [id])
 
   @@unique([zone, period])
+  @@map("sales_targets")
 }
 
-model users {
+model User {
   id  String  @id  @default(cuid())
   name          String
   pin           String
   role          Role
   zone          String?
-  active        Boolean         @default(true)
-  mustChangePin Boolean         @default(false)
-  createdAt     DateTime        @default(now())
-  updatedAt  DateTime  @updatedAt
+  active        Boolean      @default(true)
+  mustChangePin Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   aseId         String?
-  agents        agents[]
-  float_issues  float_issues[]
-  prospects     prospects[]
-  sales_targets sales_targets[]
-  visits        visits[]
+  agents        Agent[]
+  floatIssues   FloatIssue[]
+  prospects     Prospect[]
+  salesTargets  SalesTarget[]
+  visits        Visit[]
+
+  @@map("users")
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
-model visits {
+model Visit {
   id  String  @id  @default(cuid())
   tdrId        String
   tdrName      String
@@ -131,8 +140,10 @@ model visits {
   longitude    Float?
   notes        String?
   createdAt    DateTime @default(now())
-  updatedAt  DateTime  @updatedAt
-  users        users    @relation(fields: [tdrId], references: [id])
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [tdrId], references: [id])
+
+  @@map("visits")
 }
 
 enum AgentType {
