@@ -268,18 +268,22 @@ hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospectRows.length > 0 ? prospectRows : [{}]), 'Prospects');
 
-    // Sheet 5: Unvisited Outlets (all zones — last visit > 4 days or never)
+    // Sheet 5: Unvisited Outlets — single batched query (no N+1)
     const allAgents = await prisma.agent.findMany({
       orderBy: [{ zone: 'asc' }, { tdrName: 'asc' }, { agentName: 'asc' }],
     });
+    // Get latest visit per agent in one query
+    const latestVisits = await prisma.visit.groupBy({
+      by: ['agentCode'],
+      _max: { createdAt: true },
+    });
+    const lastVisitMap = new Map<string, Date>();
+    for (const v of latestVisits) {
+      if (v._max.createdAt) lastVisitMap.set(v.agentCode, v._max.createdAt);
+    }
     const unvisitedRows: object[] = [];
     for (const a of allAgents) {
-      const lastVisit = await prisma.visit.findFirst({
-        where: { agentCode: a.agentCode },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true },
-      });
-      const lastVisitedAt = lastVisit?.createdAt ?? null;
+      const lastVisitedAt = lastVisitMap.get(a.agentCode) ?? null;
       const daysAgo = lastVisitedAt
         ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
         : null;
