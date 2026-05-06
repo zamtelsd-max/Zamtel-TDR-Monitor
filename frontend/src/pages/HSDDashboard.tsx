@@ -306,20 +306,72 @@ export const HSDDashboardPage: React.FC = () => {
         );
       })() : null}
 
-      {/* KPI Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
-        {loading && !dashboard ? (
-          [0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 rounded-2xl" />)
-        ) : (
-          <>
-            <StatCard label="Agents Recruited"  value={dashboard?.kpis.totalAgents    || 0} color="text-zamtel-pink"  loading={loading && !dashboard} />
-            <StatCard label="Merchants"          value={dashboard?.kpis.totalMerchants || 0} color="text-blue-600"   loading={loading && !dashboard} />
-            <StatCard label="Outlet Visits"      value={dashboard?.kpis.totalVisits    || 0} color="text-green-700"  loading={loading && !dashboard} />
-            <StatCard label="Open Float Issues"  value={dashboard?.kpis.openFloatIssues || 0} color="text-amber-600" loading={loading && !dashboard} />
-            <StatCard label="Conversion Rate"    value={`${dashboard?.kpis.conversionRate || 0}%`} color="text-purple-700" loading={loading && !dashboard} />
-          </>
-        )}
-      </div>
+      {/* National KPI — performance against target (built from zone targets) */}
+      {loading && !dashboard ? (
+        <div className="space-y-2 mb-4">{[0,1,2].map(i => <Skeleton key={i} className="h-8 rounded-xl" />)}</div>
+      ) : dashboard && (
+        <Card className="mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-zamtel-green" />
+            <h3 className="font-bold text-sm text-gray-800">National Performance Against Target</h3>
+            <span className="text-xs text-gray-400 ml-auto">Built up from all zone targets</span>
+          </div>
+          {/* Overall national weighted score */}
+          {(() => {
+            const kpis = dashboard.kpis as any;
+            const aPct = kpis.agentPct    ?? 0;
+            const mPct = kpis.merchantPct ?? 0;
+            const vPct = kpis.visitPct    ?? 0;
+            const overall = Math.round(aPct * 0.4 + mPct * 0.2 + vPct * 0.1);
+            const band = getBand(overall);
+            return (
+              <>
+                {/* Overall score banner */}
+                <div className={`rounded-xl p-3 mb-3 flex items-center justify-between ${band.bg}`}>
+                  <div>
+                    <p className={`text-2xl font-black ${band.color}`}>{overall}%</p>
+                    <p className={`text-xs font-bold ${band.color}`}>{band.label} — National Weighted Score</p>
+                  </div>
+                  <div className="text-right text-xs text-gray-500 space-y-1">
+                    <p>Open Float Issues: <span className={`font-bold ${(kpis.openFloatIssues||0) > 0 ? 'text-red-600' : 'text-green-600'}`}>{kpis.openFloatIssues || 0}</span></p>
+                    <p>Conversion Rate: <span className="font-bold text-purple-700">{kpis.conversionRate || 0}%</span></p>
+                  </div>
+                </div>
+                {/* Score progress bar */}
+                <div className="mb-4">
+                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${overall}%`, background: band.ring }} />
+                  </div>
+                  <div className="flex justify-between mt-0.5 text-[9px] text-gray-400">
+                    <span>0%</span><span className="text-red-400">40</span><span className="text-amber-400">60</span><span className="text-green-400">80</span><span>100%</span>
+                  </div>
+                </div>
+                {/* Per-KPI bars */}
+                <div className="space-y-3">
+                  <PerformanceBar
+                    label="Agent Recruitment (40% weight)"
+                    icon="👤"
+                    count={kpis.totalAgents || 0}
+                    target={kpis.nationalTargets?.agents || 1}
+                  />
+                  <PerformanceBar
+                    label="Merchant Enrollment (20% weight)"
+                    icon="🏪"
+                    count={kpis.totalMerchants || 0}
+                    target={kpis.nationalTargets?.merchants || 1}
+                  />
+                  <PerformanceBar
+                    label="Outlet Visits (10% weight)"
+                    icon="📍"
+                    count={kpis.totalVisits || 0}
+                    target={kpis.nationalTargets?.visits || 1}
+                  />
+                </div>
+              </>
+            );
+          })()}
+        </Card>
+      )}
 
       {/* 🏆 Leaderboard Banner */}
       <button
@@ -401,6 +453,9 @@ export const HSDDashboardPage: React.FC = () => {
                     <div>
                       <p className="font-bold text-gray-800">{z.zone}</p>
                       <p className="text-xs text-gray-500">{z.zbm} · {z.tdrs} TDRs</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        Targets: {aTgt} agents · {mTgt} merchants · {vTgt} visits
+                      </p>
                     </div>
                     <div className="text-right">
                       <span className={`text-2xl font-black ${band.color}`}>{sc}%</span>
