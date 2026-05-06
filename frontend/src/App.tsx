@@ -60,9 +60,9 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/tdr/reactivations/new" element={
-          <AuthGuard role="TDR">
+          <ProtectedRoute roles={['TDR']}>
             <PageErrorBoundary page="Agent Reactivation"><ReactivationForm /></PageErrorBoundary>
-          </AuthGuard>
+          </ProtectedRoute>
         } />
       <Route path="/tdr/prospects/new" element={
         <ProtectedRoute roles={['TDR']}>
