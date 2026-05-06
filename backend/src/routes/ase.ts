@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma }       from '../prisma';
 import { requireAuth }  from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
+import { mtdRange, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
 
 export const aseRouter = Router();
 aseRouter.use(requireAuth('ASE'));
@@ -33,7 +34,24 @@ aseRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
       prospects:   prospects.find(p => p.tdrId === tdr.id)?._count ?? 0,
     }));
 
-    res.json({ ase: { id: req.user!.userId, name: req.user!.name }, tdrStats });
+    // Team totals + prorated targets
+    const tdrCount       = tdrs.length;
+    const agentTarget    = prorateMtdTarget(96) * tdrCount;
+    const merchantTarget = prorateMtdTarget(96) * tdrCount;
+    const visitTarget    = visitMtdTarget()     * tdrCount;
+    const teamAgents     = tdrStats.reduce((s, t) => s + t.agents,      0);
+    const teamVisits     = tdrStats.reduce((s, t) => s + t.visits,      0);
+    const teamFloat      = tdrStats.reduce((s, t) => s + t.floatIssues, 0);
+
+    res.json({
+      ase: { id: req.user!.userId, name: req.user!.name },
+      tdrStats,
+      team: {
+        totals:  { agents: teamAgents, visits: teamVisits, floatIssues: teamFloat },
+        targets: { agents: agentTarget, merchants: merchantTarget, visits: visitTarget },
+      },
+      mtd: { workingDaysElapsed: workingDaysElapsed(), workingDaysTotal: workingDaysThisMonth() },
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load ASE dashboard' });
   }

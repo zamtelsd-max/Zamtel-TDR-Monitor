@@ -5,6 +5,7 @@ const express_1 = require("express");
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
 const rateLimit_1 = require("../middleware/rateLimit");
+const mtd_1 = require("../utils/mtd");
 exports.aseRouter = (0, express_1.Router)();
 exports.aseRouter.use((0, auth_1.requireAuth)('ASE'));
 exports.aseRouter.use(rateLimit_1.apiRateLimit);
@@ -30,7 +31,23 @@ exports.aseRouter.get('/dashboard', async (req, res) => {
             floatIssues: floatIssues.find(f => f.tdrId === tdr.id)?._count ?? 0,
             prospects: prospects.find(p => p.tdrId === tdr.id)?._count ?? 0,
         }));
-        res.json({ ase: { id: req.user.userId, name: req.user.name }, tdrStats });
+        // Team totals + prorated targets
+        const tdrCount = tdrs.length;
+        const agentTarget = (0, mtd_1.prorateMtdTarget)(96) * tdrCount;
+        const merchantTarget = (0, mtd_1.prorateMtdTarget)(96) * tdrCount;
+        const visitTarget = (0, mtd_1.visitMtdTarget)() * tdrCount;
+        const teamAgents = tdrStats.reduce((s, t) => s + t.agents, 0);
+        const teamVisits = tdrStats.reduce((s, t) => s + t.visits, 0);
+        const teamFloat = tdrStats.reduce((s, t) => s + t.floatIssues, 0);
+        res.json({
+            ase: { id: req.user.userId, name: req.user.name },
+            tdrStats,
+            team: {
+                totals: { agents: teamAgents, visits: teamVisits, floatIssues: teamFloat },
+                targets: { agents: agentTarget, merchants: merchantTarget, visits: visitTarget },
+            },
+            mtd: { workingDaysElapsed: (0, mtd_1.workingDaysElapsed)(), workingDaysTotal: (0, mtd_1.workingDaysThisMonth)() },
+        });
     }
     catch (err) {
         res.status(500).json({ error: 'Failed to load ASE dashboard' });

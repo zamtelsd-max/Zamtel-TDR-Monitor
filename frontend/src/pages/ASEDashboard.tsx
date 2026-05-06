@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { aseApi, flagsApi } from '../services/api';
-import { TDRPerfCard } from '../components/PerformanceBar';
-import { calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
+import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
+import { calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth, getBand } from '../utils/performance';
 import type { TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge } from '../components/UI';
@@ -35,10 +35,12 @@ export const ASEDashboardPage: React.FC = () => {
   const [availLoading, setAvailLoading] = useState(false);
   const [picking, setPicking]   = useState<string | null>(null);
 
+  const [teamData, setTeamData] = useState<any>(null);
+
   const loadDashboard = () => {
     setLoading(true);
     aseApi.dashboard()
-      .then(r => setStats(r.data.tdrStats))
+      .then(r => { setStats(r.data.tdrStats); setTeamData(r.data.team ?? null); })
       .catch(() => toast.error('Failed to load dashboard'))
       .finally(() => setLoading(false));
   };
@@ -172,6 +174,58 @@ export const ASEDashboardPage: React.FC = () => {
                 <div className="h-1.5 bg-gray-100 rounded-full">
                   <div className="h-1.5 rounded-full bg-gray-400 transition-all" style={{ width: `${pct}%` }} />
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* Team Performance vs Target */}
+          {teamData && stats.length > 0 && (() => {
+            const aTgt = teamData.targets.agents   || 1;
+            const vTgt = teamData.targets.visits   || 1;
+            const aPct = Math.min(Math.round(teamData.totals.agents / aTgt * 100), 100);
+            const vPct = Math.min(Math.round(teamData.totals.visits / vTgt * 100), 100);
+            const fPct = teamData.totals.floatIssues === 0 ? 100 : Math.max(0, 100 - teamData.totals.floatIssues * 10);
+            const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: 0, floatPct: fPct, reactivationPct: 0, visitPct: vPct });
+            const band = getBand(sc);
+            const callout = sc < 40 ? '🔴 Critical — Team needs immediate support'
+                          : sc < 60 ? '🟠 Below Target — Step in and coach'
+                          : sc < 80 ? '🟡 Needs Attention — Keep monitoring'
+                          :           '🟢 On Track — Keep it up!';
+            return (
+              <div className={`rounded-2xl border-2 p-4 mb-4 ${band.bg}`} style={{ borderColor: band.ring }}>
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-bold text-gray-800">Team Performance</p>
+                    <p className="text-xs text-gray-500">{stats.length} TDRs assigned</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-3xl font-black ${band.color}`}>{sc}%</span>
+                    <p className={`text-[10px] font-bold ${band.color}`}>{band.label}</p>
+                  </div>
+                </div>
+                {/* Score bar */}
+                <div className="mb-3">
+                  <div className="h-3 bg-white/60 rounded-full overflow-hidden shadow-inner">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${sc}%`, background: band.ring }} />
+                  </div>
+                  <div className="flex justify-between mt-0.5 text-[9px] text-gray-500">
+                    <span>0%</span><span className="text-red-400">40</span><span className="text-amber-400">60</span><span className="text-green-400">80</span><span>100%</span>
+                  </div>
+                </div>
+                {/* KPI bars */}
+                <div className="space-y-2.5 mb-3">
+                  <PerformanceBar icon="👤" label={`Agent Recruitment — ${stats.length} TDRs`} count={teamData.totals.agents} target={aTgt} />
+                  <PerformanceBar icon="📍" label={`Outlet Visits — ${stats.length} TDRs`}     count={teamData.totals.visits} target={vTgt} />
+                </div>
+                <div className="rounded-xl bg-white/70 px-3 py-2">
+                  <p className={`text-xs font-bold ${band.color}`}>{callout}</p>
+                </div>
+                {teamData.totals.floatIssues > 0 && (
+                  <div className="mt-2 rounded-xl bg-red-100 px-3 py-1.5 flex items-center gap-2">
+                    <span>⚠️</span>
+                    <p className="text-xs font-semibold text-red-700">{teamData.totals.floatIssues} float issue{teamData.totals.floatIssues > 1 ? 's' : ''} open across team</p>
+                  </div>
+                )}
               </div>
             );
           })()}

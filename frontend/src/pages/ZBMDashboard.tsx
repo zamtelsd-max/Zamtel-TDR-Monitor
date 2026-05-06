@@ -11,7 +11,7 @@ import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
 import { getBand, calcWeightedScore, floatResolutionPct, WEIGHT_PCT, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
-import { TDRPerfCard } from '../components/PerformanceBar';
+import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -382,6 +382,62 @@ export const ZBMDashboardPage: React.FC = () => {
           Export
         </Button>
       </div>
+
+      {/* Zone Performance vs Target — weighted score banner */}
+      {!loading && data && (() => {
+        const aTgt = data.zone.targets.agents    || 1;
+        const mTgt = data.zone.targets.merchants || 1;
+        const vTgt = data.zone.targets.visits    || 1;
+        const aPct = Math.min(Math.round(data.zone.totals.agents    / aTgt * 100), 100);
+        const mPct = Math.min(Math.round(data.zone.totals.merchants / mTgt * 100), 100);
+        const vPct = Math.min(Math.round(data.zone.totals.visits    / vTgt * 100), 100);
+        const fPct = floatResolutionPct(0, data.zone.totals.floatIssuesPending);
+        const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, floatPct: fPct, reactivationPct: 0, visitPct: vPct });
+        const band = getBand(sc);
+        const callout = sc < 40 ? '🔴 Critical — Immediate Action Required'
+                      : sc < 60 ? '🟠 Below Target — Intervention Needed'
+                      : sc < 80 ? '🟡 Needs Attention — Monitor Closely'
+                      :           '🟢 On Track';
+        return (
+          <div className={`rounded-2xl border-2 p-4 mb-4 ${band.bg} border-current`} style={{ borderColor: band.ring }}>
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="font-bold text-gray-800">{data.zbm.zone} — Zone Performance</p>
+                <p className="text-xs text-gray-500">{data.tdrStats?.length ?? 0} TDRs · Targets prorated to working day {workingDaysElapsed()}/{workingDaysThisMonth()}</p>
+              </div>
+              <div className="text-right">
+                <span className={`text-3xl font-black ${band.color}`}>{sc}%</span>
+                <p className={`text-[10px] font-bold ${band.color}`}>{band.label}</p>
+              </div>
+            </div>
+            {/* Weighted score bar */}
+            <div className="mb-3">
+              <div className="h-3 bg-white/60 rounded-full overflow-hidden border border-white/80 shadow-inner">
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${sc}%`, background: band.ring }} />
+              </div>
+              <div className="flex justify-between mt-0.5 text-[9px] text-gray-500">
+                <span>0%</span><span className="text-red-400">40</span><span className="text-amber-400">60</span><span className="text-green-400">80</span><span>100%</span>
+              </div>
+            </div>
+            {/* KPI bars */}
+            <div className="space-y-2.5 mb-3">
+              <PerformanceBar icon="👤" label="Agent Recruitment (40% weight)"   count={data.zone.totals.agents}    target={aTgt} />
+              <PerformanceBar icon="🏪" label="Merchant Enrollment (20% weight)" count={data.zone.totals.merchants} target={mTgt} />
+              <PerformanceBar icon="📍" label="Outlet Visits (10% weight)"       count={data.zone.totals.visits}    target={vTgt} />
+            </div>
+            {/* Callout */}
+            <div className="rounded-xl bg-white/70 px-3 py-2">
+              <p className={`text-xs font-bold ${band.color}`}>{callout}</p>
+            </div>
+            {data.zone.totals.floatIssuesPending > 0 && (
+              <div className="mt-2 rounded-xl bg-red-100 px-3 py-1.5 flex items-center gap-2">
+                <span className="text-sm">⚠️</span>
+                <p className="text-xs font-semibold text-red-700">{data.zone.totals.floatIssuesPending} float issue{data.zone.totals.floatIssuesPending > 1 ? 's' : ''} pending resolution</p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Zone KPIs */}
       <div className="grid grid-cols-2 gap-3 mb-4">
