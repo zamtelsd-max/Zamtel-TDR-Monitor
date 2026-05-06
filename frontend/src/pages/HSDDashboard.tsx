@@ -373,58 +373,6 @@ export const HSDDashboardPage: React.FC = () => {
         </Card>
       )}
 
-      {/* 🏆 Leaderboard Banner */}
-      <button
-        onClick={() => navigate('/leaderboard')}
-        className="w-full mb-4 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-md shadow-yellow-100 active:scale-[0.98] transition-transform"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🏆</span>
-          <div className="text-left">
-            <p className="text-sm font-bold text-yellow-900">Sales Leaderboard</p>
-            <p className="text-xs text-yellow-800 opacity-80">Top 30 TDRs · Zone Rankings</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 bg-yellow-600/20 rounded-xl px-3 py-1.5">
-          <span className="text-xs font-bold text-yellow-900">View</span>
-          <span className="text-yellow-900">→</span>
-        </div>
-      </button>
-
-      {/* Critical Alerts */}
-      {dashboard && dashboard.criticalAlerts.length > 0 && (
-        <Card className="mb-4 border-red-200 bg-red-50">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
-            <h3 className="font-semibold text-red-800 text-sm">
-              Critical Float Alerts ({dashboard.criticalAlerts.length} — pending &gt;48hrs)
-            </h3>
-          </div>
-          <div className="space-y-2">
-            {dashboard.criticalAlerts.slice(0, 5).map((issue: FloatIssue) => (
-              <div key={issue.id} className="bg-white rounded-xl p-3 flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-red-800">{issue.agentName} ({issue.agentCode})</p>
-                  <p className="text-xs text-red-600">{issue.zone} · {issue.tdrName}</p>
-                  <p className="text-xs text-gray-600 mt-1">{ISSUE_TYPE_LABELS[issue.issueType]}: {issue.description}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {differenceInHours(new Date(), new Date(issue.reportedAt))}hrs ago · ZMW {issue.reportedFloat.toLocaleString()}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  loading={resolving === issue.id}
-                  onClick={() => handleResolveAlert(issue.id)}
-                >
-                  Resolve
-                </Button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
       {/* Zone Performance Cards — visual performance vs target */}
       {zones.length > 0 && (
         <div className="mb-4">
@@ -608,6 +556,58 @@ export const HSDDashboardPage: React.FC = () => {
           />
         )}
       </Card>
+
+      {/* 🏆 Leaderboard Banner */}
+      <button
+        onClick={() => navigate('/leaderboard')}
+        className="w-full mb-4 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-md shadow-yellow-100 active:scale-[0.98] transition-transform"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🏆</span>
+          <div className="text-left">
+            <p className="text-sm font-bold text-yellow-900">Sales Leaderboard</p>
+            <p className="text-xs text-yellow-800 opacity-80">Top 30 TDRs · Zone Rankings</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 bg-yellow-600/20 rounded-xl px-3 py-1.5">
+          <span className="text-xs font-bold text-yellow-900">View</span>
+          <span className="text-yellow-900">→</span>
+        </div>
+      </button>
+
+      {/* Critical Float Alerts */}
+      {dashboard && dashboard.criticalAlerts.length > 0 && (
+        <Card className="mb-4 border-red-200 bg-red-50">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-red-600" />
+            <h3 className="font-semibold text-red-800 text-sm">
+              Critical Float Alerts ({dashboard.criticalAlerts.length} — pending &gt;48hrs)
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {dashboard.criticalAlerts.slice(0, 5).map((issue: FloatIssue) => (
+              <div key={issue.id} className="bg-white rounded-xl p-3 flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-red-800">{issue.agentName} ({issue.agentCode})</p>
+                  <p className="text-xs text-red-600">{issue.zone} · {issue.tdrName}</p>
+                  <p className="text-xs text-gray-600 mt-1">{ISSUE_TYPE_LABELS[issue.issueType]}: {issue.description}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {differenceInHours(new Date(), new Date(issue.reportedAt))}hrs ago · ZMW {issue.reportedFloat.toLocaleString()}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  loading={resolving === issue.id}
+                  onClick={() => handleResolveAlert(issue.id)}
+                >
+                  Resolve
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Prospects Funnel */}
       {dashboard && dashboard.prospectsBreakdown.length > 0 && (
