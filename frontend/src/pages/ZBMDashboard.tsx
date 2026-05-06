@@ -11,6 +11,7 @@ import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
 import { getBand, calcWeightedScore, floatResolutionPct, WEIGHT_PCT, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
+import { TDRPerfCard } from '../components/PerformanceBar';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -474,9 +475,43 @@ export const ZBMDashboardPage: React.FC = () => {
         </Card>
       )}
 
+      {/* TDR Performance Cards — visual performance vs target */}
+      {sortedTDRs && sortedTDRs.length > 0 && (
+        <div className="mb-4">
+          <h3 className="font-bold text-sm text-gray-800 mb-3 flex items-center gap-2">
+            📊 TDR Performance Against Target
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {sortedTDRs.map((row: TDRStat) => {
+              const sc    = tdrScore(row);
+              const aTgt  = prorateMtdTarget(96);
+              const mTgt  = prorateMtdTarget(96);
+              const vTgt  = visitMtdTarget();
+              const flag  = data?.tdrFlags?.find((f: any) => f.tdrId === row.tdr.id);
+              return (
+                <TDRPerfCard
+                  key={row.tdr.id}
+                  name={row.tdr.name}
+                  zone={row.tdr.zone}
+                  agents={row.agents}
+                  merchants={row.merchants}
+                  visits={row.visits}
+                  floatIssues={row.floatIssues}
+                  score={sc}
+                  agentTarget={aTgt}
+                  merchantTarget={mTgt}
+                  visitTarget={vTgt}
+                  flagSeverity={flag?.severity ?? null}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* TDR Performance Table */}
       <Card className="mb-4 overflow-x-auto">
-        <h3 className="font-semibold text-zamtel-dark text-sm mb-3">TDR Performance</h3>
+        <h3 className="font-semibold text-zamtel-dark text-sm mb-3">TDR Performance Summary</h3>
         {loading && !data ? (
           <div className="space-y-2">
             {[0, 1, 2].map(i => <Skeleton key={i} className="h-10" />)}

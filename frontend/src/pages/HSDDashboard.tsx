@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy, ArrowLeft, Map } from 'lucide-react';
+import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy, ArrowLeft, Map, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { hsdApi, flagsApi } from '../services/api';
 import type { HSDDashboard, ZoneStat, FloatIssue, TDRFlag } from '../types';
@@ -14,6 +14,7 @@ import { GeoMap } from '../components/GeoMap';
 import { useAppSelector } from '../hooks/useAppDispatch';
 import { getUserTitle } from '../utils/userTitle';
 import { getBand, calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
+import { PerformanceBar } from '../components/PerformanceBar';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -370,6 +371,82 @@ export const HSDDashboardPage: React.FC = () => {
             ))}
           </div>
         </Card>
+      )}
+
+      {/* Zone Performance Cards — visual performance vs target */}
+      {zones.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-zamtel-green" />
+            <h3 className="font-bold text-sm text-gray-800">Performance Against Target — All Zones</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {sortedZones.map((z: ZoneStat) => {
+              const sc       = zoneScore(z);
+              const band     = getBand(sc);
+              const aTgt     = z.targets?.agents    ?? prorateMtdTarget(96);
+              const mTgt     = z.targets?.merchants ?? prorateMtdTarget(96);
+              const vTgt     = z.targets?.visits    ?? visitMtdTarget();
+              const aPct     = Math.min(Math.round(z.agents    / Math.max(aTgt, 1) * 100), 100);
+              const mPct     = Math.min(Math.round(z.merchants / Math.max(mTgt, 1) * 100), 100);
+              const vPct     = Math.min(Math.round(z.visits    / Math.max(vTgt, 1) * 100), 100);
+              const callout  = sc < 40   ? { bg: 'bg-red-50    border-red-300',    label: '🔴 Critical — Immediate Action Required',  text: 'text-red-700' }
+                             : sc < 60   ? { bg: 'bg-orange-50 border-orange-300', label: '🟠 Below Target — Intervention Needed',     text: 'text-orange-700' }
+                             : sc < 80   ? { bg: 'bg-amber-50  border-amber-300',  label: '🟡 Needs Attention — Monitor Closely',      text: 'text-amber-700' }
+                             :             { bg: 'bg-green-50  border-green-300',  label: '🟢 On Track',                               text: 'text-green-700' };
+              return (
+                <div key={z.zone} className={`rounded-2xl border-2 p-4 ${callout.bg}`}>
+                  {/* Zone header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-bold text-gray-800">{z.zone}</p>
+                      <p className="text-xs text-gray-500">{z.zbm} · {z.tdrs} TDRs</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-2xl font-black ${band.color}`}>{sc}%</span>
+                      <p className={`text-[10px] font-bold ${band.color}`}>{band.label}</p>
+                    </div>
+                  </div>
+                  {/* Weighted score bar */}
+                  <div className="mb-3">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Weighted Score</span>
+                    </div>
+                    <div className="h-3 bg-white/60 rounded-full overflow-hidden border border-white/80 shadow-inner">
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${sc}%`, background: band.ring }} />
+                    </div>
+                    <div className="flex justify-between mt-0.5 text-[9px] text-gray-400">
+                      <span>0%</span><span className="text-red-400">40</span><span className="text-amber-400">60</span><span className="text-green-400">80</span><span>100%</span>
+                    </div>
+                  </div>
+                  {/* KPI bars */}
+                  <div className="space-y-2 mb-3">
+                    <PerformanceBar label="Agents Recruited"   icon="👤" count={z.agents}    target={aTgt} />
+                    <PerformanceBar label="Merchants Enrolled" icon="🏪" count={z.merchants} target={mTgt} />
+                    <PerformanceBar label="Outlet Visits"      icon="📍" count={z.visits}    target={vTgt} />
+                  </div>
+                  {/* Callout banner */}
+                  <div className={`rounded-xl px-3 py-2 flex items-center gap-2 bg-white/70`}>
+                    <p className={`text-xs font-bold ${callout.text}`}>{callout.label}</p>
+                  </div>
+                  {/* Float issues warning */}
+                  {z.floatIssues > 0 && (
+                    <div className="mt-2 rounded-xl px-3 py-1.5 bg-red-100 flex items-center gap-2">
+                      <AlertTriangle className="w-3 h-3 text-red-600 flex-shrink-0" />
+                      <p className="text-xs font-semibold text-red-700">{z.floatIssues} open float issue{z.floatIssues > 1 ? 's' : ''}</p>
+                    </div>
+                  )}
+                  {/* View drill-down */}
+                  <button onClick={() => setSelectedZone(z.zone)}
+                    className="mt-3 w-full text-xs font-bold text-zamtel-green bg-white/80 rounded-xl py-2 hover:bg-white transition-colors flex items-center justify-center gap-1.5">
+                    <Map className="w-3 h-3" /> View Full Zone Dashboard
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Zone Performance Table */}

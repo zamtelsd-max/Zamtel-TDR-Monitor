@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2 } from 'lucide-react';
+import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { aseApi, flagsApi } from '../services/api';
+import { TDRPerfCard } from '../components/PerformanceBar';
+import { calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
 import type { TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge } from '../components/UI';
@@ -158,21 +160,41 @@ export const ASEDashboardPage: React.FC = () => {
             </div>
           )}
 
+          {/* MTD working-day progress */}
+          {(() => {
+            const el = workingDaysElapsed(); const tot = workingDaysThisMonth(); const pct = Math.round(el/tot*100);
+            return (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-gray-500">📅 Working day <strong>{el}</strong> of <strong>{tot}</strong> — targets prorated</span>
+                  <span className="text-xs font-semibold text-gray-600">{pct}%</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded-full">
+                  <div className="h-1.5 rounded-full bg-gray-400 transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Summary */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <Card className="text-center">
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <Card className="text-center py-3">
               <p className="text-2xl font-black text-zamtel-green">{stats.length}</p>
-              <p className="text-xs text-gray-500 mt-1">TDRs Assigned</p>
+              <p className="text-xs text-gray-500 mt-1">TDRs</p>
             </Card>
-            <Card className="text-center">
+            <Card className="text-center py-3">
               <p className="text-2xl font-black text-blue-600">{stats.reduce((s, t) => s + t.agents, 0)}</p>
-              <p className="text-xs text-gray-500 mt-1">Total Agents</p>
+              <p className="text-xs text-gray-500 mt-1">Agents MTD</p>
+            </Card>
+            <Card className="text-center py-3">
+              <p className="text-2xl font-black text-purple-600">{stats.reduce((s, t) => s + t.visits, 0)}</p>
+              <p className="text-xs text-gray-500 mt-1">Visits MTD</p>
             </Card>
           </div>
 
-          {/* TDR List */}
+          {/* TDR Performance Cards */}
           {loading ? (
-            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}</div>
           ) : stats.length === 0 ? (
             <Card className="text-center py-8 text-gray-400">
               <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -182,41 +204,57 @@ export const ASEDashboardPage: React.FC = () => {
               </button>
             </Card>
           ) : (
-            <div className="space-y-3 mb-24">
-              {stats.map(({ tdr, agents, visits, floatIssues, prospects }) => {
-                const tdrFlag = flags.find(f => f.tdrId === tdr.id);
-                return (
-                  <div key={tdr.id} className={`bg-white rounded-2xl shadow-sm border p-4 ${tdrFlag?.severity === 'critical' ? 'border-red-300' : tdrFlag ? 'border-amber-300' : 'border-gray-100'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex-1 cursor-pointer" onClick={() => viewTDR(tdr.id)}>
-                        <p className="font-semibold text-gray-800 flex items-center gap-2">
-                          {tdr.name}
-                          {tdrFlag && <AlertTriangle className={`w-3 h-3 ${tdrFlag.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />}
-                        </p>
-                        <p className="text-xs text-gray-500">{tdr.zone || 'No zone'}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => releaseTDR(tdr.id)}
-                          className="text-xs text-gray-400 hover:text-red-500 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
-                          title="Release TDR">
-                          <X className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => viewTDR(tdr.id)}
-                          className="flex items-center gap-1 text-xs text-zamtel-green font-medium">
-                          <Eye className="w-3 h-3" /> View
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 text-center">
-                      <div className="bg-green-50 rounded-lg py-2"><p className="font-bold text-green-700">{agents}</p><p className="text-[10px] text-gray-500">Agents</p></div>
-                      <div className="bg-blue-50 rounded-lg py-2"><p className="font-bold text-blue-700">{visits}</p><p className="text-[10px] text-gray-500">Visits</p></div>
-                      <div className={`rounded-lg py-2 ${floatIssues > 0 ? 'bg-red-50' : 'bg-gray-50'}`}><p className={`font-bold ${floatIssues > 0 ? 'text-red-700' : 'text-gray-700'}`}>{floatIssues}</p><p className="text-[10px] text-gray-500">Issues</p></div>
-                      <div className="bg-purple-50 rounded-lg py-2"><p className="font-bold text-purple-700">{prospects}</p><p className="text-[10px] text-gray-500">Prospects</p></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-zamtel-green" />
+                <h3 className="font-bold text-sm text-gray-800">TDR Performance Against Target</h3>
+              </div>
+              <div className="space-y-3 mb-24">
+                {stats.map(({ tdr, agents, visits, floatIssues }) => {
+                  const tdrFlag   = flags.find(f => f.tdrId === tdr.id);
+                  const aTgt      = prorateMtdTarget(96);
+                  const mTgt      = prorateMtdTarget(96);
+                  const vTgt      = visitMtdTarget();
+                  const sc        = calcWeightedScore({
+                    agentPct:        Math.min(Math.round(agents / Math.max(aTgt, 1) * 100), 100),
+                    merchantPct:     0, // not tracked at ASE level
+                    floatPct:        floatIssues === 0 ? 100 : Math.max(0, 100 - floatIssues * 10),
+                    reactivationPct: 0,
+                    visitPct:        Math.min(Math.round(visits / Math.max(vTgt, 1) * 100), 100),
+                  });
+                  return (
+                    <TDRPerfCard
+                      key={tdr.id}
+                      name={tdr.name}
+                      zone={tdr.zone}
+                      agents={agents}
+                      merchants={0}
+                      visits={visits}
+                      floatIssues={floatIssues}
+                      score={sc}
+                      agentTarget={aTgt}
+                      merchantTarget={mTgt}
+                      visitTarget={vTgt}
+                      flagSeverity={tdrFlag?.severity === 'critical' ? 'critical' : tdrFlag ? 'warning' : null}
+                      onClick={() => viewTDR(tdr.id)}
+                      actionSlot={
+                        <div className="flex items-center gap-1">
+                          <button onClick={(e) => { e.stopPropagation(); releaseTDR(tdr.id); }}
+                            className="text-xs text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                            title="Release TDR">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => viewTDR(tdr.id)}
+                            className="flex items-center gap-1 text-xs text-zamtel-green font-semibold bg-green-50 px-2.5 py-1 rounded-xl">
+                            <Eye className="w-3 h-3" /> View
+                          </button>
+                        </div>
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       )}
