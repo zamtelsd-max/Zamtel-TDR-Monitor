@@ -29,10 +29,11 @@ function zoneScore(z: { agents: number; merchants: number; visits: number; float
   const tm = z.targets?.merchants ?? prorateMtdTarget(96);
   const tv = z.targets?.visits    ?? visitMtdTarget();
   return calcWeightedScore({
-    agentPct:    Math.min(Math.round(z.agents    / ta * 100), 100),
-    merchantPct: Math.min(Math.round(z.merchants / tm * 100), 100),
-    floatPct:    floatResolutionPct(0, z.floatIssues),
-    visitPct:    Math.min(Math.round(z.visits    / tv * 100), 100),
+    agentPct:        Math.min(Math.round(z.agents    / ta * 100), 100),
+    merchantPct:     Math.min(Math.round(z.merchants / tm * 100), 100),
+    floatPct:        floatResolutionPct(0, z.floatIssues),
+    reactivationPct: Math.min(Math.round(((z.reactivations ?? 0) / Math.max((z.reactivationTarget ?? 1), 1)) * 100), 100),
+    visitPct:        Math.min(Math.round(z.visits    / tv * 100), 100),
   });
 }
 

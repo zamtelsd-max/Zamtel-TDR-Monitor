@@ -2,10 +2,11 @@
  * Zamtel TDR Performance Scoring
  * ─────────────────────────────────────────────────────────────────
  * Weights:
- *   Agent Recruitment     40%
- *   Merchant Recruitment  20%
- *   Float Issue Resolution 30%
- *   Trade Visitations     10%
+ *   Agent Recruitment      40%
+ *   Merchant Recruitment   20%
+ *   Float Issue Resolution 15%
+ *   Agent Reactivation     15%
+ *   Trade Visitations      10%
  *
  * Performance Bands:
  *   ≥ 80%  → Green   (On Track / Excellent)
@@ -15,10 +16,11 @@
  */
 
 export const WEIGHTS = {
-  agents:   0.40,   // Agent Recruitment      40%
-  merchants: 0.20,  // Merchant Recruitment   20%
-  floats:   0.30,   // Float Issue Resolution 30%
-  visits:   0.10,   // Trade Visitations      10%
+  agents:       0.40,   // Agent Recruitment      40%
+  merchants:    0.20,   // Merchant Recruitment   20%
+  floats:       0.15,   // Float Issue Resolution 15%
+  reactivation: 0.15,   // Agent Reactivation     15%
+  visits:       0.10,   // Trade Visitations      10%
 } as const;
 
 // ─── MTD working-day helpers (Mon–Sat, Zambia) ───────────────────────────────
@@ -78,18 +80,23 @@ export function visitMonthlyTarget(): number {
 export const VISIT_DAILY_TARGET = 20;
 
 export const WEIGHT_LABELS = {
-  agents:    'Agent Recruitment',
-  merchants: 'Merchant Recruitment',
-  floats:    'Float Issue Resolution',
-  visits:    'Trade Visitations',
+  agents:       'Agent Recruitment',
+  merchants:    'Merchant Recruitment',
+  floats:       'Float Issue Resolution',
+  reactivation: 'Agent Reactivation',
+  visits:       'Trade Visitations',
 } as const;
 
 export const WEIGHT_PCT = {
-  agents:    '40%',
-  merchants: '20%',
-  floats:    '30%',
-  visits:    '10%',
+  agents:       '40%',
+  merchants:    '20%',
+  floats:       '15%',
+  reactivation: '15%',
+  visits:       '10%',
 } as const;
+
+/** Daily reactivation target */
+export const REACTIVATION_DAILY_TARGET = 6;
 
 // ─── Performance Band ──────────────────────────────────────────────────────────
 export type Band = 'excellent' | 'good' | 'attention' | 'critical';
@@ -130,10 +137,11 @@ export function getBand(pct: number): BandInfo {
 
 // ─── Weighted Score ────────────────────────────────────────────────────────────
 export interface KPIInputs {
-  agentPct:    number;   // 0–100
-  merchantPct: number;   // 0–100
-  floatPct:    number;   // 0–100  (resolved / total, or 100 if none)
-  visitPct:    number;   // 0–100
+  agentPct:       number;   // 0–100
+  merchantPct:    number;   // 0–100
+  floatPct:       number;   // 0–100  (resolved / total, or 100 if none)
+  reactivationPct: number;  // 0–100  (reactivations / MTD target)
+  visitPct:       number;   // 0–100
 }
 
 /**
@@ -141,10 +149,11 @@ export interface KPIInputs {
  */
 export function calcWeightedScore(k: KPIInputs): number {
   return Math.round(
-    Math.min(k.agentPct,    100) * WEIGHTS.agents    +
-    Math.min(k.merchantPct, 100) * WEIGHTS.merchants  +
-    Math.min(k.floatPct,    100) * WEIGHTS.floats     +
-    Math.min(k.visitPct,    100) * WEIGHTS.visits
+    Math.min(k.agentPct,          100) * WEIGHTS.agents       +
+    Math.min(k.merchantPct,       100) * WEIGHTS.merchants     +
+    Math.min(k.floatPct,          100) * WEIGHTS.floats        +
+    Math.min(k.reactivationPct,   100) * WEIGHTS.reactivation  +
+    Math.min(k.visitPct,          100) * WEIGHTS.visits
   );
 }
 

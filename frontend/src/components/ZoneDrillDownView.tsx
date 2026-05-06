@@ -27,10 +27,11 @@ interface Props {
 
 function tdrScore(row: any): number {
   return calcWeightedScore({
-    agentPct:    Math.min(Math.round((row.agents    / prorateMtdTarget(96)) * 100), 100),
-    merchantPct: Math.min(Math.round((row.merchants / prorateMtdTarget(96)) * 100), 100),
-    floatPct:    floatResolutionPct(row.floatResolved ?? 0, row.floatTotal ?? row.floatIssues ?? 0),
-    visitPct:    Math.min(Math.round((row.visits    / visitMtdTarget())      * 100), 100),
+    agentPct:        Math.min(Math.round((row.agents    / prorateMtdTarget(96)) * 100), 100),
+    merchantPct:     Math.min(Math.round((row.merchants / prorateMtdTarget(96)) * 100), 100),
+    floatPct:        floatResolutionPct(row.floatResolved ?? 0, row.floatTotal ?? row.floatIssues ?? 0),
+    reactivationPct: Math.min(Math.round(((row.reactivations ?? 0) / Math.max((row.reactivationTarget ?? 1), 1)) * 100), 100),
+    visitPct:        Math.min(Math.round((row.visits    / visitMtdTarget())      * 100), 100),
   });
 }
 

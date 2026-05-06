@@ -52,7 +52,7 @@ exports.tdrRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
-    const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits, agentsToday, merchantsToday, visitsToday] = await Promise.all([
+    const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits, agentsToday, merchantsToday, visitsToday, mtdVisitsRaw] = await Promise.all([
         prisma_1.prisma.agent.count({ where: { tdrId, type: 'normal', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: start, lte: end } } }),
@@ -63,7 +63,37 @@ exports.tdrRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
         prisma_1.prisma.agent.count({ where: { tdrId, type: 'normal', createdAt: { gte: todayStart, lte: todayEnd } } }),
         prisma_1.prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
         prisma_1.prisma.visit.count({ where: { tdrId, createdAt: { gte: todayStart, lte: todayEnd } } }),
+        // All MTD visits with their agentCode + timestamp for reactivation detection
+        prisma_1.prisma.visit.findMany({
+            where: { tdrId, createdAt: { gte: start, lte: end } },
+            select: { agentCode: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+        }),
     ]);
+    // Agent Reactivation = visits made to outlets that had been stale (previous visit gap ≥ 4 days, or no prior visit in the last 4 days before this visit)
+    // For each MTD visit, check if the immediately preceding visit to that outlet was ≥ 4 days before
+    let reactivationsCount = 0;
+    const seenInMtd = new Set(); // only count first reactivation per outlet per MTD
+    for (const v of mtdVisitsRaw) {
+        if (seenInMtd.has(v.agentCode))
+            continue;
+        const prevVisit = await prisma_1.prisma.visit.findFirst({
+            where: {
+                tdrId,
+                agentCode: v.agentCode,
+                createdAt: { lt: v.createdAt },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+        });
+        const daysGap = prevVisit
+            ? Math.floor((v.createdAt.getTime() - prevVisit.createdAt.getTime()) / 86400000)
+            : 999; // no prior visit = was stale
+        if (daysGap >= 4) {
+            reactivationsCount++;
+            seenInMtd.add(v.agentCode);
+        }
+    }
     const floatResolved = floatIssues.filter(f => f.status === 'resolved').length;
     const floatPending = floatIssues.filter(f => f.status !== 'resolved').length;
     const prospectsConverted = prospects.filter(p => p.status === 'converted' && p.convertedAt && p.convertedAt >= start && p.convertedAt <= end).length;
@@ -82,6 +112,7 @@ exports.tdrRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
             agents: { count: agentsCount, target: (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96) },
             merchants: { count: merchantsCount, target: (0, mtd_1.prorateMtdTarget)(target?.targetMerchants || 96) },
             visits: { count: visitsCount, target: (0, mtd_1.visitMtdTarget)() },
+            reactivations: { count: reactivationsCount, target: 6 * (0, mtd_1.workingDaysElapsed)() },
         },
         today: {
             agents: agentsToday,

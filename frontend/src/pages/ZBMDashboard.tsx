@@ -26,10 +26,11 @@ function tdrScore(row: TDRStat): number {
     (row as any).floatTotal ?? row.floatIssues ?? 0
   );
   return calcWeightedScore({
-    agentPct:    Math.min(Math.round((row.agents    / prorateMtdTarget(96)) * 100), 100),
-    merchantPct: Math.min(Math.round((row.merchants / prorateMtdTarget(96)) * 100), 100),
+    agentPct:        Math.min(Math.round((row.agents    / prorateMtdTarget(96)) * 100), 100),
+    merchantPct:     Math.min(Math.round((row.merchants / prorateMtdTarget(96)) * 100), 100),
     floatPct,
-    visitPct:    Math.min(Math.round((row.visits    / visitMtdTarget())      * 100), 100),
+    reactivationPct: Math.min(Math.round(((row.reactivations ?? 0) / Math.max((row.reactivationTarget ?? 1), 1)) * 100), 100),
+    visitPct:        Math.min(Math.round((row.visits    / visitMtdTarget())      * 100), 100),
   });
 }
 

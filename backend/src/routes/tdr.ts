@@ -22,7 +22,7 @@ tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
   const todayEnd = new Date();
 
   const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits,
-         agentsToday, merchantsToday, visitsToday] =
+         agentsToday, merchantsToday, visitsToday, mtdVisitsRaw] =
     await Promise.all([
       prisma.agent.count({ where: { tdrId, type: 'normal',   createdAt: { gte: start,      lte: end      } } }),
       prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start,      lte: end      } } }),
@@ -34,7 +34,37 @@ tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       prisma.agent.count({ where: { tdrId, type: 'normal',   createdAt: { gte: todayStart, lte: todayEnd } } }),
       prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
       prisma.visit.count({ where: { tdrId,                   createdAt: { gte: todayStart, lte: todayEnd } } }),
+      // All MTD visits with their agentCode + timestamp for reactivation detection
+      prisma.visit.findMany({
+        where: { tdrId, createdAt: { gte: start, lte: end } },
+        select: { agentCode: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
+
+  // Agent Reactivation = visits made to outlets that had been stale (previous visit gap ≥ 4 days, or no prior visit in the last 4 days before this visit)
+  // For each MTD visit, check if the immediately preceding visit to that outlet was ≥ 4 days before
+  let reactivationsCount = 0;
+  const seenInMtd = new Set<string>(); // only count first reactivation per outlet per MTD
+  for (const v of mtdVisitsRaw) {
+    if (seenInMtd.has(v.agentCode)) continue;
+    const prevVisit = await prisma.visit.findFirst({
+      where: {
+        tdrId,
+        agentCode: v.agentCode,
+        createdAt: { lt: v.createdAt },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+    const daysGap = prevVisit
+      ? Math.floor((v.createdAt.getTime() - prevVisit.createdAt.getTime()) / 86400000)
+      : 999; // no prior visit = was stale
+    if (daysGap >= 4) {
+      reactivationsCount++;
+      seenInMtd.add(v.agentCode);
+    }
+  }
 
   const floatResolved  = floatIssues.filter(f => f.status === 'resolved').length;
   const floatPending   = floatIssues.filter(f => f.status !== 'resolved').length;
@@ -57,9 +87,10 @@ tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       workingDaysTotal:   workingDaysThisMonth(),
     },
     stats: {
-      agents:    { count: agentsCount,    target: prorateMtdTarget(target?.targetAgents    || 96) },
-      merchants: { count: merchantsCount, target: prorateMtdTarget(target?.targetMerchants || 96) },
-      visits:    { count: visitsCount,    target: visitMtdTarget() },
+      agents:       { count: agentsCount,        target: prorateMtdTarget(target?.targetAgents    || 96) },
+      merchants:    { count: merchantsCount,      target: prorateMtdTarget(target?.targetMerchants || 96) },
+      visits:       { count: visitsCount,         target: visitMtdTarget() },
+      reactivations:{ count: reactivationsCount,  target: 6 * workingDaysElapsed() },
     },
     today: {
       agents:    agentsToday,

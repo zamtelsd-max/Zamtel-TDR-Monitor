@@ -12,7 +12,7 @@ import { useOfflineSync } from '../hooks/useOfflineSync';
 import {
   getBand, calcWeightedScore, floatResolutionPct,
   WEIGHT_PCT, WEIGHT_LABELS, visitMtdTarget, prorateMtdTarget,
-  workingDaysElapsed, workingDaysThisMonth,
+  workingDaysElapsed, workingDaysThisMonth, REACTIVATION_DAILY_TARGET,
 } from '../utils/performance';
 
 // ─── Weighted KPI card ────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ const ScoreBanner: React.FC<{ score: number; loading: boolean }> = ({ score, loa
             Weighted Performance Score
           </p>
           <p className="text-[10px] mt-0.5" style={{ color: band.textHex, opacity: 0.8 }}>
-            Agents 40% · Merchants 20% · Float Res. 30% · Visits 10% — MTD targets
+            Agents 40% · Merchants 20% · Float Res. 15% · Reactivation 15% · Visits 10% — MTD targets
           </p>
         </div>
         {loading ? <Skeleton className="w-16 h-10" /> : (
@@ -301,11 +301,12 @@ export const TDRDashboardPage: React.FC = () => {
     finally { setEditSaving(false); }
   };
 
-  const agentPct    = data ? Math.min(Math.round(data.stats.agents.count    / data.stats.agents.target    * 100), 100) : 0;
-  const merchantPct = data ? Math.min(Math.round(data.stats.merchants.count / data.stats.merchants.target * 100), 100) : 0;
-  const visitPct    = data ? Math.min(Math.round(data.stats.visits.count    / data.stats.visits.target    * 100), 100) : 0;
-  const floatPct    = data ? floatResolutionPct(data.floatIssues.resolved, data.floatIssues.total) : 100;
-  const score       = data ? calcWeightedScore({ agentPct, merchantPct, floatPct, visitPct }) : 0;
+  const agentPct        = data ? Math.min(Math.round(data.stats.agents.count        / data.stats.agents.target        * 100), 100) : 0;
+  const merchantPct     = data ? Math.min(Math.round(data.stats.merchants.count     / data.stats.merchants.target     * 100), 100) : 0;
+  const visitPct        = data ? Math.min(Math.round(data.stats.visits.count        / data.stats.visits.target        * 100), 100) : 0;
+  const floatPct        = data ? floatResolutionPct(data.floatIssues.resolved, data.floatIssues.total) : 100;
+  const reactivationPct = data ? Math.min(Math.round((data.stats.reactivations?.count ?? 0) / Math.max(data.stats.reactivations?.target ?? 1, 1) * 100), 100) : 0;
+  const score           = data ? calcWeightedScore({ agentPct, merchantPct, floatPct, reactivationPct, visitPct }) : 0;
 
   const elapsed = workingDaysElapsed();
   const total   = workingDaysThisMonth();
@@ -464,8 +465,8 @@ export const TDRDashboardPage: React.FC = () => {
       {/* Composite score banner */}
       <ScoreBanner score={score} loading={loading && !data} />
 
-      {/* KPI rings — 4 weighted categories */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      {/* KPI rings — 5 weighted categories */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
         <KPIRing pct={agentPct}    label={WEIGHT_LABELS.agents}    weight={WEIGHT_PCT.agents}
           count={data?.stats.agents.count ?? 0}    target={data?.stats.agents.target ?? 96}    loading={loading && !data} />
         <KPIRing pct={merchantPct} label={WEIGHT_LABELS.merchants} weight={WEIGHT_PCT.merchants}
@@ -477,6 +478,13 @@ export const TDRDashboardPage: React.FC = () => {
             label="Float Res." sublabel={`${data?.floatIssues.resolved ?? 0}/${data?.floatIssues.total ?? 0}`} />
           <span className={`mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${getBand(floatPct).bg} ${getBand(floatPct).color}`}>
             {WEIGHT_PCT.floats}
+          </span>
+        </Card>
+        <Card className={`flex flex-col items-center py-3 border-t-2 ${getBand(reactivationPct).border}`}>
+          <ProgressRing value={reactivationPct} size={72} color={getBand(reactivationPct).ring}
+            label="Reactivation" sublabel={`${data?.stats.reactivations?.count ?? 0}/${data?.stats.reactivations?.target ?? (REACTIVATION_DAILY_TARGET * workingDaysElapsed())}`} />
+          <span className={`mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${getBand(reactivationPct).bg} ${getBand(reactivationPct).color}`}>
+            {WEIGHT_PCT.reactivation}
           </span>
         </Card>
       </div>
