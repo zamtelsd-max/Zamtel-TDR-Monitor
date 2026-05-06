@@ -537,6 +537,24 @@ export const HSDDashboardPage: React.FC = () => {
         )}
       </Card>
 
+      {/* 🏆 Leaderboard Banner */}
+      <button
+        onClick={() => navigate('/leaderboard')}
+        className="w-full mb-4 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-md shadow-yellow-100 active:scale-[0.98] transition-transform"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🏆</span>
+          <div className="text-left">
+            <p className="text-sm font-bold text-yellow-900">Sales Leaderboard</p>
+            <p className="text-xs text-yellow-800 opacity-80">Top 30 TDRs · Zone Rankings</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 bg-yellow-600/20 rounded-xl px-3 py-1.5">
+          <span className="text-xs font-bold text-yellow-900">View</span>
+          <span className="text-yellow-900">→</span>
+        </div>
+      </button>
+
       {/* GPS Field Map */}
       <Card className="mb-4">
         <div className="flex items-center justify-between mb-3">
@@ -556,24 +574,6 @@ export const HSDDashboardPage: React.FC = () => {
           />
         )}
       </Card>
-
-      {/* 🏆 Leaderboard Banner */}
-      <button
-        onClick={() => navigate('/leaderboard')}
-        className="w-full mb-4 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-md shadow-yellow-100 active:scale-[0.98] transition-transform"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🏆</span>
-          <div className="text-left">
-            <p className="text-sm font-bold text-yellow-900">Sales Leaderboard</p>
-            <p className="text-xs text-yellow-800 opacity-80">Top 30 TDRs · Zone Rankings</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 bg-yellow-600/20 rounded-xl px-3 py-1.5">
-          <span className="text-xs font-bold text-yellow-900">View</span>
-          <span className="text-yellow-900">→</span>
-        </div>
-      </button>
 
       {/* Critical Float Alerts */}
       {dashboard && dashboard.criticalAlerts.length > 0 && (
