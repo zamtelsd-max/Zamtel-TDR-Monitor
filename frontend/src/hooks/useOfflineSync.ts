@@ -23,7 +23,8 @@ export function useOfflineSync() {
         if      (item.type === 'agent')       await tdrApi.createAgent(item.data as any);
         else if (item.type === 'visit')       await tdrApi.createVisit(item.data as any);
         else if (item.type === 'prospect')    await tdrApi.createProspect(item.data as any);
-        else if (item.type === 'float_issue') await tdrApi.createFloatIssue(item.data as any);
+        else if (item.type === 'float_issue')  await tdrApi.createFloatIssue(item.data as any);
+        else if (item.type === 'reactivation') await tdrApi.createReactivation(item.data as any);
         await removeFromPending(item.id);
         synced++;
       } catch { failed++; }

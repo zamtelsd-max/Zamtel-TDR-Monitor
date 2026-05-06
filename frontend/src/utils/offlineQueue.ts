@@ -26,7 +26,7 @@ async function getDB(): Promise<IDBDatabase | null> {
   } catch { return null; }
 }
 
-export async function enqueueOffline(type: 'agent' | 'visit' | 'prospect' | 'float_issue', data: Record<string, unknown>): Promise<string> {
+export async function enqueueOffline(type: 'agent' | 'visit' | 'prospect' | 'float_issue' | 'reactivation', data: Record<string, unknown>): Promise<string> {
   const id = crypto.randomUUID();
   const record: OfflineRecord = { id, type, data, queuedAt: new Date().toISOString(), synced: false };
   const db = await getDB();

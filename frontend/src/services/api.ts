@@ -146,6 +146,12 @@ export const tdrApi = {
   updateFloatIssue: (id: string, data: Partial<FloatIssue>) =>
     client.patch<FloatIssue>(`/tdr/float-issues/${id}`, data),
 
+  createReactivation: (data: Record<string, unknown>) =>
+    client.post('/tdr/reactivations', data),
+
+  getReactivations: () =>
+    client.get('/tdr/reactivations'),
+
   createProspect: (data: Partial<Prospect>) =>
     client.post<Prospect>('/tdr/prospects', data),
 

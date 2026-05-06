@@ -13,6 +13,7 @@ import { ZBMLeaderboardPage }  from './pages/ZBMLeaderboardPage';
 import { HSDDashboardPage }     from './pages/HSDDashboard';
 import { AddAgentForm }         from './pages/AddAgentForm';
 import { RecordVisitForm }      from './pages/RecordVisitForm';
+import { ReactivationForm }    from './pages/ReactivationForm';
 import { ReportFloatIssueForm } from './pages/ReportFloatIssueForm';
 import { AddProspectForm }      from './pages/AddProspectForm';
 import { AdminPanel }           from './pages/AdminPanel';
@@ -58,6 +59,11 @@ function AppRoutes() {
           <PageErrorBoundary page="Float Issue"><ReportFloatIssueForm /></PageErrorBoundary>
         </ProtectedRoute>
       } />
+      <Route path="/tdr/reactivations/new" element={
+          <AuthGuard role="TDR">
+            <PageErrorBoundary page="Agent Reactivation"><ReactivationForm /></PageErrorBoundary>
+          </AuthGuard>
+        } />
       <Route path="/tdr/prospects/new" element={
         <ProtectedRoute roles={['TDR']}>
           <PageErrorBoundary page="Add Prospect"><AddProspectForm /></PageErrorBoundary>

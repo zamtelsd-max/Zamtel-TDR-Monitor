@@ -22,7 +22,7 @@ tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
   const todayEnd = new Date();
 
   const [agentsCount, merchantsCount, visitsCount, floatIssues, prospects, recentAgents, recentVisits,
-         agentsToday, merchantsToday, visitsToday, mtdVisitsRaw] =
+         agentsToday, merchantsToday, visitsToday, reactivationsCount] =
     await Promise.all([
       prisma.agent.count({ where: { tdrId, type: 'normal',   createdAt: { gte: start,      lte: end      } } }),
       prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start,      lte: end      } } }),
@@ -34,37 +34,9 @@ tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       prisma.agent.count({ where: { tdrId, type: 'normal',   createdAt: { gte: todayStart, lte: todayEnd } } }),
       prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
       prisma.visit.count({ where: { tdrId,                   createdAt: { gte: todayStart, lte: todayEnd } } }),
-      // All MTD visits with their agentCode + timestamp for reactivation detection
-      prisma.visit.findMany({
-        where: { tdrId, createdAt: { gte: start, lte: end } },
-        select: { agentCode: true, createdAt: true },
-        orderBy: { createdAt: 'asc' },
-      }),
+      // Reactivations submitted via the dedicated form this MTD
+      prisma.reactivation.count({ where: { tdrId, createdAt: { gte: start, lte: end } } }),
     ]);
-
-  // Agent Reactivation = visits made to outlets that had been stale (previous visit gap ≥ 4 days, or no prior visit in the last 4 days before this visit)
-  // For each MTD visit, check if the immediately preceding visit to that outlet was ≥ 4 days before
-  let reactivationsCount = 0;
-  const seenInMtd = new Set<string>(); // only count first reactivation per outlet per MTD
-  for (const v of mtdVisitsRaw) {
-    if (seenInMtd.has(v.agentCode)) continue;
-    const prevVisit = await prisma.visit.findFirst({
-      where: {
-        tdrId,
-        agentCode: v.agentCode,
-        createdAt: { lt: v.createdAt },
-      },
-      orderBy: { createdAt: 'desc' },
-      select: { createdAt: true },
-    });
-    const daysGap = prevVisit
-      ? Math.floor((v.createdAt.getTime() - prevVisit.createdAt.getTime()) / 86400000)
-      : 999; // no prior visit = was stale
-    if (daysGap >= 4) {
-      reactivationsCount++;
-      seenInMtd.add(v.agentCode);
-    }
-  }
 
   const floatResolved  = floatIssues.filter(f => f.status === 'resolved').length;
   const floatPending   = floatIssues.filter(f => f.status !== 'resolved').length;
@@ -318,6 +290,59 @@ tdrRouter.get('/prospects', async (req: Request, res: Response): Promise<void> =
     orderBy: { createdAt: 'desc' },
   });
   res.json(prospects);
+});
+
+// ─── POST /tdr/reactivations ──────────────────────────────────────────────────
+const reactivationSchema = z.object({
+  agentCode:    z.string().min(1),
+  agentName:    z.string().min(1),
+  contactPhone: z.string().min(1),
+  town:         z.string().min(1),
+  cluster:      z.string().optional(),
+  market:       z.string().optional(),
+  floatAmount:  z.number().default(0),
+  latitude:     z.number().optional(),
+  longitude:    z.number().optional(),
+  notes:        z.string().optional(),
+});
+
+tdrRouter.post('/reactivations', async (req: Request, res: Response): Promise<void> => {
+  const parsed = reactivationSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  try {
+    const tdrId = req.user!.userId;
+    const record = await prisma.reactivation.create({
+      data: {
+        tdrId,
+        tdrName:      req.user!.name,
+        zone:         req.user!.zone || '',
+        agentCode:    parsed.data.agentCode,
+        agentName:    parsed.data.agentName,
+        contactPhone: parsed.data.contactPhone,
+        town:         parsed.data.town,
+        cluster:      parsed.data.cluster,
+        market:       parsed.data.market,
+        floatAmount:  parsed.data.floatAmount,
+        latitude:     parsed.data.latitude,
+        longitude:    parsed.data.longitude,
+        notes:        parsed.data.notes,
+      },
+    });
+    // Also clear dashboard cache so KPI updates immediately
+    res.status(201).json(record);
+  } catch (err) {
+    console.error('Reactivation create error:', err);
+    res.status(500).json({ error: 'Failed to record reactivation' });
+  }
+});
+
+// ─── GET /tdr/reactivations ───────────────────────────────────────────────────
+tdrRouter.get('/reactivations', async (req: Request, res: Response): Promise<void> => {
+  const reactivations = await prisma.reactivation.findMany({
+    where: { tdrId: req.user!.userId },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(reactivations);
 });
 
 // ─── PATCH /tdr/prospects/:id ─────────────────────────────────────────────────

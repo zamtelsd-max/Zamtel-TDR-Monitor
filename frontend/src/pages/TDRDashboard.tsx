@@ -762,6 +762,12 @@ export const TDRDashboardPage: React.FC = () => {
             <Plus className="w-5 h-5 text-white" />
           </div>
         </Link>
+        <Link to="/tdr/reactivations/new" className="flex items-center gap-2">
+          <span className="text-xs bg-white shadow-md rounded-full px-3 py-1.5 font-medium text-gray-700">Reactivate Agent</span>
+          <div className="w-10 h-10 bg-teal-600 rounded-full shadow-lg flex items-center justify-center">
+            <Activity className="w-5 h-5 text-white" />
+          </div>
+        </Link>
       </div>
 
       {/* ── AGENT DETAIL DRAWER ──────────────────────────────────── */}
