@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { MapPin, Loader } from 'lucide-react';
+import { MapPin, Loader, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import { tdrApi } from '../services/api';
 import { Layout } from '../components/Layout';
 import { Input, Select, Textarea, Button } from '../components/UI';
@@ -17,6 +17,14 @@ export const AddAgentForm: React.FC = () => {
   const { capture: captureGPS, loading: gpsLoading } = useGPS();
 
   const [submitting, setSubmitting] = useState(false);
+  const [codeChecking, setCodeChecking] = useState(false);
+  const [codeStatus, setCodeStatus] = useState<null | {
+    status: 'existing_agent' | 'nt_base' | 'not_found';
+    agent?: { agentCode: string; agentName: string; type: string; zone: string; town: string; ownerName: string; createdAt: string };
+    ntRecord?: { agent_code: string; zone: string | null; agent_name: string | null; town: string | null };
+  }>(null);
+  const [ntConfirmed, setNtConfirmed] = useState(false);
+  const checkedCodeRef = useRef<string>('');
   const { isOnline, pendingCount } = useOfflineSync();
   const DRAFT_KEY = 'draft_agent';
   type AgentForm = { agentName: string; agentCode: string; contactPhone: string; type: 'normal'|'merchant'; merchantCategory: string; initialFloat: string; town: string; address: string; cluster: string; market: string; latitude: string; longitude: string; notes: string; };
@@ -26,7 +34,37 @@ export const AddAgentForm: React.FC = () => {
   useEffect(() => { if (savedDraft) toast('📋 Draft restored', { icon: '📋' }); }, []); // eslint-disable-line
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm(prev => { const next = { ...prev, [key]: e.target.value }; localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); return next; });
+    const val = e.target.value;
+    setForm(prev => { const next = { ...prev, [key]: val }; localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); return next; });
+    // Reset code check when agentCode changes
+    if (key === 'agentCode') {
+      setCodeStatus(null);
+      setNtConfirmed(false);
+      checkedCodeRef.current = '';
+    }
+  };
+
+  // Check agent code against system + NT base on blur
+  const handleCodeBlur = async () => {
+    const code = form.agentCode.trim();
+    if (!code || code === checkedCodeRef.current) return;
+    checkedCodeRef.current = code;
+    setCodeChecking(true);
+    setCodeStatus(null);
+    setNtConfirmed(false);
+    try {
+      const API = import.meta.env.VITE_API_URL || '';
+      const token = localStorage.getItem('zamtel_tdr_token') || sessionStorage.getItem('tdr_pending_token') || '';
+      const res = await fetch(`${API}/tdr/agents/check-code?code=${encodeURIComponent(code)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setCodeStatus(data);
+    } catch {
+      // silent — don't block the form
+    } finally {
+      setCodeChecking(false);
+    }
   };
 
   const handleGPS = async () => {
@@ -43,6 +81,16 @@ export const AddAgentForm: React.FC = () => {
     e.preventDefault();
     if (!form.agentName || !form.agentCode || !form.contactPhone || !form.town) {
       toast.error('Please fill in required fields');
+      return;
+    }
+    // Block if code already registered in system
+    if (codeStatus?.status === 'existing_agent') {
+      toast.error('This agent code is already in the system — you cannot re-register it.');
+      return;
+    }
+    // NT base — require acknowledgement
+    if (codeStatus?.status === 'nt_base' && !ntConfirmed) {
+      toast('Tap the confirmation checkbox to acknowledge this is a reactivation', { icon: '⚠️', duration: 4000 });
       return;
     }
     setSubmitting(true);
@@ -114,8 +162,94 @@ export const AddAgentForm: React.FC = () => {
           <div className="col-span-2">
             <Input label="Agent / Business Name *" value={form.agentName} onChange={set('agentName')} placeholder="e.g. Chanda Supermarket" required />
           </div>
-          <Input label="Agent Code *" value={form.agentCode} onChange={set('agentCode')} placeholder="e.g. ZM-COP-0023" required />
+
+          {/* Agent Code with live system check */}
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Agent Code / Dealer Code <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Input
+                value={form.agentCode}
+                onChange={set('agentCode')}
+                onBlur={handleCodeBlur}
+                placeholder="e.g. ZM-COP-0023"
+                required
+                className={
+                  codeStatus?.status === 'existing_agent' ? 'border-red-400 bg-red-50' :
+                  codeStatus?.status === 'nt_base'        ? 'border-amber-400 bg-amber-50' :
+                  codeStatus?.status === 'not_found'      ? 'border-green-400 bg-green-50' : ''
+                }
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {codeChecking
+                  ? <Loader className="w-4 h-4 animate-spin text-gray-400" />
+                  : codeStatus?.status === 'existing_agent' ? <AlertTriangle className="w-4 h-4 text-red-500" />
+                  : codeStatus?.status === 'nt_base'        ? <RefreshCw className="w-4 h-4 text-amber-500" />
+                  : codeStatus?.status === 'not_found'      ? <CheckCircle className="w-4 h-4 text-green-500" />
+                  : null
+                }
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Enter code then tap out — system checks automatically</p>
+
+            {/* Status banners */}
+            {codeStatus?.status === 'existing_agent' && codeStatus.agent && (
+              <div className="mt-2 flex items-start gap-3 bg-red-50 border border-red-300 rounded-xl px-4 py-3">
+                <span className="text-xl mt-0.5">🚫</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-red-700">Already Registered in System</p>
+                  <p className="text-xs text-red-600 mt-0.5">
+                    <strong>{codeStatus.agent.agentName}</strong> — {codeStatus.agent.type === 'merchant' ? 'Merchant' : 'Agent'} · {codeStatus.agent.town}
+                  </p>
+                  <p className="text-xs text-red-500 mt-0.5">
+                    Registered by: <strong>{codeStatus.agent.ownerName}</strong> · Zone: {codeStatus.agent.zone}
+                  </p>
+                  <p className="text-xs font-semibold text-red-700 mt-1.5">You cannot re-register this code. If this agent is inactive, use the <Link to="/tdr/reactivations/new" className="underline">Reactivation Form</Link> instead.</p>
+                </div>
+              </div>
+            )}
+
+            {codeStatus?.status === 'nt_base' && (
+              <div className="mt-2 flex items-start gap-3 bg-amber-50 border border-amber-400 rounded-xl px-4 py-3">
+                <span className="text-xl mt-0.5">🔄</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-amber-800">Non-Transacting Base Code</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    This code exists in the non-transacting agent base
+                    {codeStatus.ntRecord?.zone ? ` (Zone: ${codeStatus.ntRecord.zone})` : ''}.
+                    You are <strong>reactivating an existing inactive agent</strong>, not registering a new one.
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    💡 <strong>Tip:</strong> For a better experience and to earn NT points, use the{' '}
+                    <Link to="/tdr/reactivations/new" className="underline font-semibold">Reactivation Form</Link> instead.
+                  </p>
+                  {/* Confirmation checkbox */}
+                  <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={ntConfirmed}
+                      onChange={e => setNtConfirmed(e.target.checked)}
+                      className="w-4 h-4 accent-amber-600"
+                    />
+                    <span className="text-xs font-semibold text-amber-800">
+                      I understand — I am reactivating an existing inactive agent
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {codeStatus?.status === 'not_found' && (
+              <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-300 rounded-xl px-3 py-2">
+                <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                <p className="text-xs font-semibold text-green-700">New code — not in system. Proceed to register.</p>
+              </div>
+            )}
+          </div>
+
           <Input label="Contact Phone *" value={form.contactPhone} onChange={set('contactPhone')} placeholder="+260..." required />
+          <div /> {/* grid spacer */}
         </div>
 
         <Select

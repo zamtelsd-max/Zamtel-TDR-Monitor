@@ -402,6 +402,51 @@ tdrRouter.patch('/prospects/:id', async (req: Request, res: Response): Promise<v
   res.json(updated);
 });
 
+// ─── GET /tdr/agents/check-code ───────────────────────────────────────────────
+// MUST remain before /agents/:id — checks a code against both agents table and nt_codes.
+// Returns: { status: 'existing_agent'|'nt_base'|'not_found', agent?, ntRecord? }
+tdrRouter.get('/agents/check-code', async (req: Request, res: Response): Promise<void> => {
+  const code = ((req.query.code as string) || '').trim();
+  if (!code) { res.status(400).json({ error: 'code query param required' }); return; }
+  try {
+    // 1. Check agents table — already registered?
+    const agent = await prisma.agent.findUnique({ where: { agentCode: code } });
+    if (agent) {
+      // Find out who owns it
+      const owner = await prisma.user.findUnique({ where: { id: agent.tdrId }, select: { name: true, zone: true } });
+      res.json({
+        status: 'existing_agent',
+        agent: {
+          agentCode:  agent.agentCode,
+          agentName:  agent.agentName,
+          type:       agent.type,
+          zone:       agent.zone,
+          town:       agent.town,
+          tdrName:    agent.tdrName,
+          ownerName:  owner?.name || agent.tdrName,
+          createdAt:  agent.createdAt,
+        },
+      });
+      return;
+    }
+
+    // 2. Check NT base — non-transacting pool
+    const ntRows = await prisma.$queryRaw<{ agent_code: string; zone: string | null; agent_name: string | null; town: string | null; cluster: string | null; market: string | null }[]>`
+      SELECT agent_code, zone, agent_name, town, cluster, market
+      FROM nt_codes WHERE agent_code = ${code} LIMIT 1
+    `;
+    if (ntRows.length > 0) {
+      res.json({ status: 'nt_base', ntRecord: ntRows[0] });
+      return;
+    }
+
+    res.json({ status: 'not_found' });
+  } catch (err) {
+    console.error('check-code error:', err);
+    res.status(500).json({ error: 'Check failed' });
+  }
+});
+
 // ─── GET /tdr/agents/by-code/:code ────────────────────────────────────────────
 tdrRouter.get('/agents/by-code/:code', async (req: Request, res: Response): Promise<void> => {
   try {
