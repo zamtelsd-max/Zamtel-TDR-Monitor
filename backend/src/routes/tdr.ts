@@ -38,6 +38,18 @@ tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       prisma.reactivation.count({ where: { tdrId, createdAt: { gte: start, lte: end } } }),
     ]);
 
+  // NT base points: sum of ntPoints for this TDR this MTD
+  const ntPointsRows = await prisma.$queryRaw<{ total: number }[]>`
+    SELECT COALESCE(SUM("ntPoints"), 0)::int AS total
+    FROM reactivations
+    WHERE "tdrId" = ${tdrId} AND "createdAt" >= ${start} AND "createdAt" <= ${end}
+  `;
+  const ntPointsTotal = ntPointsRows[0]?.total ?? 0;
+  // NT bonus: 100 pts = 20% of agent score added on top (prorated: ntPts/100 * 20)
+  // Capped at 20% bonus
+  const NT_POINTS_TARGET = 100;
+  const ntBonusPct = Math.min(Math.round((ntPointsTotal / NT_POINTS_TARGET) * 20), 20);
+
   const floatResolved  = floatIssues.filter(f => f.status === 'resolved').length;
   const floatPending   = floatIssues.filter(f => f.status !== 'resolved').length;
   const prospectsConverted = prospects.filter(
@@ -63,6 +75,7 @@ tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       merchants:    { count: merchantsCount,      target: prorateMtdTarget(target?.targetMerchants || 96) },
       visits:       { count: visitsCount,         target: visitMtdTarget() },
       reactivations:{ count: reactivationsCount,  target: 6 * workingDaysElapsed() },
+      ntPoints:     { total: ntPointsTotal, target: NT_POINTS_TARGET, bonusPct: ntBonusPct },
     },
     today: {
       agents:    agentsToday,
@@ -311,25 +324,27 @@ tdrRouter.post('/reactivations', async (req: Request, res: Response): Promise<vo
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
   try {
     const tdrId = req.user!.userId;
-    const record = await prisma.reactivation.create({
-      data: {
-        tdrId,
-        tdrName:      req.user!.name,
-        zone:         req.user!.zone || '',
-        agentCode:    parsed.data.agentCode,
-        agentName:    parsed.data.agentName,
-        contactPhone: parsed.data.contactPhone,
-        town:         parsed.data.town,
-        cluster:      parsed.data.cluster,
-        market:       parsed.data.market,
-        floatAmount:  parsed.data.floatAmount,
-        latitude:     parsed.data.latitude,
-        longitude:    parsed.data.longitude,
-        notes:        parsed.data.notes,
-      },
-    });
-    // Also clear dashboard cache so KPI updates immediately
-    res.status(201).json(record);
+
+    // Check if code is in non-transacting base → earns 5 NT points
+    const ntRows = await prisma.$queryRaw<{ agent_code: string }[]>`
+      SELECT agent_code FROM nt_codes WHERE agent_code = ${parsed.data.agentCode} LIMIT 1
+    `;
+    const isNtBase = ntRows.length > 0;
+    const ntPoints = isNtBase ? 5 : 0;
+
+    const record = await prisma.$queryRaw<any[]>`
+      INSERT INTO reactivations
+        ("id", "tdrId", "tdrName", zone, "agentCode", "agentName", "contactPhone", town, cluster, market,
+         "floatAmount", latitude, longitude, notes, "isNtBase", "ntPoints", "createdAt", "updatedAt")
+      VALUES
+        (gen_random_uuid()::text, ${tdrId}, ${req.user!.name}, ${req.user!.zone || ''},
+         ${parsed.data.agentCode}, ${parsed.data.agentName}, ${parsed.data.contactPhone},
+         ${parsed.data.town}, ${parsed.data.cluster ?? null}, ${parsed.data.market ?? null},
+         ${parsed.data.floatAmount}, ${parsed.data.latitude ?? null}, ${parsed.data.longitude ?? null},
+         ${parsed.data.notes ?? null}, ${isNtBase}, ${ntPoints}, NOW(), NOW())
+      RETURNING *
+    `;
+    res.status(201).json({ ...record[0], isNtBase, ntPoints });
   } catch (err) {
     console.error('Reactivation create error:', err);
     res.status(500).json({ error: 'Failed to record reactivation' });
@@ -613,6 +628,29 @@ tdrRouter.get('/agents/stale', async (req: Request, res: Response): Promise<void
 
   const stale = enriched.filter(a => a.isStale);
   res.json({ stale, total: enriched.length, staleCount: stale.length });
+});
+
+// ─── GET /tdr/nt-codes/lookup ─────────────────────────────────────────────────
+// Look up a code in the non-transacting base — returns zone/agent info if found
+tdrRouter.get('/nt-codes/lookup', async (req: Request, res: Response): Promise<void> => {
+  const code = ((req.query.code as string) || '').trim();
+  if (!code) { res.status(400).json({ error: 'code query param required' }); return; }
+  try {
+    const rows = await prisma.$queryRaw<{agent_code:string;zone:string|null;agent_name:string|null;town:string|null;cluster:string|null;market:string|null}[]>`
+      SELECT agent_code, zone, agent_name, town, cluster, market
+      FROM nt_codes
+      WHERE agent_code = ${code}
+      LIMIT 1
+    `;
+    if (rows.length === 0) {
+      res.json({ found: false });
+    } else {
+      res.json({ found: true, ...rows[0] });
+    }
+  } catch (err) {
+    console.error('NT lookup error:', err);
+    res.status(500).json({ error: 'Lookup failed' });
+  }
 });
 
 // ─── GET /tdr/agents/:id ──────────────────────────────────────────────────────

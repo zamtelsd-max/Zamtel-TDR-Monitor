@@ -489,6 +489,37 @@ export const TDRDashboardPage: React.FC = () => {
         </Card>
       </div>
 
+      {/* NT Base Points Panel */}
+      {data?.stats?.ntPoints && (
+        <Card className="border-t-2 border-teal-400 bg-teal-50/60 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🎯</span>
+              <div>
+                <p className="text-sm font-bold text-teal-800">NT Base Reactivation Points</p>
+                <p className="text-xs text-teal-600">5 pts per non-transacting code reactivated · 100 pts = +20% bonus</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-black text-teal-700">{data.stats.ntPoints.total}<span className="text-sm font-semibold text-teal-500">/{data.stats.ntPoints.target}</span></p>
+              <p className="text-[10px] text-teal-500 font-semibold">pts this month</p>
+            </div>
+          </div>
+          <div className="h-3 bg-teal-100 rounded-full overflow-hidden relative">
+            <div className="h-full bg-teal-500 rounded-full transition-all duration-700"
+              style={{ width: `${Math.min((data.stats.ntPoints.total / data.stats.ntPoints.target) * 100, 100)}%` }} />
+          </div>
+          <div className="flex items-center justify-between mt-1.5">
+            <p className="text-xs text-teal-600">{Math.round((data.stats.ntPoints.total / data.stats.ntPoints.target) * 100)}% to bonus threshold</p>
+            {data.stats.ntPoints.bonusPct > 0 && (
+              <span className="text-[10px] font-bold bg-teal-600 text-white px-2 py-0.5 rounded-full">
+                +{data.stats.ntPoints.bonusPct}% AGENT BONUS ACTIVE 🚀
+              </span>
+            )}
+          </div>
+        </Card>
+      )}
+
       {/* Float detail */}
       <FloatKPICard
         resolved={data?.floatIssues.resolved ?? 0}

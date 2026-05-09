@@ -36,6 +36,7 @@ export const ReactivationForm: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [lookingUp,  setLookingUp]  = useState(false);
   const [agentFound, setAgentFound] = useState<boolean | null>(null);
+  const [isNtBase,   setIsNtBase]   = useState(false);
 
   const savedDraft: ReactivationForm | null = (() => {
     try { const d = localStorage.getItem(DRAFT_KEY); return d ? JSON.parse(d) as ReactivationForm : null; } catch { return null; }
@@ -51,13 +52,15 @@ export const ReactivationForm: React.FC = () => {
       });
     };
 
-  // Look up agent by dealer code
+  // Look up agent by dealer code — first TDR DB, then NT base
   const handleAgentCodeBlur = async () => {
     const code = form.agentCode.trim();
     if (!code) return;
     setLookingUp(true);
     setAgentFound(null);
+    setIsNtBase(false);
     try {
+      // 1. Try existing TDR agent DB
       const r = await tdrApi.getAgentByCode(code);
       const a = r.data as any;
       setForm(prev => {
@@ -80,8 +83,36 @@ export const ReactivationForm: React.FC = () => {
         : 'Never visited before';
       toast.success(`✅ Agent found: ${a.agentName} — ${daysMsg}`);
     } catch {
-      setAgentFound(false);
-      toast('ℹ️ Agent code not in system — fill details manually', { duration: 4000 });
+      // 2. Not in TDR DB — check NT base
+      try {
+        const API = import.meta.env.VITE_API_URL || '';
+        const token = localStorage.getItem('zamtel_tdr_token') || sessionStorage.getItem('tdr_pending_token') || '';
+        const ntRes = await fetch(`${API}/tdr/nt-codes/lookup?code=${encodeURIComponent(code)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const ntData = await ntRes.json();
+        if (ntData.found) {
+          setIsNtBase(true);
+          setAgentFound(false); // not in main DB — still needs manual fill
+          setForm(prev => {
+            const next = {
+              ...prev,
+              town:    ntData.town    || prev.town,
+              cluster: ntData.cluster || prev.cluster,
+              market:  ntData.market  || prev.market,
+            };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+            return next;
+          });
+          toast.success('🎯 NT Base Code found! +5 points on submission', { duration: 5000 });
+        } else {
+          setAgentFound(false);
+          toast('ℹ️ Agent code not in system — fill details manually', { duration: 4000 });
+        }
+      } catch {
+        setAgentFound(false);
+        toast('ℹ️ Agent code not in system — fill details manually', { duration: 4000 });
+      }
     } finally {
       setLookingUp(false);
     }
@@ -251,6 +282,15 @@ export const ReactivationForm: React.FC = () => {
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-1">Enter code and tap out — agent details auto-fill if found</p>
+          {isNtBase && (
+            <div className="mt-2 flex items-center gap-2 bg-teal-50 border border-teal-400 rounded-xl px-3 py-2">
+              <span className="text-lg">🎯</span>
+              <div>
+                <p className="text-xs font-bold text-teal-700">Non-Transacting Base Code Detected</p>
+                <p className="text-xs text-teal-600">This reactivation earns <strong>+5 NT points</strong>. 100 points = up to 20% bonus on Agents score.</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Agent details */}
