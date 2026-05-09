@@ -33,8 +33,8 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
 
   const tdrIds = tdrs.map(t => t.id);
 
-  // ── Batched groupBy — 4 queries instead of 4×N ──────────────────────────
-  const [agentsByTdr, merchantsByTdr, visitsByTdr, floatsByTdr] = await Promise.all([
+  // ── Batched groupBy — 5 queries instead of 5×N ──────────────────────────
+  const [agentsByTdr, merchantsByTdr, visitsByTdr, floatsByTdr, reactivationsByTdr] = await Promise.all([
     prisma.agent.groupBy({
       by: ['tdrId'], _count: true,
       where: { tdrId: { in: tdrIds }, type: 'normal',   createdAt: { gte: start, lte: end } },
@@ -51,30 +51,36 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       by: ['tdrId'], _count: true,
       where: { tdrId: { in: tdrIds }, status: { not: 'resolved' } },
     }),
+    prisma.reactivation.groupBy({
+      by: ['tdrId'], _count: true,
+      where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } },
+    }),
   ]);
 
-  const agentMap   = Object.fromEntries(agentsByTdr.map((r: any)   => [r.tdrId, r._count]));
-  const merchantMap= Object.fromEntries(merchantsByTdr.map((r: any) => [r.tdrId, r._count]));
-  const visitMap   = Object.fromEntries(visitsByTdr.map((r: any)   => [r.tdrId, r._count]));
-  const floatMap   = Object.fromEntries(floatsByTdr.map((r: any)   => [r.tdrId, r._count]));
+  const agentMap        = Object.fromEntries(agentsByTdr.map((r: any)        => [r.tdrId, r._count]));
+  const merchantMap     = Object.fromEntries(merchantsByTdr.map((r: any)     => [r.tdrId, r._count]));
+  const visitMap        = Object.fromEntries(visitsByTdr.map((r: any)        => [r.tdrId, r._count]));
+  const floatMap        = Object.fromEntries(floatsByTdr.map((r: any)        => [r.tdrId, r._count]));
+  const reactivationMap = Object.fromEntries(reactivationsByTdr.map((r: any) => [r.tdrId, r._count]));
 
   const agentTarget    = prorateMtdTarget(96);
   const merchantTarget = prorateMtdTarget(96);
   const visitTarget    = visitMtdTarget();
 
   const tdrStats = tdrs.map(tdr => {
-    const agents      = agentMap[tdr.id]    || 0;
-    const merchants   = merchantMap[tdr.id] || 0;
-    const visits      = visitMap[tdr.id]    || 0;
-    const floatIssues = floatMap[tdr.id]    || 0;
+    const agents        = agentMap[tdr.id]        || 0;
+    const merchants     = merchantMap[tdr.id]     || 0;
+    const visits        = visitMap[tdr.id]        || 0;
+    const floatIssues   = floatMap[tdr.id]        || 0;
+    const reactivations = reactivationMap[tdr.id] || 0;
     const pct = Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100);
-    return { tdr, agents, merchants, visits, floatIssues, pct };
+    return { tdr, agents, merchants, visits, floatIssues, reactivations, pct };
   });
 
   const zoneWhere = zone ? { zone } : {};
 
   // Zone totals
-  const [totalAgents, totalMerchants, totalVisits, floatIssuesPending, prospects] = await Promise.all([
+  const [totalAgents, totalMerchants, totalVisits, floatIssuesPending, prospects, totalReactivations] = await Promise.all([
     prisma.agent.count({ where: { ...zoneWhere, type: 'normal',   createdAt: { gte: start, lte: end } } }),
     prisma.agent.count({ where: { ...zoneWhere, type: 'merchant', createdAt: { gte: start, lte: end } } }),
     prisma.visit.count({ where: { ...zoneWhere, createdAt: { gte: start, lte: end } } }),
@@ -82,6 +88,7 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
     (zoneWhere.zone
       ? prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects WHERE zone = ${zoneWhere.zone} GROUP BY status`.catch(() => [])
       : prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => [])),
+    prisma.reactivation.count({ where: { ...(zoneWhere.zone ? { zone: zoneWhere.zone } : {}), createdAt: { gte: start, lte: end } } }),
   ]);
 
   const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
@@ -97,7 +104,7 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       workingDaysTotal:   workingDaysThisMonth(),
     },
     zone: {
-      totals: { agents: totalAgents, merchants: totalMerchants, visits: totalVisits, floatIssuesPending },
+      totals: { agents: totalAgents, merchants: totalMerchants, visits: totalVisits, floatIssuesPending, reactivations: totalReactivations },
       targets: {
         agents:    prorateMtdTarget(target?.targetAgents    || 96 * tdrs.length),
         merchants: prorateMtdTarget(target?.targetMerchants || 96 * tdrs.length),

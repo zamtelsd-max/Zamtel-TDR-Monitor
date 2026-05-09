@@ -65,8 +65,8 @@ exports.zbmRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
         where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
     });
     const tdrIds = tdrs.map(t => t.id);
-    // ── Batched groupBy — 4 queries instead of 4×N ──────────────────────────
-    const [agentsByTdr, merchantsByTdr, visitsByTdr, floatsByTdr] = await Promise.all([
+    // ── Batched groupBy — 5 queries instead of 5×N ──────────────────────────
+    const [agentsByTdr, merchantsByTdr, visitsByTdr, floatsByTdr, reactivationsByTdr] = await Promise.all([
         prisma_1.prisma.agent.groupBy({
             by: ['tdrId'], _count: true,
             where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: start, lte: end } },
@@ -83,11 +83,16 @@ exports.zbmRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
             by: ['tdrId'], _count: true,
             where: { tdrId: { in: tdrIds }, status: { not: 'resolved' } },
         }),
+        prisma_1.prisma.reactivation.groupBy({
+            by: ['tdrId'], _count: true,
+            where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } },
+        }),
     ]);
     const agentMap = Object.fromEntries(agentsByTdr.map((r) => [r.tdrId, r._count]));
     const merchantMap = Object.fromEntries(merchantsByTdr.map((r) => [r.tdrId, r._count]));
     const visitMap = Object.fromEntries(visitsByTdr.map((r) => [r.tdrId, r._count]));
     const floatMap = Object.fromEntries(floatsByTdr.map((r) => [r.tdrId, r._count]));
+    const reactivationMap = Object.fromEntries(reactivationsByTdr.map((r) => [r.tdrId, r._count]));
     const agentTarget = (0, mtd_1.prorateMtdTarget)(96);
     const merchantTarget = (0, mtd_1.prorateMtdTarget)(96);
     const visitTarget = (0, mtd_1.visitMtdTarget)();
@@ -96,12 +101,13 @@ exports.zbmRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
         const merchants = merchantMap[tdr.id] || 0;
         const visits = visitMap[tdr.id] || 0;
         const floatIssues = floatMap[tdr.id] || 0;
+        const reactivations = reactivationMap[tdr.id] || 0;
         const pct = Math.round(((agents / agentTarget) + (merchants / merchantTarget) + (visits / visitTarget)) / 3 * 100);
-        return { tdr, agents, merchants, visits, floatIssues, pct };
+        return { tdr, agents, merchants, visits, floatIssues, reactivations, pct };
     });
     const zoneWhere = zone ? { zone } : {};
     // Zone totals
-    const [totalAgents, totalMerchants, totalVisits, floatIssuesPending, prospects] = await Promise.all([
+    const [totalAgents, totalMerchants, totalVisits, floatIssuesPending, prospects, totalReactivations] = await Promise.all([
         prisma_1.prisma.agent.count({ where: { ...zoneWhere, type: 'normal', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.agent.count({ where: { ...zoneWhere, type: 'merchant', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.visit.count({ where: { ...zoneWhere, createdAt: { gte: start, lte: end } } }),
@@ -109,6 +115,7 @@ exports.zbmRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
         (zoneWhere.zone
             ? prisma_1.prisma.$queryRaw `SELECT status, COUNT(*)::int AS "_count" FROM prospects WHERE zone = ${zoneWhere.zone} GROUP BY status`.catch(() => [])
             : prisma_1.prisma.$queryRaw `SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => [])),
+        prisma_1.prisma.reactivation.count({ where: { ...(zoneWhere.zone ? { zone: zoneWhere.zone } : {}), createdAt: { gte: start, lte: end } } }),
     ]);
     const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const target = zone
@@ -122,7 +129,7 @@ exports.zbmRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
             workingDaysTotal: (0, mtd_1.workingDaysThisMonth)(),
         },
         zone: {
-            totals: { agents: totalAgents, merchants: totalMerchants, visits: totalVisits, floatIssuesPending },
+            totals: { agents: totalAgents, merchants: totalMerchants, visits: totalVisits, floatIssuesPending, reactivations: totalReactivations },
             targets: {
                 agents: (0, mtd_1.prorateMtdTarget)(target?.targetAgents || 96 * tdrs.length),
                 merchants: (0, mtd_1.prorateMtdTarget)(target?.targetMerchants || 96 * tdrs.length),

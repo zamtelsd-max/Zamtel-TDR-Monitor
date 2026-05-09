@@ -48,6 +48,8 @@ interface TDRPerfCardProps {
   merchants:   number;
   visits:      number;
   floatIssues: number;
+  reactivations?:      number;
+  reactivationTarget?: number;
   score:       number;
   agentTarget:    number;
   merchantTarget: number;
@@ -59,14 +61,18 @@ interface TDRPerfCardProps {
 
 export const TDRPerfCard: React.FC<TDRPerfCardProps> = ({
   name, zone, agents, merchants, visits, floatIssues,
+  reactivations, reactivationTarget,
   score, agentTarget, merchantTarget, visitTarget,
   flagSeverity, onClick, actionSlot,
 }) => {
   const band = getBand(score);
 
-  const agentPct    = Math.min(Math.round(agents    / Math.max(agentTarget,    1) * 100), 100);
-  const merchantPct = Math.min(Math.round(merchants / Math.max(merchantTarget, 1) * 100), 100);
-  const visitPct    = Math.min(Math.round(visits    / Math.max(visitTarget,    1) * 100), 100);
+  const agentPct        = Math.min(Math.round(agents        / Math.max(agentTarget,          1) * 100), 100);
+  const merchantPct     = Math.min(Math.round(merchants     / Math.max(merchantTarget,        1) * 100), 100);
+  const visitPct        = Math.min(Math.round(visits        / Math.max(visitTarget,           1) * 100), 100);
+  const reactivationPct = reactivations !== undefined && reactivationTarget
+    ? Math.min(Math.round(reactivations / Math.max(reactivationTarget, 1) * 100), 100)
+    : null;
 
   const borderColor =
     flagSeverity === 'critical' ? 'border-red-300 bg-red-50/30' :
@@ -116,6 +122,9 @@ export const TDRPerfCard: React.FC<TDRPerfCardProps> = ({
         <KPIMini label="Agents"    pct={agentPct}    count={agents}    target={agentTarget}    />
         <KPIMini label="Merchants" pct={merchantPct} count={merchants} target={merchantTarget} />
         <KPIMini label="Visits"    pct={visitPct}    count={visits}    target={visitTarget}    />
+        {reactivationPct !== null && reactivations !== undefined && reactivationTarget !== undefined && (
+          <KPIMini label="🔄 Reactivations" pct={reactivationPct} count={reactivations} target={reactivationTarget} />
+        )}
       </div>
 
       {/* Float issues callout */}

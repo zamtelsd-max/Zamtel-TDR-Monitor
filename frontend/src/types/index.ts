@@ -134,19 +134,20 @@ export interface TDRDashboard {
 }
 
 export interface TDRStat {
-  tdr:         AuthUser;
-  agents:      number;
-  merchants:   number;
-  visits:      number;
-  floatIssues: number;
-  pct:         number;
+  tdr:           AuthUser;
+  agents:        number;
+  merchants:     number;
+  visits:        number;
+  floatIssues:   number;
+  reactivations?: number;
+  pct:           number;
 }
 
 export interface ZBMDashboard {
   zbm:   { id: string; name: string; zone: string };
   month: string;
   zone: {
-    totals:  { agents: number; merchants: number; visits: number; floatIssuesPending: number };
+    totals:  { agents: number; merchants: number; visits: number; floatIssuesPending: number; reactivations?: number };
     targets: { agents: number; merchants: number; visits: number };
   };
   tdrStats: TDRStat[];
@@ -172,6 +173,16 @@ export interface HSDDashboard {
     totalVisits:    number;
     openFloatIssues: number;
     conversionRate: number;
+    agentPct?:      number;
+    merchantPct?:   number;
+    visitPct?:      number;
+    nationalTargets?: { agents: number; merchants: number; visits: number };
+  };
+  ntBase?: {
+    totalInactive:   number;
+    totalReactivated: number;
+    remaining:        number;
+    pct:              number;
   };
   criticalAlerts: FloatIssue[];
   prospectsBreakdown: Array<{ status: ProspectStatus; _count: number }>;

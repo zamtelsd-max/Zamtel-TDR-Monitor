@@ -76,7 +76,7 @@ exports.hsdRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
     const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end, isCurrentMonth } = monthRange(period);
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-    const [totalAgents, totalMerchants, totalVisits, openIssues, criticalIssues, prospectsBreakdown] = await Promise.all([
+    const [totalAgents, totalMerchants, totalVisits, openIssues, criticalIssues, prospectsBreakdown, totalReactivations, ntTotalRows] = await Promise.all([
         prisma_1.prisma.agent.count({ where: { type: 'normal', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.agent.count({ where: { type: 'merchant', createdAt: { gte: start, lte: end } } }),
         prisma_1.prisma.visit.count({ where: { createdAt: { gte: start, lte: end } } }),
@@ -86,7 +86,12 @@ exports.hsdRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
             orderBy: { reportedAt: 'asc' },
         }),
         prisma_1.prisma.$queryRaw `SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => []),
+        // Total reactivations submitted this MTD (all TDRs nationally)
+        prisma_1.prisma.reactivation.count({ where: { createdAt: { gte: start, lte: end } } }),
+        // Total NT base codes (the full inactive pool)
+        prisma_1.prisma.$queryRaw `SELECT COUNT(*)::int AS cnt FROM nt_codes`.catch(() => [{ cnt: 0 }]),
     ]);
+    const ntTotal = ntTotalRows?.[0]?.cnt ?? 86411; // fallback to known import count
     const totalRecruits = totalAgents + totalMerchants;
     const totalConversions = await prisma_1.prisma.prospect.count({ where: { status: 'converted', convertedAt: { gte: start, lte: end } } });
     const conversionRate = totalRecruits > 0 ? Math.round(totalConversions / totalRecruits * 100) : 0;
@@ -115,6 +120,12 @@ exports.hsdRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
             merchantPct: nationalMerchantTarget > 0 ? Math.min(Math.round(totalMerchants / nationalMerchantTarget * 100), 100) : 0,
             visitPct: nationalVisitTarget > 0 ? Math.min(Math.round(totalVisits / nationalVisitTarget * 100), 100) : 0,
             nationalTargets: { agents: nationalAgentTarget, merchants: nationalMerchantTarget, visits: nationalVisitTarget },
+        },
+        ntBase: {
+            totalInactive: ntTotal,
+            totalReactivated: totalReactivations,
+            remaining: ntTotal - totalReactivations,
+            pct: ntTotal > 0 ? Math.min(Math.round(totalReactivations / ntTotal * 100 * 10) / 10, 100) : 0,
         },
         criticalAlerts: criticalIssues,
         prospectsBreakdown,

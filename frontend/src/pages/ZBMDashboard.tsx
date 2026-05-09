@@ -392,7 +392,8 @@ export const ZBMDashboardPage: React.FC = () => {
         const mPct = Math.min(Math.round(data.zone.totals.merchants / mTgt * 100), 100);
         const vPct = Math.min(Math.round(data.zone.totals.visits    / vTgt * 100), 100);
         const fPct = floatResolutionPct(0, data.zone.totals.floatIssuesPending);
-        const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, floatPct: fPct, reactivationPct: 0, visitPct: vPct });
+        const rPct = Math.min(Math.round(((data.zone.totals.reactivations ?? 0) / Math.max(6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), 1)) * 100), 100);
+        const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, floatPct: fPct, reactivationPct: rPct, visitPct: vPct });
         const band = getBand(sc);
         const callout = sc < 40 ? '🔴 Critical — Immediate Action Required'
                       : sc < 60 ? '🟠 Below Target — Intervention Needed'
@@ -421,9 +422,10 @@ export const ZBMDashboardPage: React.FC = () => {
             </div>
             {/* KPI bars */}
             <div className="space-y-2.5 mb-3">
-              <PerformanceBar icon="👤" label="Agent Recruitment (40% weight)"   count={data.zone.totals.agents}    target={aTgt} />
-              <PerformanceBar icon="🏪" label="Merchant Enrollment (20% weight)" count={data.zone.totals.merchants} target={mTgt} />
-              <PerformanceBar icon="📍" label="Outlet Visits (10% weight)"       count={data.zone.totals.visits}    target={vTgt} />
+              <PerformanceBar icon="👤" label="Agent Recruitment (40% weight)"   count={data.zone.totals.agents}              target={aTgt} />
+              <PerformanceBar icon="🏪" label="Merchant Enrollment (20% weight)" count={data.zone.totals.merchants}           target={mTgt} />
+              <PerformanceBar icon="📍" label="Outlet Visits (10% weight)"       count={data.zone.totals.visits}              target={vTgt} />
+              <PerformanceBar icon="🔄" label="Reactivations (15% weight)"       count={data.zone.totals.reactivations ?? 0}  target={6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1)} />
             </div>
             {/* Callout */}
             <div className="rounded-xl bg-white/70 px-3 py-2">
@@ -543,6 +545,7 @@ export const ZBMDashboardPage: React.FC = () => {
               const aTgt  = prorateMtdTarget(96);
               const mTgt  = prorateMtdTarget(96);
               const vTgt  = visitMtdTarget();
+              const rTgt  = 6 * workingDaysElapsed();
               const flag  = data?.tdrFlags?.find((f: any) => f.tdrId === row.tdr.id);
               return (
                 <TDRPerfCard
@@ -553,6 +556,8 @@ export const ZBMDashboardPage: React.FC = () => {
                   merchants={row.merchants}
                   visits={row.visits}
                   floatIssues={row.floatIssues}
+                  reactivations={row.reactivations ?? 0}
+                  reactivationTarget={rTgt}
                   score={sc}
                   agentTarget={aTgt}
                   merchantTarget={mTgt}

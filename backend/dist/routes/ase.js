@@ -17,12 +17,14 @@ exports.aseRouter.get('/dashboard', async (req, res) => {
             where: { aseId: req.user.userId, role: 'TDR', active: true },
         });
         const tdrIds = tdrs.map(t => t.id);
-        // Get counts for each TDR
-        const [agents, visits, floatIssues, prospects] = await Promise.all([
+        const { start, end } = (0, mtd_1.mtdRange)();
+        // Get counts for each TDR (including MTD reactivations)
+        const [agents, visits, floatIssues, prospects, reactivations] = await Promise.all([
             prisma_1.prisma.agent.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds } }, _count: true }),
             prisma_1.prisma.visit.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds } }, _count: true }),
             prisma_1.prisma.floatIssue.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, status: { not: 'resolved' } }, _count: true }),
             prisma_1.prisma.prospect.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds } }, _count: true }),
+            prisma_1.prisma.reactivation.groupBy({ by: ['tdrId'], where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } }, _count: true }),
         ]);
         const tdrStats = tdrs.map(tdr => ({
             tdr: { id: tdr.id, name: tdr.name, zone: tdr.zone },
@@ -30,21 +32,24 @@ exports.aseRouter.get('/dashboard', async (req, res) => {
             visits: visits.find(v => v.tdrId === tdr.id)?._count ?? 0,
             floatIssues: floatIssues.find(f => f.tdrId === tdr.id)?._count ?? 0,
             prospects: prospects.find(p => p.tdrId === tdr.id)?._count ?? 0,
+            reactivations: reactivations.find(r => r.tdrId === tdr.id)?._count ?? 0,
         }));
         // Team totals + prorated targets
         const tdrCount = tdrs.length;
         const agentTarget = (0, mtd_1.prorateMtdTarget)(96) * tdrCount;
         const merchantTarget = (0, mtd_1.prorateMtdTarget)(96) * tdrCount;
         const visitTarget = (0, mtd_1.visitMtdTarget)() * tdrCount;
+        const reactivationTarget = 6 * (0, mtd_1.workingDaysElapsed)() * tdrCount;
         const teamAgents = tdrStats.reduce((s, t) => s + t.agents, 0);
         const teamVisits = tdrStats.reduce((s, t) => s + t.visits, 0);
         const teamFloat = tdrStats.reduce((s, t) => s + t.floatIssues, 0);
+        const teamReactivations = tdrStats.reduce((s, t) => s + t.reactivations, 0);
         res.json({
             ase: { id: req.user.userId, name: req.user.name },
             tdrStats,
             team: {
-                totals: { agents: teamAgents, visits: teamVisits, floatIssues: teamFloat },
-                targets: { agents: agentTarget, merchants: merchantTarget, visits: visitTarget },
+                totals: { agents: teamAgents, visits: teamVisits, floatIssues: teamFloat, reactivations: teamReactivations },
+                targets: { agents: agentTarget, merchants: merchantTarget, visits: visitTarget, reactivations: reactivationTarget },
             },
             mtd: { workingDaysElapsed: (0, mtd_1.workingDaysElapsed)(), workingDaysTotal: (0, mtd_1.workingDaysThisMonth)() },
         });

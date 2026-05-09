@@ -373,6 +373,44 @@ export const HSDDashboardPage: React.FC = () => {
         </Card>
       )}
 
+      {/* NT Base Inactive vs Reactivated — HSD national view */}
+      {dashboard?.ntBase && (
+        <Card className="mb-4 border-t-4 border-teal-500 bg-teal-50/50">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🔄</span>
+              <div>
+                <p className="text-sm font-bold text-teal-800">Non-Transacting Agent Base — National</p>
+                <p className="text-xs text-teal-600">Total inactive agents vs those reactivated this month by TDRs</p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="bg-white rounded-xl p-3 text-center border border-teal-100">
+              <p className="text-2xl font-black text-red-600">{dashboard.ntBase.totalInactive.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mt-0.5">Total Inactive</p>
+            </div>
+            <div className="bg-white rounded-xl p-3 text-center border border-teal-100">
+              <p className="text-2xl font-black text-teal-700">{dashboard.ntBase.totalReactivated.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mt-0.5">Reactivated MTD</p>
+            </div>
+            <div className="bg-white rounded-xl p-3 text-center border border-teal-100">
+              <p className="text-2xl font-black text-gray-500">{dashboard.ntBase.remaining.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mt-0.5">Remaining</p>
+            </div>
+          </div>
+          <div className="h-3 bg-teal-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-teal-500 rounded-full transition-all duration-700"
+              style={{ width: `${Math.min(dashboard.ntBase.pct, 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-teal-600 mt-1 text-right font-semibold">
+            {dashboard.ntBase.pct}% of inactive base reactivated this month
+          </p>
+        </Card>
+      )}
+
       {/* Zone Performance Cards — visual performance vs target */}
       {zones.length > 0 && (
         <div className="mb-4">

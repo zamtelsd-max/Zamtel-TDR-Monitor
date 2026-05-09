@@ -10,11 +10,12 @@ import { Card, Skeleton, Badge } from '../components/UI';
 import { useAppSelector } from '../hooks/useAppDispatch';
 
 interface TDRStat {
-  tdr:         { id: string; name: string; zone: string | null };
-  agents:      number;
-  visits:      number;
-  floatIssues: number;
-  prospects:   number;
+  tdr:           { id: string; name: string; zone: string | null };
+  agents:        number;
+  visits:        number;
+  floatIssues:   number;
+  prospects:     number;
+  reactivations: number;
 }
 
 interface AvailableTDR {
@@ -180,12 +181,14 @@ export const ASEDashboardPage: React.FC = () => {
 
           {/* Team Performance vs Target */}
           {teamData && stats.length > 0 && (() => {
-            const aTgt = teamData.targets.agents   || 1;
-            const vTgt = teamData.targets.visits   || 1;
-            const aPct = Math.min(Math.round(teamData.totals.agents / aTgt * 100), 100);
-            const vPct = Math.min(Math.round(teamData.totals.visits / vTgt * 100), 100);
+            const aTgt = teamData.targets.agents        || 1;
+            const vTgt = teamData.targets.visits        || 1;
+            const rTgt = teamData.targets.reactivations || 1;
+            const aPct = Math.min(Math.round(teamData.totals.agents        / aTgt * 100), 100);
+            const vPct = Math.min(Math.round(teamData.totals.visits        / vTgt * 100), 100);
+            const rPct = Math.min(Math.round((teamData.totals.reactivations ?? 0) / rTgt * 100), 100);
             const fPct = teamData.totals.floatIssues === 0 ? 100 : Math.max(0, 100 - teamData.totals.floatIssues * 10);
-            const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: 0, floatPct: fPct, reactivationPct: 0, visitPct: vPct });
+            const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: 0, floatPct: fPct, reactivationPct: rPct, visitPct: vPct });
             const band = getBand(sc);
             const callout = sc < 40 ? '🔴 Critical — Team needs immediate support'
                           : sc < 60 ? '🟠 Below Target — Step in and coach'
@@ -216,6 +219,7 @@ export const ASEDashboardPage: React.FC = () => {
                 <div className="space-y-2.5 mb-3">
                   <PerformanceBar icon="👤" label={`Agent Recruitment — ${stats.length} TDRs`} count={teamData.totals.agents} target={aTgt} />
                   <PerformanceBar icon="📍" label={`Outlet Visits — ${stats.length} TDRs`}     count={teamData.totals.visits} target={vTgt} />
+                  <PerformanceBar icon="🔄" label={`Reactivations — ${stats.length} TDRs`}     count={teamData.totals.reactivations ?? 0} target={rTgt} />
                 </div>
                 <div className="rounded-xl bg-white/70 px-3 py-2">
                   <p className={`text-xs font-bold ${band.color}`}>{callout}</p>
@@ -264,17 +268,18 @@ export const ASEDashboardPage: React.FC = () => {
                 <h3 className="font-bold text-sm text-gray-800">TDR Performance Against Target</h3>
               </div>
               <div className="space-y-3 mb-24">
-                {stats.map(({ tdr, agents, visits, floatIssues }) => {
+                {stats.map(({ tdr, agents, visits, floatIssues, reactivations }) => {
                   const tdrFlag   = flags.find(f => f.tdrId === tdr.id);
                   const aTgt      = prorateMtdTarget(96);
                   const mTgt      = prorateMtdTarget(96);
                   const vTgt      = visitMtdTarget();
+                  const rTgt      = 6 * workingDaysElapsed();
                   const sc        = calcWeightedScore({
-                    agentPct:        Math.min(Math.round(agents / Math.max(aTgt, 1) * 100), 100),
-                    merchantPct:     0, // not tracked at ASE level
+                    agentPct:        Math.min(Math.round(agents       / Math.max(aTgt, 1) * 100), 100),
+                    merchantPct:     0,
                     floatPct:        floatIssues === 0 ? 100 : Math.max(0, 100 - floatIssues * 10),
-                    reactivationPct: 0,
-                    visitPct:        Math.min(Math.round(visits / Math.max(vTgt, 1) * 100), 100),
+                    reactivationPct: Math.min(Math.round(reactivations / Math.max(rTgt, 1) * 100), 100),
+                    visitPct:        Math.min(Math.round(visits        / Math.max(vTgt, 1) * 100), 100),
                   });
                   return (
                     <TDRPerfCard
@@ -285,6 +290,8 @@ export const ASEDashboardPage: React.FC = () => {
                       merchants={0}
                       visits={visits}
                       floatIssues={floatIssues}
+                      reactivations={reactivations}
+                      reactivationTarget={rTgt}
                       score={sc}
                       agentTarget={aTgt}
                       merchantTarget={mTgt}

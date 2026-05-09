@@ -48,7 +48,8 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
 
   const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
-  const [totalAgents, totalMerchants, totalVisits, openIssues, criticalIssues, prospectsBreakdown] =
+  const [totalAgents, totalMerchants, totalVisits, openIssues, criticalIssues, prospectsBreakdown,
+         totalReactivations, ntTotalRows] =
     await Promise.all([
       prisma.agent.count({ where: { type: 'normal',   createdAt: { gte: start, lte: end } } }),
       prisma.agent.count({ where: { type: 'merchant', createdAt: { gte: start, lte: end } } }),
@@ -59,7 +60,13 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
         orderBy: { reportedAt: 'asc' },
       }),
       prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => []),
+      // Total reactivations submitted this MTD (all TDRs nationally)
+      prisma.reactivation.count({ where: { createdAt: { gte: start, lte: end } } }),
+      // Total NT base codes (the full inactive pool)
+      prisma.$queryRaw<{ cnt: number }[]>`SELECT COUNT(*)::int AS cnt FROM nt_codes`.catch(() => [{ cnt: 0 }]),
     ]);
+
+  const ntTotal = ntTotalRows?.[0]?.cnt ?? 86411; // fallback to known import count
 
   const totalRecruits     = totalAgents + totalMerchants;
   const totalConversions  = await prisma.prospect.count({ where: { status: 'converted', convertedAt: { gte: start, lte: end } } });
@@ -89,6 +96,12 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       merchantPct: nationalMerchantTarget > 0 ? Math.min(Math.round(totalMerchants / nationalMerchantTarget * 100), 100) : 0,
       visitPct:    nationalVisitTarget    > 0 ? Math.min(Math.round(totalVisits    / nationalVisitTarget    * 100), 100) : 0,
       nationalTargets: { agents: nationalAgentTarget, merchants: nationalMerchantTarget, visits: nationalVisitTarget },
+    },
+    ntBase: {
+      totalInactive:   ntTotal,
+      totalReactivated: totalReactivations,
+      remaining:        ntTotal - totalReactivations,
+      pct:              ntTotal > 0 ? Math.min(Math.round(totalReactivations / ntTotal * 100 * 10) / 10, 100) : 0,
     },
     criticalAlerts: criticalIssues,
     prospectsBreakdown,
