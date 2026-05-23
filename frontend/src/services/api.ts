@@ -245,6 +245,16 @@ export const zbmApi = {
 
   assignTDR: (tdrId: string, aseId: string | null) =>
     client.post('/zbm/assign-tdr', { tdrId, aseId }),
+
+  // ── Device management ──────────────────────────────────────────────────
+  addDevice: (data: Record<string, any>) =>
+    client.post('/zbm/devices', data),
+
+  getDevices: (params?: { page?: number; limit?: number; search?: string; source?: string; status?: string }) =>
+    client.get('/zbm/devices', { params }),
+
+  deleteDevice: (id: string) =>
+    client.delete(`/zbm/devices/${id}`),
 };
 
 // ─── HSD ─────────────────────────────────────────────────────────────────────
@@ -277,6 +287,16 @@ export const hsdApi = {
       zoneLeaderboard: Array<{ zone: string; agents: number; merchants: number; visits: number; tdrCount: number; pct: number }>;
       mtd: { workingDaysElapsed: number; workingDaysTotal: number } | null;
     }>('/hsd/leaderboard', { params: period ? { period } : {} }),
+
+  // ── Device management ──────────────────────────────────────────────────
+  addDevice: (data: Record<string, any>) =>
+    client.post('/hsd/devices', data),
+
+  getDevices: (params?: { page?: number; limit?: number; search?: string; zone?: string; source?: string; status?: string }) =>
+    client.get('/hsd/devices', { params }),
+
+  deleteDevice: (id: string) =>
+    client.delete(`/hsd/devices/${id}`),
 };
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

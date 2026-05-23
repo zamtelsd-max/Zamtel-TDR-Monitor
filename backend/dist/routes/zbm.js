@@ -631,4 +631,98 @@ exports.zbmRouter.post('/assign-tdr', async (req, res) => {
         res.status(500).json({ error: 'Failed to assign TDR' });
     }
 });
+// ─── POST /zbm/devices — ZBM adds a new KYC device ───────────────────────────
+exports.zbmRouter.post('/devices', async (req, res) => {
+    try {
+        const zone = resolveZone(req) || req.user.zone || '';
+        const { dealerCode, description, imei1, imei2, msisdn, simSerial, siteId, region, aseName, teamLead, status, activityStatus, kycReg, grossAdds, zamoGA, recharges, deviceSource, } = req.body;
+        if (!imei1) {
+            res.status(400).json({ error: 'IMEI 1 is required' });
+            return;
+        }
+        // Prevent duplicate IMEI
+        const existing = await prisma_1.prisma.$queryRaw `
+      SELECT id FROM kyc_devices WHERE imei1 = ${imei1} LIMIT 1
+    `;
+        if (existing.length > 0) {
+            res.status(409).json({ error: `Device with IMEI ${imei1} already exists` });
+            return;
+        }
+        const result = await prisma_1.prisma.$queryRaw `
+      INSERT INTO kyc_devices
+        (id, "dealerCode","description","imei1","imei2","msisdn","simSerial","siteId",
+         "region","zone","rbmName","aseName","teamLead","status","activityStatus",
+         "kycReg","grossAdds","zamoGA","recharges","deviceSource","createdAt","updatedAt")
+      VALUES (
+        gen_random_uuid(),
+        ${dealerCode || null},${description || 'Manual Entry'},${imei1},${imei2 || null},
+        ${msisdn || null},${simSerial || null},${siteId || null},
+        ${region || zone},${zone},${req.user.name},
+        ${aseName || null},${teamLead || null},${status || 'ACTIVE'},
+        ${Number(activityStatus) || 0},${Number(kycReg) || 0},${Number(grossAdds) || 0},
+        ${Number(zamoGA) || 0},${Number(recharges) || 0},${deviceSource || 'MobiGO2+'},
+        NOW(),NOW()
+      )
+      RETURNING id, "dealerCode","imei1","aseName","zone","deviceSource"
+    `;
+        res.status(201).json({ success: true, data: result[0], message: 'Device added successfully' });
+    }
+    catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to add device' });
+    }
+});
+// ─── GET /zbm/devices — list devices for this zone ───────────────────────────
+exports.zbmRouter.get('/devices', async (req, res) => {
+    try {
+        const zone = resolveZone(req);
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(200, parseInt(req.query.limit) || 50);
+        const offset = (page - 1) * limit;
+        const search = (req.query.search || '').replace(/'/g, "''");
+        const source = req.query.source;
+        const status = req.query.status;
+        const conds = [];
+        if (zone)
+            conds.push(`LOWER(zone) = LOWER('${zone.replace(/'/g, "''")}') `);
+        if (source)
+            conds.push(`"deviceSource" = '${source.replace(/'/g, "''")}' `);
+        if (status === 'active')
+            conds.push(`"activityStatus" = 1`);
+        if (status === 'inactive')
+            conds.push(`"activityStatus" = 0`);
+        if (search)
+            conds.push(`("dealerCode" ILIKE '%${search}%' OR "aseName" ILIKE '%${search}%' OR imei1 ILIKE '%${search}%' OR "teamLead" ILIKE '%${search}%')`);
+        const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+        const [rows, cnt] = await Promise.all([
+            prisma_1.prisma.$queryRawUnsafe(`SELECT id,"dealerCode","description","imei1","imei2","msisdn","aseName","teamLead","zone","region","status","activityStatus","kycReg","grossAdds","zamoGA","recharges","deviceSource","createdAt" FROM kyc_devices ${where} ORDER BY "createdAt" DESC LIMIT ${limit} OFFSET ${offset}`),
+            prisma_1.prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as cnt, SUM("activityStatus")::int as active FROM kyc_devices ${where}`),
+        ]);
+        res.json({ success: true, data: rows, total: cnt[0]?.cnt || 0, active: cnt[0]?.active || 0, inactive: (cnt[0]?.cnt || 0) - (cnt[0]?.active || 0), page, limit });
+    }
+    catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to load devices' });
+    }
+});
+// ─── DELETE /zbm/devices/:id — ZBM/HSD removes a manually-added device ───────
+exports.zbmRouter.delete('/devices/:id', async (req, res) => {
+    try {
+        const zone = resolveZone(req);
+        const check = await prisma_1.prisma.$queryRaw `SELECT id,zone FROM kyc_devices WHERE id=${req.params.id} LIMIT 1`;
+        if (!check.length) {
+            res.status(404).json({ error: 'Device not found' });
+            return;
+        }
+        if (zone && check[0].zone?.toLowerCase() !== zone.toLowerCase()) {
+            res.status(403).json({ error: 'Device not in your zone' });
+            return;
+        }
+        await prisma_1.prisma.$queryRaw `DELETE FROM kyc_devices WHERE id=${req.params.id}`;
+        res.json({ success: true, message: 'Device removed' });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Failed to delete device' });
+    }
+});
 //# sourceMappingURL=zbm.js.map

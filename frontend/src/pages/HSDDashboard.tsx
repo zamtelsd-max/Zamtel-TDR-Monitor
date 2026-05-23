@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy, ArrowLeft, Map, TrendingUp } from 'lucide-react';
+import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy, ArrowLeft, Map, TrendingUp, Plus } from 'lucide-react';
+import { AddDeviceModal } from '../components/AddDeviceModal';
 import { useNavigate } from 'react-router-dom';
 import { hsdApi, flagsApi } from '../services/api';
 import type { HSDDashboard, ZoneStat, FloatIssue, TDRFlag } from '../types';
@@ -71,6 +72,7 @@ export const HSDDashboardPage: React.FC = () => {
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [showAddDevice, setShowAddDevice] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -201,6 +203,17 @@ export const HSDDashboardPage: React.FC = () => {
         </select>
       </PageHeader>
 
+      {/* Add Device Modal */}
+      {showAddDevice && (
+        <AddDeviceModal
+          role="HSD"
+          defaultZone=""
+          addDevice={hsdApi.addDevice}
+          onClose={() => setShowAddDevice(false)}
+          onSaved={() => {}}
+        />
+      )}
+
       {/* Main Tab Bar */}
       <div className="flex gap-2 px-4 pb-3">
         {(['dashboard', 'flags'] as const).map(t => (
@@ -211,6 +224,12 @@ export const HSDDashboardPage: React.FC = () => {
             {t === 'dashboard' ? '📊 Dashboard' : `🚩 Red Flags${tdrFlags.length > 0 ? ` (${tdrFlags.length})` : ''}`}
           </button>
         ))}
+        <button
+          onClick={() => setShowAddDevice(true)}
+          className="flex items-center gap-1.5 bg-gradient-to-r from-green-700 to-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow hover:from-green-800 transition-all whitespace-nowrap"
+        >
+          <Plus size={13}/> Add Device
+        </button>
       </div>
 
       {/* Red Flags Tab */}

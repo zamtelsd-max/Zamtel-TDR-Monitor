@@ -527,3 +527,87 @@ hsdRouter.get('/leaderboard', responseCache(60), async (req: Request, res: Respo
     mtd: isCurrentMonth ? { workingDaysElapsed: workingDaysElapsed(), workingDaysTotal: workingDaysThisMonth() } : null,
   });
 });
+
+// ─── POST /hsd/devices — HSD adds a new KYC device (any zone) ────────────────
+hsdRouter.post('/devices', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      dealerCode, description, imei1, imei2, msisdn, simSerial, siteId,
+      region, zone, aseName, teamLead, status, activityStatus,
+      kycReg, grossAdds, zamoGA, recharges, deviceSource,
+    } = req.body as Record<string, any>;
+
+    if (!imei1) { res.status(400).json({ error: 'IMEI 1 is required' }); return; }
+    if (!zone)  { res.status(400).json({ error: 'Zone is required' }); return; }
+
+    const existing = await prisma.$queryRaw<any[]>`SELECT id FROM kyc_devices WHERE imei1=${imei1} LIMIT 1`;
+    if (existing.length > 0) {
+      res.status(409).json({ error: `Device with IMEI ${imei1} already exists` });
+      return;
+    }
+
+    const result = await prisma.$queryRaw<any[]>`
+      INSERT INTO kyc_devices
+        (id,"dealerCode","description","imei1","imei2","msisdn","simSerial","siteId",
+         "region","zone","rbmName","aseName","teamLead","status","activityStatus",
+         "kycReg","grossAdds","zamoGA","recharges","deviceSource","createdAt","updatedAt")
+      VALUES (
+        gen_random_uuid(),
+        ${dealerCode||null},${description||'Manual Entry'},${imei1},${imei2||null},
+        ${msisdn||null},${simSerial||null},${siteId||null},
+        ${region||zone},${zone},${req.user!.name},
+        ${aseName||null},${teamLead||null},${status||'ACTIVE'},
+        ${Number(activityStatus)||0},${Number(kycReg)||0},${Number(grossAdds)||0},
+        ${Number(zamoGA)||0},${Number(recharges)||0},${deviceSource||'MobiGO2+'},
+        NOW(),NOW()
+      )
+      RETURNING id,"dealerCode","imei1","aseName","zone","deviceSource"
+    `;
+    res.status(201).json({ success: true, data: result[0], message: 'Device added successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to add device' });
+  }
+});
+
+// ─── GET /hsd/devices — HSD lists all devices (any zone, searchable) ─────────
+hsdRouter.get('/devices', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page   = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit  = Math.min(200, parseInt(req.query.limit as string) || 50);
+    const offset = (page - 1) * limit;
+    const search = (req.query.search as string || '').replace(/'/g,"''");
+    const zone   = (req.query.zone as string || '').replace(/'/g,"''");
+    const source = req.query.source as string | undefined;
+    const status = req.query.status as string | undefined;
+
+    const conds: string[] = [];
+    if (zone) conds.push(`LOWER("zone") = LOWER('${zone}')`);
+    if (source) conds.push(`"deviceSource" = '${source.replace(/'/g,"''")}' `);
+    if (status === 'active') conds.push(`"activityStatus" = 1`);
+    if (status === 'inactive') conds.push(`"activityStatus" = 0`);
+    if (search) conds.push(`("dealerCode" ILIKE '%${search}%' OR "aseName" ILIKE '%${search}%' OR imei1 ILIKE '%${search}%' OR "teamLead" ILIKE '%${search}%' OR "zone" ILIKE '%${search}%')`);
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+
+    const [rows, cnt] = await Promise.all([
+      prisma.$queryRawUnsafe(`SELECT id,"dealerCode","description","imei1","imei2","msisdn","aseName","teamLead","zone","region","status","activityStatus","kycReg","grossAdds","zamoGA","recharges","deviceSource","createdAt" FROM kyc_devices ${where} ORDER BY "createdAt" DESC LIMIT ${limit} OFFSET ${offset}`),
+      prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as cnt, SUM("activityStatus")::int as active FROM kyc_devices ${where}`),
+    ]);
+    res.json({ success: true, data: rows, total: cnt[0]?.cnt||0, active: cnt[0]?.active||0, inactive: (cnt[0]?.cnt||0)-(cnt[0]?.active||0), page, limit });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load devices' });
+  }
+});
+
+// ─── DELETE /hsd/devices/:id — HSD removes any device ────────────────────────
+hsdRouter.delete('/devices/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const check = await prisma.$queryRaw<any[]>`SELECT id FROM kyc_devices WHERE id=${req.params.id} LIMIT 1`;
+    if (!check.length) { res.status(404).json({ error: 'Device not found' }); return; }
+    await prisma.$queryRaw`DELETE FROM kyc_devices WHERE id=${req.params.id}`;
+    res.json({ success: true, message: 'Device removed' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete device' });
+  }
+});

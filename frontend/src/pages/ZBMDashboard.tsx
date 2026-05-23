@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download, Trophy, Users, RefreshCw, UserPlus, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download, Trophy, Users, RefreshCw, UserPlus, X, Plus, Smartphone } from 'lucide-react';
+import { AddDeviceModal } from '../components/AddDeviceModal';
 import { useNavigate, Link } from 'react-router-dom';
 import { zbmApi, flagsApi } from '../services/api';
 import type { ZBMDashboard, TDRStat, FloatIssue, Prospect, TDRFlag } from '../types';
@@ -58,6 +59,8 @@ export const ZBMDashboardPage: React.FC = () => {
   const [addingASE,    setAddingASE]    = useState(false);
   const [assigningTDR, setAssigningTDR] = useState<string | null>(null);
   const [tdrFlags,     setTdrFlags]     = useState<TDRFlag[]>([]);
+  const [showAddDevice, setShowAddDevice] = useState(false);
+  const [deviceRefresh, setDeviceRefresh] = useState(0);
 
   const loadAseTdrs = async () => {
     setAseTdrsLoading(true);
@@ -758,8 +761,28 @@ export const ZBMDashboardPage: React.FC = () => {
       </>)}
 
       {/* ASE PERFORMANCE Tab */}
+      {/* Add Device Modal */}
+      {showAddDevice && (
+        <AddDeviceModal
+          role="ZBM"
+          defaultZone={data?.zbm?.zone || ''}
+          addDevice={zbmApi.addDevice}
+          onClose={() => setShowAddDevice(false)}
+          onSaved={() => setDeviceRefresh(r => r + 1)}
+        />
+      )}
+
       {mainTab === 'ase-performance' && (
         <div className="px-4 py-3 pb-24">
+          {/* Add Device button */}
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={() => setShowAddDevice(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-green-700 to-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:from-green-800 transition-all"
+            >
+              <Plus size={15}/> Add Device
+            </button>
+          </div>
           {loading && !data ? (
             <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
           ) : !data?.asePerformance ? (
