@@ -297,6 +297,9 @@ export const hsdApi = {
 
   deleteDevice: (id: string) =>
     client.delete(`/hsd/devices/${id}`),
+
+  getAsePerformance: (period?: string) =>
+    client.get('/hsd/ase-performance', { params: period ? { period } : {} }),
 };
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

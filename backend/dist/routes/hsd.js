@@ -508,6 +508,114 @@ exports.hsdRouter.get('/leaderboard', (0, responseCache_1.responseCache)(60), as
         mtd: isCurrentMonth ? { workingDaysElapsed: (0, mtd_1.workingDaysElapsed)(), workingDaysTotal: (0, mtd_1.workingDaysThisMonth)() } : null,
     });
 });
+// ─── GET /hsd/ase-performance — National ASE KPI summary ─────────────────────
+exports.hsdRouter.get('/ase-performance', (0, responseCache_1.responseCache)(60), async (req, res) => {
+    try {
+        const period = req.query.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+        const { start, end } = monthRange(period);
+        // All ASEs and their TDRs
+        const [ases, tdrs, devicesByAse] = await Promise.all([
+            prisma_1.prisma.user.findMany({ where: { role: 'ASE', active: true }, select: { id: true, name: true, zone: true } }),
+            prisma_1.prisma.user.findMany({ where: { role: 'TDR', active: true }, select: { id: true, name: true, aseId: true, zone: true } }),
+            prisma_1.prisma.$queryRaw `
+        SELECT "aseName", zone,
+          COUNT(*)::int                         AS total,
+          SUM("activityStatus")::int            AS active,
+          SUM("kycReg")::int                    AS kyc_reg,
+          SUM("grossAdds")::int                 AS gross_adds,
+          ROUND(SUM("activityStatus")::numeric/NULLIF(COUNT(*),0)*100,1) AS activity_pct
+        FROM kyc_devices
+        GROUP BY "aseName", zone
+      `,
+        ]);
+        const devMap = {};
+        for (const d of devicesByAse) {
+            devMap[(d.aseName?.toLowerCase() || '')] = d;
+        }
+        // TDR scoring per ASE (agents, merchants, visits)
+        const aseTdrMap = {};
+        for (const t of tdrs) {
+            if (t.aseId) {
+                (aseTdrMap[t.aseId] = aseTdrMap[t.aseId] || []).push(t.id);
+            }
+        }
+        const agentsByTdr = await prisma_1.prisma.agent.groupBy({
+            by: ['tdrId'], _count: true,
+            where: { createdAt: { gte: start, lte: end }, type: 'normal' }
+        });
+        const merchantsByTdr = await prisma_1.prisma.agent.groupBy({
+            by: ['tdrId'], _count: true,
+            where: { createdAt: { gte: start, lte: end }, type: 'merchant' }
+        });
+        const visitsByTdr = await prisma_1.prisma.visit.groupBy({
+            by: ['tdrId'], _count: true,
+            where: { createdAt: { gte: start, lte: end } }
+        });
+        const agMap = Object.fromEntries(agentsByTdr.map((r) => [r.tdrId, r._count]));
+        const mchMap = Object.fromEntries(merchantsByTdr.map((r) => [r.tdrId, r._count]));
+        const visMap = Object.fromEntries(visitsByTdr.map((r) => [r.tdrId, r._count]));
+        const aseList = ases.map((ase) => {
+            const aseTdrIds = aseTdrMap[ase.id] || [];
+            const tdrCount = aseTdrIds.length;
+            // Supervision = avg TDR score
+            let tdrScoreSum = 0;
+            for (const tid of aseTdrIds) {
+                const ag = agMap[tid] || 0;
+                const mc = mchMap[tid] || 0;
+                const vi = visMap[tid] || 0;
+                tdrScoreSum += Math.round((ag / 96) * 40 + (mc / 96) * 20 + (vi / 20) * 10);
+            }
+            const supervisionScore = tdrCount > 0 ? Math.round(tdrScoreSum / tdrCount) : 0;
+            const devData = devMap[ase.name.toLowerCase()] || { total: 0, active: 0, kyc_reg: 0, gross_adds: 0, activity_pct: 0 };
+            const kycDeviceScore = devData.total > 0 ? Math.round(devData.active / devData.total * 100) : 0;
+            // ASE KPI weights: KYC Device 36.36%, Supervision 31.82%, Sim Outlet 22.73%, Own Device 9.09%
+            const finalScore = Math.round(kycDeviceScore * 0.3636 + supervisionScore * 0.3182 + supervisionScore * 0.2273);
+            return {
+                id: ase.id, name: ase.name, zone: ase.zone, tdrCount,
+                devices: {
+                    total: devData.total, active: devData.active,
+                    inactive: devData.total - devData.active,
+                    kycReg: devData.kyc_reg || 0, grossAdds: devData.gross_adds || 0,
+                    activityPct: parseFloat(devData.activity_pct) || 0,
+                },
+                supervisionScore,
+                kycDeviceScore,
+                finalScore,
+            };
+        });
+        // Device summary totals
+        const totalDevices = devicesByAse.reduce((s, d) => s + (d.total || 0), 0);
+        const activeDevices = devicesByAse.reduce((s, d) => s + (d.active || 0), 0);
+        const totalKycReg = devicesByAse.reduce((s, d) => s + (d.kyc_reg || 0), 0);
+        const totalGA = devicesByAse.reduce((s, d) => s + (d.gross_adds || 0), 0);
+        const avgScore = aseList.length > 0 ? Math.round(aseList.reduce((s, a) => s + a.finalScore, 0) / aseList.length) : 0;
+        // Zone-level device aggregation
+        const zoneMap = {};
+        for (const d of devicesByAse) {
+            const z = d.zone || 'Unassigned';
+            if (!zoneMap[z])
+                zoneMap[z] = { zone: z, total: 0, active: 0, kyc: 0, ga: 0 };
+            zoneMap[z].total += d.total || 0;
+            zoneMap[z].active += d.active || 0;
+            zoneMap[z].kyc += d.kyc_reg || 0;
+            zoneMap[z].ga += d.gross_adds || 0;
+        }
+        const byZone = Object.values(zoneMap)
+            .map((z) => ({ ...z, pct: z.total > 0 ? Math.round(z.active / z.total * 100) : 0 }))
+            .sort((a, b) => b.total - a.total);
+        res.json({
+            summary: { totalASEs: aseList.length, totalDevices, activeDevices, inactiveDevices: totalDevices - activeDevices,
+                activityPct: totalDevices > 0 ? Math.round(activeDevices / totalDevices * 100 * 10) / 10 : 0,
+                totalKycReg, totalGA, avgScore },
+            ases: aseList.sort((a, b) => b.finalScore - a.finalScore),
+            byZone,
+        });
+    }
+    catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to load ASE performance' });
+    }
+});
 // ─── POST /hsd/devices — HSD adds a new KYC device (any zone) ────────────────
 exports.hsdRouter.post('/devices', async (req, res) => {
     try {

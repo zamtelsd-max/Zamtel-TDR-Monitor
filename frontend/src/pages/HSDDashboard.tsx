@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy, ArrowLeft, Map, TrendingUp, Plus } from 'lucide-react';
+import { Download, ChevronDown, ChevronUp, AlertTriangle, Trophy, ArrowLeft, Map, TrendingUp, Plus, Smartphone, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { AddDeviceModal } from '../components/AddDeviceModal';
 import { useNavigate } from 'react-router-dom';
 import { hsdApi, flagsApi } from '../services/api';
@@ -19,6 +19,35 @@ import { PerformanceBar } from '../components/PerformanceBar';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
+
+// ── Ring (Donut) Chart ────────────────────────────────────────────────────────
+const RingChart: React.FC<{
+  pct: number; size?: number; stroke?: number;
+  color?: string; bg?: string; label?: string; sublabel?: string;
+}> = ({ pct, size = 88, stroke = 10, color = '#00843D', bg = '#e5e7eb', label, sublabel }) => {
+  const r   = (size - stroke) / 2;
+  const c   = 2 * Math.PI * r;
+  const off = c - (Math.min(pct, 100) / 100) * c;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={bg}      strokeWidth={stroke}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}   strokeWidth={stroke}
+          strokeDasharray={c} strokeDashoffset={off}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size/2} ${size/2})`}
+          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+        />
+        <text x={size/2} y={size/2 - (sublabel ? 5 : 0)} textAnchor="middle" dominantBaseline="central"
+          fontSize={size < 70 ? 13 : 15} fontWeight="800" fill={color}>{pct}%</text>
+        {sublabel && (
+          <text x={size/2} y={size/2 + 11} textAnchor="middle" fontSize={9} fill="#9ca3af">{sublabel}</text>
+        )}
+      </svg>
+      {label && <p className="text-[10px] font-semibold text-gray-500 text-center leading-tight">{label}</p>}
+    </div>
+  );
+};
 
 function pctColor(pct: number) {
   const b = getBand(pct);
@@ -67,12 +96,14 @@ export const HSDDashboardPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [mapData,   setMapData]   = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
   const [showMap,   setShowMap]   = useState(true);
-  const [mainTab,   setMainTab]   = useState<'dashboard' | 'flags'>('dashboard');
+  const [mainTab,   setMainTab]   = useState<'dashboard' | 'ase' | 'flags'>('dashboard');
   const [tdrFlags,  setTdrFlags]  = useState<TDRFlag[]>([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
+  const [asePerf,     setAsePerf]     = useState<any>(null);
+  const [asePerfLoad, setAsePerfLoad] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -113,9 +144,18 @@ export const HSDDashboardPage: React.FC = () => {
       .finally(() => setFlagsLoading(false));
   };
 
+  const loadAsePerf = useCallback(() => {
+    setAsePerfLoad(true);
+    hsdApi.getAsePerformance(period)
+      .then(r => setAsePerf(r.data))
+      .catch(() => toast.error('Failed to load ASE performance'))
+      .finally(() => setAsePerfLoad(false));
+  }, [period]);
+
   useEffect(() => {
     if (mainTab === 'flags') loadFlags();
-  }, [mainTab]);
+    if (mainTab === 'ase')   loadAsePerf();
+  }, [mainTab, loadAsePerf]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -215,20 +255,24 @@ export const HSDDashboardPage: React.FC = () => {
       )}
 
       {/* Main Tab Bar */}
-      <div className="flex gap-2 px-4 pb-3">
-        {(['dashboard', 'flags'] as const).map(t => (
-          <button key={t} onClick={() => setMainTab(t)}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
+      <div className="flex gap-1.5 px-4 pb-3 flex-wrap">
+        {([
+          ['dashboard', '📊 Overview'],
+          ['ase',       '📱 ASE & Devices'],
+          ['flags',     `🚩 Flags${tdrFlags.length > 0 ? ` (${tdrFlags.length})` : ''}`],
+        ] as const).map(([t, label]) => (
+          <button key={t} onClick={() => setMainTab(t as any)}
+            className={`flex-1 min-w-[80px] py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
               mainTab === t ? 'bg-zamtel-green text-white shadow' : 'bg-white text-gray-500 border border-gray-200'
             }`}>
-            {t === 'dashboard' ? '📊 Dashboard' : `🚩 Red Flags${tdrFlags.length > 0 ? ` (${tdrFlags.length})` : ''}`}
+            {label}
           </button>
         ))}
         <button
           onClick={() => setShowAddDevice(true)}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-green-700 to-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow hover:from-green-800 transition-all whitespace-nowrap"
+          className="flex items-center gap-1.5 bg-gradient-to-r from-green-700 to-green-600 text-white px-3 py-2 rounded-xl text-xs font-bold shadow hover:from-green-800 transition-all whitespace-nowrap"
         >
-          <Plus size={13}/> Add Device
+          <Plus size={12}/> Device
         </button>
       </div>
 
@@ -345,46 +389,33 @@ export const HSDDashboardPage: React.FC = () => {
             const band = getBand(overall);
             return (
               <>
+                {/* Ring charts row */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  <RingChart pct={overall}  color={band.ring || '#00843D'} label="Overall" sublabel="weighted"/>
+                  <RingChart pct={Math.min(aPct,100)} color="#00843D" label="Agents" sublabel="40% wt"/>
+                  <RingChart pct={Math.min(mPct,100)} color="#E4007C" label="Merchants" sublabel="20% wt"/>
+                  <RingChart pct={Math.min(vPct,100)} color="#7c3aed" label="Visits" sublabel="10% wt"/>
+                </div>
                 {/* Overall score banner */}
                 <div className={`rounded-xl p-3 mb-3 flex items-center justify-between ${band.bg}`}>
                   <div>
                     <p className={`text-2xl font-black ${band.color}`}>{overall}%</p>
                     <p className={`text-xs font-bold ${band.color}`}>{band.label} — National Weighted Score</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{kpis.totalAgents} agents · {kpis.totalMerchants} merchants · {kpis.totalVisits} visits</p>
                   </div>
                   <div className="text-right text-xs text-gray-500 space-y-1">
-                    <p>Open Float Issues: <span className={`font-bold ${(kpis.openFloatIssues||0) > 0 ? 'text-red-600' : 'text-green-600'}`}>{kpis.openFloatIssues || 0}</span></p>
-                    <p>Conversion Rate: <span className="font-bold text-purple-700">{kpis.conversionRate || 0}%</span></p>
-                  </div>
-                </div>
-                {/* Score progress bar */}
-                <div className="mb-4">
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${overall}%`, background: band.ring }} />
-                  </div>
-                  <div className="flex justify-between mt-0.5 text-[9px] text-gray-400">
-                    <span>0%</span><span className="text-red-400">40</span><span className="text-amber-400">60</span><span className="text-green-400">80</span><span>100%</span>
+                    <p>Open Float: <span className={`font-bold ${(kpis.openFloatIssues||0) > 0 ? 'text-red-600' : 'text-green-600'}`}>{kpis.openFloatIssues || 0}</span></p>
+                    <p>Conversion: <span className="font-bold text-purple-700">{kpis.conversionRate || 0}%</span></p>
                   </div>
                 </div>
                 {/* Per-KPI bars */}
                 <div className="space-y-3">
-                  <PerformanceBar
-                    label="Agent Recruitment (40% weight)"
-                    icon="👤"
-                    count={kpis.totalAgents || 0}
-                    target={kpis.nationalTargets?.agents || 1}
-                  />
-                  <PerformanceBar
-                    label="Merchant Enrollment (20% weight)"
-                    icon="🏪"
-                    count={kpis.totalMerchants || 0}
-                    target={kpis.nationalTargets?.merchants || 1}
-                  />
-                  <PerformanceBar
-                    label="Outlet Visits (10% weight)"
-                    icon="📍"
-                    count={kpis.totalVisits || 0}
-                    target={kpis.nationalTargets?.visits || 1}
-                  />
+                  <PerformanceBar label="Agent Recruitment (40% weight)" icon="👤"
+                    count={kpis.totalAgents || 0} target={kpis.nationalTargets?.agents || 1}/>
+                  <PerformanceBar label="Merchant Enrollment (20% weight)" icon="🏪"
+                    count={kpis.totalMerchants || 0} target={kpis.nationalTargets?.merchants || 1}/>
+                  <PerformanceBar label="Outlet Visits (10% weight)" icon="📍"
+                    count={kpis.totalVisits || 0} target={kpis.nationalTargets?.visits || 1}/>
                 </div>
               </>
             );
@@ -684,6 +715,163 @@ export const HSDDashboardPage: React.FC = () => {
         </Card>
       )}
       </>)}
+
+      {/* ── ASE & Devices Tab ── */}
+      {mainTab === 'ase' && (
+        <div className="px-4 pb-24 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400">National ASE performance & KYC device activity</p>
+            <button onClick={loadAsePerf} className="flex items-center gap-1 text-xs text-green-700 font-semibold">
+              <RefreshCw size={11}/> Refresh
+            </button>
+          </div>
+
+          {asePerfLoad ? (
+            <div className="space-y-3">{[1,2,3].map(i=><div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse"/>)}</div>
+          ) : !asePerf ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center text-gray-400">
+              <Smartphone size={32} className="mx-auto mb-2 opacity-30"/>
+              <p className="text-sm">No data yet</p>
+              <button onClick={loadAsePerf} className="mt-3 text-sm text-green-700 font-bold underline underline-offset-2">Load ASE Performance</button>
+            </div>
+          ) : (<>
+            {/* Summary ring charts */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <p className="text-sm font-bold text-gray-700 mb-4">KYC Device Summary — National</p>
+              <div className="grid grid-cols-3 gap-4 justify-items-center mb-4">
+                <RingChart
+                  pct={Math.round(asePerf.summary?.activityPct || 0)}
+                  size={100} stroke={11} color="#00843D"
+                  label="Device Activity" sublabel={`${asePerf.summary?.activeDevices?.toLocaleString()} active`}
+                />
+                <RingChart
+                  pct={asePerf.summary?.avgScore || 0}
+                  size={100} stroke={11} color="#E4007C"
+                  label="Avg ASE Score" sublabel={`${asePerf.summary?.totalASEs} ASEs`}
+                />
+                <RingChart
+                  pct={asePerf.summary?.totalDevices > 0
+                    ? Math.round((asePerf.summary?.totalKycReg||0)/(asePerf.summary?.totalDevices||1)*100)
+                    : 0}
+                  size={100} stroke={11} color="#7c3aed"
+                  label="KYC Rate" sublabel={`${asePerf.summary?.totalKycReg?.toLocaleString()} KYC`}
+                />
+              </div>
+              {/* Stat row */}
+              <div className="grid grid-cols-4 gap-2 text-center">
+                {[
+                  ['Total Devices', asePerf.summary?.totalDevices?.toLocaleString(), 'text-blue-600'],
+                  ['Active',        asePerf.summary?.activeDevices?.toLocaleString(), 'text-green-600'],
+                  ['Inactive',      asePerf.summary?.inactiveDevices?.toLocaleString(), 'text-red-500'],
+                  ['Gross Adds',    asePerf.summary?.totalGA?.toLocaleString(), 'text-amber-600'],
+                ].map(([l,v,c])=>(
+                  <div key={l as string} className="bg-gray-50 rounded-xl p-2">
+                    <p className={`text-lg font-black ${c}`}>{v}</p>
+                    <p className="text-[9px] text-gray-500">{l}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Zone device breakdown */}
+            {asePerf.byZone?.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-50">
+                  <p className="text-sm font-bold text-gray-700">Device Activity by Zone</p>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {asePerf.byZone.map((z: any) => (
+                    <div key={z.zone} className="px-4 py-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold text-gray-800">{z.zone}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-500">{z.active}/{z.total}</span>
+                          <span className={`text-sm font-black ${
+                            z.pct >= 70 ? 'text-green-600' : z.pct >= 40 ? 'text-amber-500' : 'text-red-500'
+                          }`}>{z.pct}%</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                          style={{width:`${z.pct}%`, background: z.pct>=70?'#00843D':z.pct>=40?'#f59e0b':'#ef4444'}}/>
+                      </div>
+                      <div className="flex gap-3 mt-1 text-[10px] text-gray-500">
+                        <span>KYC: <b className="text-purple-600">{z.kyc.toLocaleString()}</b></span>
+                        <span>GA: <b className="text-amber-600">{z.ga.toLocaleString()}</b></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ASE Performance table */}
+            {asePerf.ases?.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-50">
+                  <p className="text-sm font-bold text-gray-700">ASE Performance Ranking ({asePerf.ases.length})</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Sorted by KPI score — KYC Device 36% · Supervision 32% · SIM Outlet 23% · Own Device 9%</p>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {asePerf.ases.map((ase: any, idx: number) => (
+                    <div key={ase.id} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
+                            idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                            idx === 1 ? 'bg-gray-200 text-gray-600' :
+                            idx === 2 ? 'bg-orange-100 text-orange-600' :
+                            'bg-gray-100 text-gray-500'
+                          }`}>{idx+1}</span>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">{ase.name}</p>
+                            <p className="text-[10px] text-gray-500">{ase.zone} · {ase.tdrCount} TDRs</p>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className={`text-lg font-black ${
+                            ase.finalScore >= 70 ? 'text-green-600' : ase.finalScore >= 40 ? 'text-amber-500' : 'text-red-500'
+                          }`}>{ase.finalScore}%</p>
+                          <p className="text-[10px] text-gray-400">KPI Score</p>
+                        </div>
+                      </div>
+                      {/* Sub-scores */}
+                      <div className="grid grid-cols-4 gap-1 mt-2 text-center">
+                        <div className="bg-green-50 rounded-lg py-1">
+                          <p className="text-xs font-bold text-green-700">{ase.kycDeviceScore}%</p>
+                          <p className="text-[8px] text-gray-400">KYC Dev</p>
+                        </div>
+                        <div className="bg-blue-50 rounded-lg py-1">
+                          <p className="text-xs font-bold text-blue-700">{ase.supervisionScore}%</p>
+                          <p className="text-[8px] text-gray-400">Supervision</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg py-1">
+                          <p className="text-xs font-bold text-gray-700">{ase.devices.total}</p>
+                          <p className="text-[8px] text-gray-400">Devices</p>
+                        </div>
+                        <div className="bg-purple-50 rounded-lg py-1">
+                          <p className="text-xs font-bold text-purple-700">{ase.devices.active}</p>
+                          <p className="text-[8px] text-gray-400">Active</p>
+                        </div>
+                      </div>
+                      {/* Mini device activity bar */}
+                      {ase.devices.total > 0 && (
+                        <div className="mt-2">
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-green-500 transition-all"
+                              style={{width:`${ase.devices.activityPct}%`}}/>
+                          </div>
+                          <p className="text-[9px] text-gray-400 mt-0.5">{ase.devices.activityPct}% device activity · {ase.devices.kycReg} KYC · {ase.devices.grossAdds} GA</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>)}
+        </div>
+      )}
     </Layout>
   );
 };
