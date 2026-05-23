@@ -229,8 +229,8 @@ export interface ApiError {
 }
 
 export const ZAMBIA_ZONES = [
-  'Lusaka', 'Copperbelt', 'Northern', 'Eastern', 'Southern',
-  'Western', 'Luapula', 'Muchinga', 'North-Western', 'Central',
+  'Lusaka North', 'Lusaka South', 'Copperbelt', 'Northern', 'Eastern',
+  'Southern', 'Western', 'Luapula', 'Muchinga', 'North-Western', 'Central',
 ] as const;
 
 export type ZambiaZone = typeof ZAMBIA_ZONES[number];

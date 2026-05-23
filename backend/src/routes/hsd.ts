@@ -17,8 +17,8 @@ mapRouter.use(requireAuth('HSD', 'ZBM'));
 mapRouter.use(apiRateLimit);
 
 const ZONES = [
-  'Lusaka', 'Copperbelt', 'Northern', 'Eastern', 'Southern',
-  'Western', 'Luapula', 'Muchinga', 'North-Western', 'Central',
+  'Lusaka North', 'Lusaka South', 'Copperbelt', 'Northern', 'Eastern',
+  'Southern', 'Western', 'Luapula', 'Muchinga', 'North-Western', 'Central',
 ];
 
 function monthRange(period?: string) {

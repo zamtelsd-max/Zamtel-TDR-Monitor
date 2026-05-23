@@ -13,9 +13,8 @@ exports.dmRouter = (0, express_1.Router)();
 exports.dmRouter.use((0, auth_1.requireAuth)('DM', 'HSD')); // HSD can also access
 exports.dmRouter.use(rateLimit_1.apiRateLimit);
 const ZONES = [
-    'Central', 'Copperbelt', 'Eastern', 'Luapula',
-    'Lusaka North', 'Lusaka South', 'Muchinga',
-    'North-Western', 'Northern', 'Southern', 'Western',
+    'Lusaka North', 'Lusaka South', 'Copperbelt', 'Eastern', 'Central',
+    'Northern', 'Luapula', 'Muchinga', 'North-Western', 'Southern', 'Western',
 ];
 // ─── GET /dm/dashboard — summary cards + zone breakdown ──────────────────────
 exports.dmRouter.get('/dashboard', async (req, res) => {

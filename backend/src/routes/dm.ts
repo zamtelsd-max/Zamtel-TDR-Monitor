@@ -12,9 +12,8 @@ dmRouter.use(requireAuth('DM', 'HSD'));   // HSD can also access
 dmRouter.use(apiRateLimit);
 
 const ZONES = [
-  'Central','Copperbelt','Eastern','Luapula',
-  'Lusaka North','Lusaka South','Muchinga',
-  'North-Western','Northern','Southern','Western',
+  'Lusaka North','Lusaka South','Copperbelt','Eastern','Central',
+  'Northern','Luapula','Muchinga','North-Western','Southern','Western',
 ];
 
 // ─── GET /dm/dashboard — summary cards + zone breakdown ──────────────────────

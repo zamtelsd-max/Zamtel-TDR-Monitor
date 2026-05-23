@@ -49,8 +49,8 @@ exports.mapRouter = (0, express_1.Router)();
 exports.mapRouter.use((0, auth_1.requireAuth)('HSD', 'ZBM'));
 exports.mapRouter.use(rateLimit_1.apiRateLimit);
 const ZONES = [
-    'Lusaka', 'Copperbelt', 'Northern', 'Eastern', 'Southern',
-    'Western', 'Luapula', 'Muchinga', 'North-Western', 'Central',
+    'Lusaka North', 'Lusaka South', 'Copperbelt', 'Northern', 'Eastern',
+    'Southern', 'Western', 'Luapula', 'Muchinga', 'North-Western', 'Central',
 ];
 function monthRange(period) {
     let year, month;

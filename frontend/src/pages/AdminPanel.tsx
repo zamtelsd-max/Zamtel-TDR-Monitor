@@ -8,7 +8,7 @@ import { adminApi } from '../services/api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const DEFAULT_ZONES = [
-  'Central','Copperbelt','Eastern','Luapula','Lusaka',
+  'Central','Copperbelt','Eastern','Luapula','Lusaka North','Lusaka South',
   'Muchinga','Northern','North-Western','Southern','Western',
 ];
 
