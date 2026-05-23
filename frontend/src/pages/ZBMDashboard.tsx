@@ -37,7 +37,7 @@ function tdrScore(row: TDRStat): number {
 
 export const ZBMDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs' | 'flags'>('dashboard');
+  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs' | 'ase-performance' | 'flags'>('dashboard');
   const [data,       setData]       = useState<ZBMDashboard | null>(null);
   const [issues,     setIssues]     = useState<FloatIssue[]>([]);
   const [prospects,  setProspects]  = useState<Prospect[]>([]);
@@ -201,10 +201,11 @@ export const ZBMDashboardPage: React.FC = () => {
 
       {/* Main Tab Bar */}
       <div className="flex gap-2 px-4 pb-3">
-        {(['dashboard', 'ases-tdrs', 'flags'] as const).map(t => {
+        {(['dashboard', 'ases-tdrs', 'ase-performance', 'flags'] as const).map(t => {
           const critCount = tdrFlags.filter(f => f.severity === 'critical').length;
           const label = t === 'dashboard' ? '📊 Dashboard'
             : t === 'ases-tdrs' ? '👥 ASEs & TDRs'
+            : t === 'ase-performance' ? '📱 ASE KYC'
             : critCount > 0 ? `🔴 Flags (${tdrFlags.length})` : tdrFlags.length > 0 ? `⚠️ Flags (${tdrFlags.length})` : '🚩 Flags';
           return (
             <button key={t} onClick={() => setMainTab(t)}
@@ -755,6 +756,107 @@ export const ZBMDashboardPage: React.FC = () => {
         )}
       </Card>
       </>)}
+
+      {/* ASE PERFORMANCE Tab */}
+      {mainTab === 'ase-performance' && (
+        <div className="px-4 py-3 pb-24">
+          {loading && !data ? (
+            <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+          ) : !data?.asePerformance ? (
+            <div className="text-center py-12 text-gray-400">
+              <p className="text-sm">No ASE performance data available.</p>
+            </div>
+          ) : (() => {
+            const ap = data.asePerformance!;
+            const scoreColor = (s: number) =>
+              s >= 70 ? 'text-green-600' : s >= 40 ? 'text-amber-500' : 'text-red-600';
+            const scoreBg = (s: number) =>
+              s >= 70 ? 'bg-green-50 border-green-200 text-green-700'
+              : s >= 40 ? 'bg-amber-50 border-amber-200 text-amber-700'
+              : 'bg-red-50 border-red-200 text-red-700';
+            return (
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 text-center">
+                    <p className="text-2xl font-black" style={{ color: '#00843D' }}>{ap.totalASEs}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Total ASEs</p>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 text-center">
+                    <p className="text-2xl font-black text-blue-600">{ap.totalDevices}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Total Devices</p>
+                  </div>
+                  <div className={`rounded-2xl border shadow-sm p-3 text-center ${ap.activeDeviceRate >= 70 ? 'bg-green-50 border-green-200' : ap.activeDeviceRate >= 40 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+                    <p className={`text-2xl font-black ${scoreColor(ap.activeDeviceRate)}`}>{ap.activeDeviceRate}%</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Active Rate</p>
+                  </div>
+                  <div className={`rounded-2xl border shadow-sm p-3 text-center ${ap.avgASEScore >= 70 ? 'bg-green-50 border-green-200' : ap.avgASEScore >= 40 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+                    <p className={`text-2xl font-black ${scoreColor(ap.avgASEScore)}`}>{ap.avgASEScore}%</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Avg ASE Score</p>
+                  </div>
+                </div>
+
+                {/* ASE list */}
+                <p className="text-sm font-bold text-gray-700 mb-3">ASE Performance ({ap.ases.length})</p>
+                {ap.ases.length === 0 ? (
+                  <div className="bg-gray-50 rounded-2xl p-6 text-center text-gray-400">
+                    <p className="text-sm">No ASEs found in this zone.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {[...ap.ases].sort((a, b) => b.finalScore - a.finalScore).map(ase => (
+                      <div key={ase.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        {/* ASE header */}
+                        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-50">
+                          <div>
+                            <p className="font-bold text-sm text-gray-800">{ase.name}</p>
+                            <p className="text-xs text-gray-400">{ase.zone || '—'} · {ase.tdrCount} TDR{ase.tdrCount !== 1 ? 's' : ''}</p>
+                          </div>
+                          <span className={`text-sm font-black px-2.5 py-1 rounded-full border ${scoreBg(ase.finalScore)}`}>
+                            {ase.finalScore}%
+                          </span>
+                        </div>
+                        {/* Device stats */}
+                        <div className="px-4 py-3">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs text-gray-500">Device Activation</span>
+                            <span className={`text-xs font-bold ${scoreColor(ase.devices.kycScore)}`}>{ase.devices.kycScore}%</span>
+                          </div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+                            <div className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${ase.devices.kycScore}%`,
+                                background: ase.devices.kycScore >= 70 ? '#00843D' : ase.devices.kycScore >= 40 ? '#f59e0b' : '#ef4444'
+                              }} />
+                          </div>
+                          <div className="grid grid-cols-4 gap-2 text-center text-[10px] text-gray-500">
+                            <div>
+                              <p className="font-bold text-gray-700 text-xs">{ase.devices.total}</p>
+                              <p>Total</p>
+                            </div>
+                            <div>
+                              <p className="font-bold text-green-600 text-xs">{ase.devices.active}</p>
+                              <p>Active</p>
+                            </div>
+                            <div>
+                              <p className="font-bold text-red-500 text-xs">{ase.devices.inactive}</p>
+                              <p>Inactive</p>
+                            </div>
+                            <div>
+                              <p className={`font-bold text-xs ${scoreColor(ase.supervisionScore)}`}>{ase.supervisionScore}%</p>
+                              <p>TDR Score</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
 
       {/* FLAGS Tab */}
       {mainTab === 'flags' && (

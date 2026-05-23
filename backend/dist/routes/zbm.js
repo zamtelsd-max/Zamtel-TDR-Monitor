@@ -121,6 +121,63 @@ exports.zbmRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
     const target = zone
         ? await prisma_1.prisma.salesTarget.findUnique({ where: { zone_period: { zone, period } } })
         : null;
+    // ── ASE performance for this zone ────────────────────────────────────
+    const ases = await prisma_1.prisma.user.findMany({
+        where: { role: 'ASE', active: true, ...(zone ? { zone } : {}) },
+        select: { id: true, name: true, zone: true },
+    });
+    // KYC device data per ASE from kyc_devices table (camelCase columns)
+    const safeZoneForAse = zone ? zone.replace(/'/g, "''") : '';
+    const zoneClauseAse = zone ? `AND LOWER(zone) = LOWER('${safeZoneForAse}')` : '';
+    const devicesByAse = await prisma_1.prisma.$queryRawUnsafe(`
+    SELECT "aseName", COUNT(*)::int as total, SUM("activityStatus")::int as active
+    FROM kyc_devices WHERE 1=1 ${zoneClauseAse}
+    GROUP BY "aseName"
+  `);
+    const devMap = {};
+    for (const d of devicesByAse) {
+        devMap[(d.aseName?.toLowerCase() || '')] = { total: d.total, active: d.active || 0 };
+    }
+    // TDR counts and avg score per ASE
+    const aseStats = ases.map(ase => {
+        const aseTdrs = tdrs.filter((t) => t.aseId === ase.id);
+        const aseTdrIds = aseTdrs.map((t) => t.id);
+        const aseTdrScores = aseTdrIds.map((tid) => {
+            const a = agentMap[tid] || 0;
+            const m = merchantMap[tid] || 0;
+            const v = visitMap[tid] || 0;
+            const r = reactivationMap[tid] || 0;
+            const aT = agentTarget;
+            const mT = merchantTarget;
+            const vT = visitTarget;
+            const rT = 6 * (0, mtd_1.workingDaysElapsed)();
+            return Math.round(Math.min(a / Math.max(aT, 1), 1) * 100 * 0.40 +
+                Math.min(m / Math.max(mT, 1), 1) * 100 * 0.20 +
+                Math.min(v / Math.max(vT, 1), 1) * 100 * 0.10 +
+                Math.min(r / Math.max(rT, 1), 1) * 100 * 0.15);
+        });
+        const supervisionScore = aseTdrIds.length > 0 ? Math.round(aseTdrScores.reduce((a, b) => a + b, 0) / aseTdrIds.length) : 0;
+        const devData = devMap[ase.name.toLowerCase()] || { total: 0, active: 0 };
+        const kycScore = devData.total > 0 ? Math.round(devData.active / devData.total * 100) : 0;
+        const finalScore = Math.round(kycScore * 0.3636 + supervisionScore * 0.3182 + supervisionScore * 0.3182);
+        return {
+            id: ase.id, name: ase.name, zone: ase.zone, tdrCount: aseTdrIds.length,
+            supervisionScore,
+            devices: { total: devData.total, active: devData.active, inactive: devData.total - devData.active, kycScore },
+            finalScore
+        };
+    });
+    const totalASEDevices = aseStats.reduce((s, a) => s + a.devices.total, 0);
+    const activeASEDevices = aseStats.reduce((s, a) => s + a.devices.active, 0);
+    const avgASEScore = ases.length > 0 ? Math.round(aseStats.reduce((s, a) => s + a.finalScore, 0) / ases.length) : 0;
+    const asePerformance = {
+        totalASEs: ases.length,
+        totalDevices: totalASEDevices,
+        activeDevices: activeASEDevices,
+        activeDeviceRate: totalASEDevices > 0 ? Math.round(activeASEDevices / totalASEDevices * 100) : 0,
+        avgASEScore,
+        ases: aseStats
+    };
     res.json({
         zbm: { id: req.user.userId, name: req.user.name, zone },
         month: period,
@@ -138,6 +195,7 @@ exports.zbmRouter.get('/dashboard', (0, responseCache_1.responseCache)(30), asyn
         },
         tdrStats,
         prospectsBreakdown: prospects,
+        asePerformance,
     });
 });
 // ─── GET /zbm/tdr/:tdrId ──────────────────────────────────────────────────────

@@ -322,6 +322,12 @@ export const aseApi = {
 
   releaseTDR: (tdrId: string) =>
     client.delete(`/ase/pick-tdr/${tdrId}`),
+
+  devices: (params?: {source?: string; status?: string; page?: number; limit?: number}) =>
+    client.get('/ase/devices', { params }),
+
+  kycSummary: (zone?: string) =>
+    client.get('/ase/kyc-summary', { params: zone ? { zone } : {} }),
 };
 
 // ─── Flags ───────────────────────────────────────────────────────────────────

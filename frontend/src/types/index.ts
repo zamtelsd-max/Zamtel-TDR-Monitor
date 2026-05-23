@@ -143,6 +143,12 @@ export interface TDRStat {
   pct:           number;
 }
 
+export interface ASEPerformanceEntry {
+  id: string; name: string; zone: string | null; tdrCount: number;
+  supervisionScore: number; finalScore: number;
+  devices: { total: number; active: number; inactive: number; kycScore: number };
+}
+
 export interface ZBMDashboard {
   zbm:   { id: string; name: string; zone: string };
   month: string;
@@ -152,6 +158,11 @@ export interface ZBMDashboard {
   };
   tdrStats: TDRStat[];
   prospectsBreakdown: Array<{ status: ProspectStatus; _count: number }>;
+  asePerformance?: {
+    totalASEs: number; totalDevices: number; activeDevices: number;
+    activeDeviceRate: number; avgASEScore: number;
+    ases: ASEPerformanceEntry[];
+  };
 }
 
 export interface ZoneStat {

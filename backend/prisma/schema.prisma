@@ -207,3 +207,30 @@ model Reactivation {
 
   @@map("reactivations")
 }
+
+model KycDevice {
+  id             String   @id @default(cuid())
+  dealerCode     String?
+  description    String?
+  imei1          String?
+  imei2          String?
+  msisdn         String?
+  simSerial      String?
+  siteId         String?
+  region         String?
+  zone           String?
+  rbmName        String?
+  aseName        String?
+  teamLead       String?
+  status         String   @default("ACTIVE")
+  activityStatus Int      @default(0)
+  kycReg         Int      @default(0)
+  grossAdds      Int      @default(0)
+  zamoGA         Int      @default(0)
+  recharges      Float    @default(0)
+  deviceSource   String   @default("MobiGO2+")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("kyc_devices")
+}
