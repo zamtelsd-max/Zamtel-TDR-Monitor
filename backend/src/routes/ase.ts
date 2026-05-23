@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma }       from '../prisma';
 import { requireAuth }  from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
+import { responseCache } from '../middleware/responseCache';
 import { mtdRange, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
 
 export const aseRouter = Router();
@@ -233,5 +234,40 @@ aseRouter.get('/tdr/:id', async (req: Request, res: Response): Promise<void> => 
     res.json({ tdr: { id: tdr.id, name: tdr.name, zone: tdr.zone }, agents, visits, floatIssues, prospects });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load TDR data' });
+  }
+});
+
+// ─── GET /ase/map — zone-scoped agent & visit map data ───────────────────────
+
+aseRouter.get('/map', responseCache(45), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseUser = req.user!;
+    const zone = aseUser.zone ?? undefined;
+
+    const [agents, visits] = await Promise.all([
+      prisma.agent.findMany({
+        where: { ...(zone ? { zone } : {}), latitude: { not: null }, longitude: { not: null } },
+        select: {
+          id: true, agentName: true, agentCode: true, type: true,
+          tdrName: true, zone: true, town: true,
+          latitude: true, longitude: true, initialFloat: true,
+          merchantCategory: true, createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' }, take: 1000,
+      }),
+      prisma.visit.findMany({
+        where: { ...(zone ? { zone } : {}), latitude: { not: null }, longitude: { not: null } },
+        select: {
+          id: true, outletName: true, agentCode: true,
+          tdrName: true, zone: true, town: true,
+          latitude: true, longitude: true, floatAmount: true, createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' }, take: 1000,
+      }),
+    ]);
+
+    res.json({ success: true, data: { agents, visits } });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch map data' });
   }
 });

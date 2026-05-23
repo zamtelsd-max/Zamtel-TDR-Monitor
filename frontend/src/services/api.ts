@@ -351,6 +351,9 @@ export const aseApi = {
 
   kycSummary: (zone?: string) =>
     client.get('/ase/kyc-summary', { params: zone ? { zone } : {} }),
+
+  getMap: () =>
+    client.get('/ase/map'),
 };
 
 // ─── Flags ───────────────────────────────────────────────────────────────────

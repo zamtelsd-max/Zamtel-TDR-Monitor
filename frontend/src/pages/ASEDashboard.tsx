@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2, TrendingUp, Smartphone } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2, TrendingUp, Smartphone, Map } from 'lucide-react';
+import { GeoMap } from '../components/GeoMap';
 import toast from 'react-hot-toast';
 import { aseApi, flagsApi } from '../services/api';
 import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
@@ -65,7 +66,9 @@ export const ASEDashboardPage: React.FC = () => {
   const user = useAppSelector(s => s.auth.user);
 
   // ── ALL hooks must be declared before any early returns ──
-  const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'pick-tdrs'>('my-tdrs');
+  const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'pick-tdrs' | 'map'>('my-tdrs');
+  const [mapData, setMapData]           = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
+  const [mapLoading, setMapLoading]     = useState(false);
   const [dashData, setDashData]         = useState<DashboardData | null>(null);
   const [loading, setLoading]           = useState(true);
   const [selected, setSelected]         = useState<string | null>(null);
@@ -133,6 +136,18 @@ export const ASEDashboardPage: React.FC = () => {
     if (tab === 'pick-tdrs') loadAvailable();
   }, [tab]);
 
+  const loadMap = useCallback(() => {
+    setMapLoading(true);
+    aseApi.getMap()
+      .then(r => setMapData(r.data.data || { agents: [], visits: [] }))
+      .catch(() => toast.error('Failed to load map'))
+      .finally(() => setMapLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'map') loadMap();
+  }, [tab, loadMap]);
+
   const pickTDR = async (tdrId: string) => {
     setPicking(tdrId);
     try {
@@ -185,6 +200,7 @@ export const ASEDashboardPage: React.FC = () => {
     { id: 'kyc-devices', label: `📱 KYC Devices` },
     { id: 'kpi-score',   label: `🎯 KPI Score` },
     { id: 'pick-tdrs',   label: `➕ Pick TDRs` },
+    { id: 'map',         label: `🗺️ Field Map` },
   ] as const;
 
   return (
@@ -728,6 +744,40 @@ export const ASEDashboardPage: React.FC = () => {
               </>
             ) : null}
           </div>
+        </div>
+      )}
+      {/* ── Map Tab ── */}
+      {tab === 'map' && (
+        <div className="px-4 pb-24">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-bold text-gray-700">Field Map — {user?.zone || 'Your Zone'}</p>
+              <p className="text-xs text-gray-400">All agents & outlets registered in your zone</p>
+            </div>
+            <button onClick={loadMap} disabled={mapLoading}
+              className="flex items-center gap-1.5 text-xs text-green-700 font-semibold hover:bg-green-50 px-3 py-1.5 rounded-lg transition-colors">
+              <RefreshCw size={12} className={mapLoading ? 'animate-spin' : ''}/>
+              Refresh
+            </button>
+          </div>
+          {mapLoading ? (
+            <div className="h-[420px] bg-gray-100 rounded-2xl animate-pulse flex items-center justify-center">
+              <p className="text-gray-400 text-sm">Loading map...</p>
+            </div>
+          ) : mapData.agents.length === 0 && mapData.visits.length === 0 ? (
+            <div className="h-[420px] bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-gray-400">
+              <Map size={40} className="mb-3 opacity-30"/>
+              <p className="text-sm font-semibold">No GPS data yet</p>
+              <p className="text-xs mt-1">Agents with GPS coordinates will appear here</p>
+            </div>
+          ) : (
+            <GeoMap
+              agents={mapData.agents}
+              visits={mapData.visits}
+              height="480px"
+              showVisits={true}
+            />
+          )}
         </div>
       )}
     </Layout>

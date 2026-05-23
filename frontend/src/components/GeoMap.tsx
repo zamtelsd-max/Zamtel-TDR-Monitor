@@ -2,6 +2,36 @@ import React, { useEffect, useRef, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
+// Inject popup style overrides once
+if (typeof document !== 'undefined' && !document.getElementById('zamtel-popup-style')) {
+  const s = document.createElement('style');
+  s.id = 'zamtel-popup-style';
+  s.textContent = `
+    .zamtel-popup .leaflet-popup-content-wrapper {
+      padding: 0 !important;
+      border-radius: 10px !important;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.18) !important;
+      overflow: visible !important;
+    }
+    .zamtel-popup .leaflet-popup-content {
+      margin: 0 !important;
+      width: auto !important;
+      overflow: visible !important;
+    }
+    .zamtel-popup .leaflet-popup-tip-container {
+      margin-top: -1px;
+    }
+    .leaflet-popup-close-button {
+      top: 6px !important;
+      right: 8px !important;
+      color: white !important;
+      font-size: 18px !important;
+      font-weight: 300 !important;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 // Fix Leaflet default icon paths for Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -135,32 +165,34 @@ export const GeoMap: React.FC<GeoMapProps> = ({
           iconSize: [dotSize, dotSize],
           iconAnchor: [dotSize/2, dotSize/2],
         })
+        const visitStatus = a.daysAgo === null || a.daysAgo === undefined
+          ? '<span style="display:inline-block;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-top:4px">🔴 Never visited</span>'
+          : a.daysAgo >= 4
+            ? `<span style="display:inline-block;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-top:4px">🔴 Overdue — ${a.daysAgo} days ago</span>`
+            : a.daysAgo >= 2
+              ? `<span style="display:inline-block;background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-top:4px">🟡 Due soon — ${a.daysAgo} days ago</span>`
+              : `<span style="display:inline-block;background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-top:4px">🟢 ${a.daysAgo === 0 ? 'Visited today' : `Visited ${a.daysAgo}d ago`}</span>`;
         const marker = L.marker([a.latitude, a.longitude], { icon })
           .bindPopup(`
-            <div style="min-width:200px;font-family:Arial,sans-serif">
-              <div style="background:${colour};color:white;padding:6px 10px;border-radius:6px 6px 0 0;margin:-8px -8px 8px;font-weight:700;font-size:13px">
-                ${isMerchant ? '🏪 Merchant' : '🏦 Agent'}
+            <div style="width:260px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:visible">
+              <div style="background:${colour};color:white;padding:8px 12px;border-radius:8px 8px 0 0;margin:-1px -1px 0;font-weight:700;font-size:13px;letter-spacing:0.3px">
+                ${isMerchant ? '🏪 Merchant Outlet' : '🏦 Mobile Agent'}
               </div>
-              <b>${a.agentName}</b><br/>
-              <span style="color:#888;font-size:11px">Code: ${a.agentCode}</span><br/>
-              <span style="font-size:12px">📍 ${a.town}, ${a.zone}</span><br/>
-              <span style="font-size:12px">👤 TDR: ${a.tdrName}</span><br/>
-              ${lusZbm ? `<span style="font-size:12px;font-weight:600;color:${lusZbm.colour}">📋 ZBM: ${lusZbm.name} (${a.zone})</span><br/>` : ''}
-              <span style="font-size:12px">💰 Float: K${Number(a.initialFloat).toLocaleString()}</span><br/>
-              ${a.merchantCategory ? `<span style="font-size:12px">🏷️ ${a.merchantCategory}</span><br/>` : ''}
-              <span style="font-size:11px;color:#666;display:block;margin-top:2px">
-                ${a.daysAgo === null || a.daysAgo === undefined
-                  ? '🔴 Never visited'
-                  : a.daysAgo >= 4
-                    ? `🔴 Last visited ${a.daysAgo} days ago — OVERDUE`
-                    : a.daysAgo >= 2
-                      ? `🟡 Last visited ${a.daysAgo} days ago — due soon`
-                      : `🟢 Visited ${a.daysAgo === 0 ? 'today' : a.daysAgo + ' day' + (a.daysAgo > 1 ? 's' : '') + ' ago'}`
-                }
-              </span>
-              <span style="color:#aaa;font-size:10px">${new Date(a.createdAt).toLocaleDateString()}</span>
+              <div style="padding:10px 12px;background:#fff;border-radius:0 0 8px 8px;border:1px solid #e5e7eb;border-top:none">
+                <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:2px">${a.agentName}</div>
+                <div style="font-size:11px;color:#6b7280;margin-bottom:8px;font-family:monospace;background:#f9fafb;display:inline-block;padding:1px 6px;border-radius:4px">${a.agentCode}</div>
+                <table style="width:100%;border-collapse:collapse;font-size:12px">
+                  <tr><td style="padding:2px 0;color:#6b7280;width:70px">📍 Location</td><td style="padding:2px 0;font-weight:600;color:#374151">${a.town || '—'}, ${a.zone}</td></tr>
+                  <tr><td style="padding:2px 0;color:#6b7280">👤 TDR</td><td style="padding:2px 0;font-weight:600;color:#374151">${a.tdrName}</td></tr>
+                  ${lusZbm ? `<tr><td style="padding:2px 0;color:#6b7280">📋 ZBM</td><td style="padding:2px 0;font-weight:600;color:${lusZbm.colour}">${lusZbm.name}</td></tr>` : ''}
+                  <tr><td style="padding:2px 0;color:#6b7280">💰 Float</td><td style="padding:2px 0;font-weight:600;color:#374151">K${Number(a.initialFloat).toLocaleString()}</td></tr>
+                  ${a.merchantCategory ? `<tr><td style="padding:2px 0;color:#6b7280">🏷️ Category</td><td style="padding:2px 0;font-weight:600;color:#374151">${a.merchantCategory}</td></tr>` : ''}
+                  <tr><td style="padding:2px 0;color:#6b7280">📅 Added</td><td style="padding:2px 0;color:#9ca3af;font-size:11px">${new Date(a.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td></tr>
+                </table>
+                ${visitStatus}
+              </div>
             </div>
-          `, { maxWidth: 260 })
+          `, { maxWidth: 300, minWidth: 262, className: 'zamtel-popup' })
         marker.addTo(map)
         bounds.push([a.latitude, a.longitude])
       })
@@ -182,17 +214,21 @@ export const GeoMap: React.FC<GeoMapProps> = ({
         })
         L.marker([v.latitude, v.longitude], { icon })
           .bindPopup(`
-            <div style="min-width:180px;font-family:Arial,sans-serif">
-              <div style="background:#2563EB;color:white;padding:6px 10px;border-radius:6px 6px 0 0;margin:-8px -8px 8px;font-weight:700;font-size:13px">
+            <div style="width:240px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+              <div style="background:#2563EB;color:white;padding:8px 12px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px">
                 📋 Outlet Visit
               </div>
-              <b>${v.outletName}</b><br/>
-              <span style="font-size:12px">📍 ${v.town}, ${v.zone}</span><br/>
-              <span style="font-size:12px">👤 TDR: ${v.tdrName}</span><br/>
-              ${v.floatAmount ? `<span style="font-size:12px">💰 Float: K${Number(v.floatAmount).toLocaleString()}</span><br/>` : ''}
-              <span style="color:#aaa;font-size:10px">${new Date(v.createdAt).toLocaleDateString()}</span>
+              <div style="padding:10px 12px;background:#fff;border-radius:0 0 8px 8px;border:1px solid #e5e7eb;border-top:none">
+                <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:6px">${v.outletName}</div>
+                <table style="width:100%;border-collapse:collapse;font-size:12px">
+                  <tr><td style="padding:2px 0;color:#6b7280;width:70px">📍 Location</td><td style="padding:2px 0;font-weight:600;color:#374151">${v.town || '—'}, ${v.zone}</td></tr>
+                  <tr><td style="padding:2px 0;color:#6b7280">👤 TDR</td><td style="padding:2px 0;font-weight:600;color:#374151">${v.tdrName}</td></tr>
+                  ${v.floatAmount ? `<tr><td style="padding:2px 0;color:#6b7280">💰 Float</td><td style="padding:2px 0;font-weight:600;color:#374151">K${Number(v.floatAmount).toLocaleString()}</td></tr>` : ''}
+                  <tr><td style="padding:2px 0;color:#6b7280">📅 Date</td><td style="padding:2px 0;color:#9ca3af;font-size:11px">${new Date(v.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td></tr>
+                </table>
+              </div>
             </div>
-          `, { maxWidth: 240 })
+          `, { maxWidth: 280, minWidth: 242, className: 'zamtel-popup' })
           .addTo(map)
         bounds.push([v.latitude, v.longitude])
       })

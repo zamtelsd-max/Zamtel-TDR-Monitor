@@ -5,6 +5,7 @@ const express_1 = require("express");
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
 const rateLimit_1 = require("../middleware/rateLimit");
+const responseCache_1 = require("../middleware/responseCache");
 const mtd_1 = require("../utils/mtd");
 exports.aseRouter = (0, express_1.Router)();
 exports.aseRouter.use((0, auth_1.requireAuth)('ASE', 'ZBM', 'HSD'));
@@ -241,6 +242,38 @@ exports.aseRouter.get('/tdr/:id', async (req, res) => {
     }
     catch (err) {
         res.status(500).json({ error: 'Failed to load TDR data' });
+    }
+});
+// ─── GET /ase/map — zone-scoped agent & visit map data ───────────────────────
+exports.aseRouter.get('/map', (0, responseCache_1.responseCache)(45), async (req, res) => {
+    try {
+        const aseUser = req.user;
+        const zone = aseUser.zone ?? undefined;
+        const [agents, visits] = await Promise.all([
+            prisma_1.prisma.agent.findMany({
+                where: { ...(zone ? { zone } : {}), latitude: { not: null }, longitude: { not: null } },
+                select: {
+                    id: true, agentName: true, agentCode: true, type: true,
+                    tdrName: true, zone: true, town: true,
+                    latitude: true, longitude: true, initialFloat: true,
+                    merchantCategory: true, createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' }, take: 1000,
+            }),
+            prisma_1.prisma.visit.findMany({
+                where: { ...(zone ? { zone } : {}), latitude: { not: null }, longitude: { not: null } },
+                select: {
+                    id: true, outletName: true, agentCode: true,
+                    tdrName: true, zone: true, town: true,
+                    latitude: true, longitude: true, floatAmount: true, createdAt: true,
+                },
+                orderBy: { createdAt: 'desc' }, take: 1000,
+            }),
+        ]);
+        res.json({ success: true, data: { agents, visits } });
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Failed to fetch map data' });
     }
 });
 //# sourceMappingURL=ase.js.map
