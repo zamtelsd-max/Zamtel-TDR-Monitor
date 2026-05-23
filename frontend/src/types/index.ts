@@ -1,5 +1,5 @@
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-export type Role = 'TDR' | 'ZBM' | 'HSD' | 'ASE';
+export type Role = 'TDR' | 'ZBM' | 'HSD' | 'ASE' | 'DM';
 
 export interface AuthUser {
   id:   string;

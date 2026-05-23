@@ -19,6 +19,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles 
     if (user.role === 'ZBM') return <Navigate to="/zbm" replace />;
     if (user.role === 'HSD') return <Navigate to="/hsd" replace />;
     if (user.role === 'ASE') return <Navigate to="/ase" replace />;
+    if (user.role === 'DM')  return <Navigate to="/dm"  replace />;
   }
 
   return <>{children}</>;

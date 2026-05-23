@@ -19,6 +19,7 @@ import { AddProspectForm }      from './pages/AddProspectForm';
 import { AdminPanel }           from './pages/AdminPanel';
 import { LeaderboardPage }      from './pages/Leaderboard';
 import { ASEDashboardPage }     from './pages/ASEDashboard';
+import { DMDashboardPage }      from './pages/DMDashboard';
 
 function RootRedirect() {
   const state = store.getState();
@@ -28,6 +29,7 @@ function RootRedirect() {
   if (user.role === 'ZBM') return <Navigate to="/zbm" replace />;
   if (user.role === 'HSD') return <Navigate to="/hsd" replace />;
   if (user.role === 'ASE') return <Navigate to="/ase" replace />;
+  if (user.role === 'DM')  return <Navigate to="/dm"  replace />;
   return <Navigate to="/login" replace />;
 }
 
@@ -107,6 +109,13 @@ function AppRoutes() {
       <Route path="/ase" element={
         <ProtectedRoute roles={['ASE']}>
           <PageErrorBoundary page="ASE Dashboard"><ASEDashboardPage /></PageErrorBoundary>
+        </ProtectedRoute>
+      } />
+
+      {/* DM — Device Manager */}
+      <Route path="/dm" element={
+        <ProtectedRoute roles={['DM']}>
+          <PageErrorBoundary page="DM Dashboard"><DMDashboardPage /></PageErrorBoundary>
         </ProtectedRoute>
       } />
 

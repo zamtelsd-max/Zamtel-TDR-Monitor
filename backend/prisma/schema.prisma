@@ -184,6 +184,7 @@ enum Role {
   ZBM
   HSD
   ASE
+  DM
 }
 
 model Reactivation {

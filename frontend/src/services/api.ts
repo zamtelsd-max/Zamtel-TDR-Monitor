@@ -354,3 +354,24 @@ export const aseApi = {
 export const flagsApi = {
   get: () => client.get<{ success: boolean; total: number; data: TDRFlag[] }>('/flags'),
 };
+
+// ─── DM (Device Manager) ─────────────────────────────────────────────────────
+export const dmApi = {
+  dashboard: () =>
+    client.get('/dm/dashboard'),
+
+  getDevices: (params?: { page?: number; limit?: number; search?: string; zone?: string; source?: string; status?: string; ase?: string }) =>
+    client.get('/dm/devices', { params }),
+
+  addDevice: (data: Record<string, any>) =>
+    client.post('/dm/devices', data),
+
+  updateDevice: (id: string, data: Record<string, any>) =>
+    client.patch(`/dm/devices/${id}`, data),
+
+  deleteDevice: (id: string) =>
+    client.delete(`/dm/devices/${id}`),
+
+  getAses: (zone?: string) =>
+    client.get('/dm/ases', { params: zone ? { zone } : {} }),
+};
