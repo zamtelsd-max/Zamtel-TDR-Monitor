@@ -13,6 +13,7 @@ import { adminRouter }  from './routes/admin';
 import { aseRouter }    from './routes/ase';
 import { flagsRouter }  from './routes/flags';
 import { dmRouter }     from './routes/dm';
+import { ssoOdrRouter } from './routes/ssoOdr';
 import { errorHandler } from './middleware/errorHandler';
 
 const app  = express();
@@ -44,7 +45,8 @@ app.use('/api/v1/hsd/map', mapRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/ase',   aseRouter);
 app.use('/api/v1/flags', flagsRouter);
-app.use('/api/v1/dm',   dmRouter);
+app.use('/api/v1/dm',      dmRouter);
+app.use('/api/v1/sso-odr', ssoOdrRouter);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));

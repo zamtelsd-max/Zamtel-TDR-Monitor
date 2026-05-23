@@ -9,7 +9,7 @@ datasource db {
 }
 
 model Agent {
-  id  String  @id  @default(cuid())
+  id               String    @id @default(cuid())
   tdrId            String
   tdrName          String
   zone             String
@@ -35,7 +35,7 @@ model Agent {
 }
 
 model FloatIssue {
-  id  String  @id  @default(cuid())
+  id              String      @id @default(cuid())
   tdrId           String
   tdrName         String
   zone            String
@@ -49,17 +49,17 @@ model FloatIssue {
   resolvedAt      DateTime?
   resolvedBy      String?
   resolutionNotes String?
-  latitude        Float?
-  longitude       Float?
   reportedAt      DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  latitude        Float?
+  longitude       Float?
   user            User        @relation(fields: [tdrId], references: [id])
 
   @@map("float_issues")
 }
 
 model Prospect {
-  id  String  @id  @default(cuid())
+  id                  String         @id @default(cuid())
   tdrId               String
   tdrName             String
   zone                String
@@ -75,19 +75,19 @@ model Prospect {
   notes               String?
   followUpDate        DateTime?
   convertedAt         DateTime?
-  latitude            Float?
-  longitude           Float?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   closedByTdr         Boolean        @default(false)
   zbmApprovalRequired Boolean        @default(false)
+  latitude            Float?
+  longitude           Float?
   user                User           @relation(fields: [tdrId], references: [id])
 
   @@map("prospects")
 }
 
 model SalesTarget {
-  id  String  @id  @default(cuid())
+  id              String   @id @default(cuid())
   zone            String
   period          String
   targetAgents    Int      @default(96)
@@ -103,29 +103,103 @@ model SalesTarget {
 }
 
 model User {
-  id  String  @id  @default(cuid())
+  id            String         @id @default(cuid())
   name          String
   pin           String
   role          Role
   zone          String?
-  active        Boolean      @default(true)
-  mustChangePin Boolean      @default(false)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   aseId         String?
-  agents         Agent[]
-  floatIssues    FloatIssue[]
-  prospects      Prospect[]
-  reactivations  Reactivation[]
-  salesTargets   SalesTarget[]
-  visits         Visit[]
+  mustChangePin Boolean        @default(false)
+  agents        Agent[]
+  floatIssues   FloatIssue[]
+  odrOutlets    OdrOutlet[]    @relation("TdrOdrOutlets")
+  prospects     Prospect[]
+  reactivations Reactivation[]
+  salesTargets  SalesTarget[]
+  ssoOdrTargets SsoOdrTarget[] @relation("ZbmSsoOdrTargets")
+  ssoOutlets    SsoOutlet[]    @relation("TdrSsoOutlets")
+  visits        Visit[]
 
   @@map("users")
 }
 
+model SsoOutlet {
+  id           String   @id @default(cuid())
+  tdrId        String
+  tdrName      String
+  aseId        String?
+  aseName      String?
+  zone         String
+  outletName   String
+  ownerName    String
+  contactPhone String
+  town         String
+  address      String?
+  cluster      String?
+  deviceType   String   @default("SSO")
+  msisdn       String?
+  simSerial    String?
+  imei         String?
+  notes        String?
+  latitude     Float?
+  longitude    Float?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation("TdrSsoOutlets", fields: [tdrId], references: [id])
+
+  @@map("sso_outlets")
+}
+
+model OdrOutlet {
+  id           String   @id @default(cuid())
+  tdrId        String
+  tdrName      String
+  aseId        String?
+  aseName      String?
+  zone         String
+  outletName   String
+  ownerName    String
+  contactPhone String
+  town         String
+  address      String?
+  cluster      String?
+  deviceType   String   @default("Zamtel")
+  msisdn       String?
+  simSerial    String?
+  imei         String?
+  notes        String?
+  latitude     Float?
+  longitude    Float?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation("TdrOdrOutlets", fields: [tdrId], references: [id])
+
+  @@map("odr_outlets")
+}
+
+model SsoOdrTarget {
+  id         String   @id @default(cuid())
+  zone       String
+  period     String
+  targetSso  Int      @default(10)
+  targetOdr  Int      @default(10)
+  setByZbmId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation("ZbmSsoOdrTargets", fields: [setByZbmId], references: [id])
+
+  @@unique([zone, period])
+  @@map("sso_odr_targets")
+}
+
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Visit {
-  id  String  @id  @default(cuid())
+  id           String   @id @default(cuid())
   tdrId        String
   tdrName      String
   zone         String
@@ -147,46 +221,6 @@ model Visit {
   @@map("visits")
 }
 
-enum AgentType {
-  normal
-  merchant
-}
-
-enum IssueStatus {
-  reported
-  in_progress
-  resolved
-}
-
-enum IssueType {
-  low_float
-  stuck_transaction
-  system_error
-  other
-}
-
-enum ProspectStatus {
-  identified
-  contacted
-  interested
-  converted
-  follow_up
-  rejected
-}
-
-enum ProspectType {
-  agent
-  merchant
-}
-
-enum Role {
-  TDR
-  ZBM
-  HSD
-  ASE
-  DM
-}
-
 model Reactivation {
   id           String   @id @default(cuid())
   tdrId        String
@@ -202,10 +236,10 @@ model Reactivation {
   latitude     Float?
   longitude    Float?
   notes        String?
-  isNtBase     Boolean  @default(false)
-  ntPoints     Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  isNtBase     Boolean  @default(false)
+  ntPoints     Int      @default(0)
   user         User     @relation(fields: [tdrId], references: [id])
 
   @@map("reactivations")
@@ -246,4 +280,44 @@ model KycDevice {
   updatedAt      DateTime @updatedAt
 
   @@map("kyc_devices")
+}
+
+enum AgentType {
+  normal
+  merchant
+}
+
+enum IssueStatus {
+  reported
+  in_progress
+  resolved
+}
+
+enum IssueType {
+  low_float
+  stuck_transaction
+  system_error
+  other
+}
+
+enum ProspectStatus {
+  identified
+  contacted
+  interested
+  converted
+  rejected
+  follow_up
+}
+
+enum ProspectType {
+  agent
+  merchant
+}
+
+enum Role {
+  TDR
+  ZBM
+  HSD
+  ASE
+  DM
 }

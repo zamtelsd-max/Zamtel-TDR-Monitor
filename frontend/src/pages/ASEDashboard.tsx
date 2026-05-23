@@ -1,14 +1,44 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2, TrendingUp, Smartphone, Map } from 'lucide-react';
+import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2, TrendingUp, Smartphone, Map, Store } from 'lucide-react';
 import { GeoMap } from '../components/GeoMap';
 import toast from 'react-hot-toast';
-import { aseApi, flagsApi } from '../services/api';
+import { aseApi, flagsApi, ssoOdrApi } from '../services/api';
 import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
 import { calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth, getBand } from '../utils/performance';
 import type { TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge } from '../components/UI';
 import { useAppSelector } from '../hooks/useAppDispatch';
+import { OutletForm } from '../components/OutletForm';
+
+// ── Ring (Donut) Chart ────────────────────────────────────────────────────────
+const RingChart: React.FC<{
+  pct: number; size?: number; stroke?: number;
+  color?: string; bg?: string; label?: string; sublabel?: string;
+}> = ({ pct, size = 88, stroke = 10, color = '#00843D', bg = '#e5e7eb', label, sublabel }) => {
+  const r   = (size - stroke) / 2;
+  const c   = 2 * Math.PI * r;
+  const off = c - (Math.min(pct, 100) / 100) * c;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={bg}      strokeWidth={stroke}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}   strokeWidth={stroke}
+          strokeDasharray={c} strokeDashoffset={off}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size/2} ${size/2})`}
+          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+        />
+        <text x={size/2} y={size/2 - (sublabel ? 5 : 0)} textAnchor="middle" dominantBaseline="central"
+          fontSize={size < 70 ? 13 : 15} fontWeight="800" fill={color}>{pct}%</text>
+        {sublabel && (
+          <text x={size/2} y={size/2 + 11} textAnchor="middle" fontSize={9} fill="#9ca3af">{sublabel}</text>
+        )}
+      </svg>
+      {label && <p className="text-[10px] font-semibold text-gray-500 text-center leading-tight">{label}</p>}
+    </div>
+  );
+};
 
 interface TDRStat {
   tdr:           { id: string; name: string; zone: string | null };
@@ -66,7 +96,11 @@ export const ASEDashboardPage: React.FC = () => {
   const user = useAppSelector(s => s.auth.user);
 
   // ── ALL hooks must be declared before any early returns ──
-  const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'pick-tdrs' | 'map'>('my-tdrs');
+  const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'sso-odr' | 'pick-tdrs' | 'map'>('my-tdrs');
+  const [ssoTab, setSsoTab]             = useState<'SSO' | 'ODR' | null>(null);
+  const [ssoData, setSsoData]           = useState<{ sso: any[]; odr: any[] }>({ sso: [], odr: [] });
+  const [ssoSummary, setSsoSummary]     = useState<{ totalSso:number; totalOdr:number; mtdSso:number; mtdOdr:number; targetSso:number; targetOdr:number } | null>(null);
+  const [ssoLoading, setSsoLoading]     = useState(false);
   const [mapData, setMapData]           = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
   const [mapTdrNames, setMapTdrNames]   = useState<string[]>([]);
   const [mapLoading, setMapLoading]     = useState(false);
@@ -152,6 +186,19 @@ export const ASEDashboardPage: React.FC = () => {
     if (tab === 'map') loadMap();
   }, [tab, loadMap]);
 
+  const loadSsoOdr = useCallback(() => {
+    setSsoLoading(true);
+    Promise.all([ssoOdrApi.summary(), ssoOdrApi.listSso(), ssoOdrApi.listOdr()])
+      .then(([sumRes, ssoRes, odrRes]) => {
+        setSsoSummary(sumRes.data.data);
+        setSsoData({ sso: ssoRes.data.data || [], odr: odrRes.data.data || [] });
+      })
+      .catch(() => toast.error('Failed to load SSO/ODR data'))
+      .finally(() => setSsoLoading(false));
+  }, []);
+
+  useEffect(() => { if (tab === 'sso-odr') loadSsoOdr(); }, [tab, loadSsoOdr]);
+
   const pickTDR = async (tdrId: string) => {
     setPicking(tdrId);
     try {
@@ -203,6 +250,7 @@ export const ASEDashboardPage: React.FC = () => {
     { id: 'my-tdrs',     label: `👥 TDRs (${stats.length})` },
     { id: 'kyc-devices', label: `📱 KYC Devices` },
     { id: 'kpi-score',   label: `🎯 KPI Score` },
+    { id: 'sso-odr',     label: `📡 SSO/ODR` },
     { id: 'pick-tdrs',   label: `➕ Pick TDRs` },
     { id: 'map',         label: `🗺️ Field Map` },
   ] as const;
@@ -211,60 +259,63 @@ export const ASEDashboardPage: React.FC = () => {
     <Layout title="ASE Dashboard">
       <PageHeader title={`${user?.name ?? 'ASE'}`} subtitle="Area Sales Executive Dashboard" />
 
-      {/* Hero stat cards */}
+      {/* Hero ring charts */}
       {loading ? (
-        <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        <div className="grid grid-cols-2 gap-3 px-4 pb-3">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
         </div>
       ) : (
         <div className="px-4 pb-3">
-          <div className="grid grid-cols-5 gap-2 mb-1">
-            {/* Total Devices */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2.5 text-center">
-              <p className="text-xl font-black" style={{ color: '#00843D' }}>{kyc?.total ?? 0}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">Devices</p>
+          {/* 4 Ring Charts */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            {(() => {
+              const overallScore = stats.length > 0
+                ? Math.round(stats.reduce((acc, s) => acc + (s.kpiScore ?? 0), 0) / stats.length)
+                : 0;
+              const totalAgentsMtd = dashData?.team?.totals?.agents ?? 0;
+              const agentPct = Math.min(100, Math.round(totalAgentsMtd / Math.max(prorateMtdTarget(96 * stats.length), 1) * 100));
+              const kycPct = kyc && kyc.total > 0 ? kyc.kycScore : 0;
+              const ssoMtd = ssoSummary?.mtdSso ?? 0;
+              const odrMtd = ssoSummary?.mtdOdr ?? 0;
+              const ssoTarget = (ssoSummary?.targetSso ?? 0) + (ssoSummary?.targetOdr ?? 0);
+              const ssoOdrPct = Math.min(100, Math.round((ssoMtd + odrMtd) / Math.max(ssoTarget, 1) * 100));
+              return (
+                <>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
+                    <RingChart pct={overallScore} size={80} stroke={9} color="#00843D" label="Overall Score" />
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
+                    <RingChart pct={agentPct} size={80} stroke={9} color="#E4007C" label="Agents MTD" />
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
+                    <RingChart pct={kycPct} size={80} stroke={9} color="#2563EB" label="KYC Devices" />
+                  </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
+                    <RingChart pct={ssoTarget > 0 ? ssoOdrPct : 0} size={80} stroke={9} color="#8B5CF6" label="SSO+ODR" />
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+          {/* Compact stats row */}
+          <div className="grid grid-cols-4 gap-1.5">
+            <div className="bg-white rounded-xl border border-gray-100 p-2 text-center">
+              <p className="text-base font-black" style={{ color: '#00843D' }}>{kyc?.total ?? 0}</p>
+              <p className="text-[9px] text-gray-400">Devices</p>
             </div>
-            {/* Active Devices */}
-            <div className="bg-green-50 rounded-2xl shadow-sm border border-green-100 p-2.5 text-center">
-              <p className="text-xl font-black text-green-600">{kyc?.active ?? 0}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">Active</p>
+            <div className="bg-green-50 rounded-xl border border-green-100 p-2 text-center">
+              <p className="text-base font-black text-green-600">{kyc?.active ?? 0}</p>
+              <p className="text-[9px] text-gray-400">Active</p>
             </div>
-            {/* Inactive Devices */}
-            <div className="bg-red-50 rounded-2xl shadow-sm border border-red-100 p-2.5 text-center">
-              <p className="text-xl font-black text-red-500">{kyc?.inactive ?? 0}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">Inactive</p>
+            <div className="bg-purple-50 rounded-xl border border-purple-100 p-2 text-center">
+              <p className="text-base font-black text-purple-600">{stats.length}</p>
+              <p className="text-[9px] text-gray-400">TDRs</p>
             </div>
-            {/* TDRs */}
-            <div className="bg-purple-50 rounded-2xl shadow-sm border border-purple-100 p-2.5 text-center">
-              <p className="text-xl font-black text-purple-600">{stats.length}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">TDRs</p>
-            </div>
-            {/* KPI Score */}
-            <div className={`rounded-2xl shadow-sm border p-2.5 text-center ${scoreBg(kpiScore?.finalScore ?? 0)}`}>
-              <p className={`text-xl font-black ${scoreColor(kpiScore?.finalScore ?? 0)}`}>
-                {kpiScore?.finalScore ?? 0}%
-              </p>
-              <p className="text-[10px] text-gray-400 mt-0.5">KPI</p>
+            <div className={`rounded-xl border p-2 text-center ${scoreBg(kpiScore?.finalScore ?? 0)}`}>
+              <p className={`text-base font-black ${scoreColor(kpiScore?.finalScore ?? 0)}`}>{kpiScore?.finalScore ?? 0}%</p>
+              <p className="text-[9px] text-gray-400">KPI</p>
             </div>
           </div>
-          {/* KYC activation bar */}
-          {kyc && kyc.total > 0 && (
-            <div className="mt-2">
-              <div className="flex justify-between text-[10px] text-gray-500 mb-0.5">
-                <span>Device Activation</span>
-                <span className="font-semibold">{kyc.kycScore}%</span>
-              </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${kyc.kycScore}%`,
-                    background: kyc.kycScore >= 70 ? '#00843D' : kyc.kycScore >= 40 ? '#f59e0b' : '#ef4444'
-                  }}
-                />
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -373,7 +424,7 @@ export const ASEDashboardPage: React.FC = () => {
 
           {/* TDR list */}
           {loading ? (
-            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}</div>
+            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-2xl" />)}</div>
           ) : stats.length === 0 ? (
             <Card className="text-center py-8 text-gray-400">
               <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -383,56 +434,69 @@ export const ASEDashboardPage: React.FC = () => {
               </button>
             </Card>
           ) : (
-            <div className="space-y-3 mb-24">
-              <div className="flex items-center gap-2 mb-1">
+            <div className="space-y-2 mb-24">
+              <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4" style={{ color: '#00843D' }} />
-                <h3 className="font-bold text-sm text-gray-800">TDR Performance Against Target</h3>
+                <h3 className="font-bold text-sm text-gray-800">TDR Performance ({stats.length})</h3>
               </div>
               {stats.map(({ tdr, agents, visits, floatIssues, reactivations, kpiScore: tdrKpi }) => {
                 const tdrFlag = flags.find(f => f.tdrId === tdr.id);
                 const aTgt = prorateMtdTarget(96);
-                const mTgt = prorateMtdTarget(96);
                 const vTgt = visitMtdTarget();
-                const rTgt = 6 * workingDaysElapsed();
+                const rTgt = Math.max(6 * workingDaysElapsed(), 1);
+                const agentPct = Math.min(Math.round(agents / Math.max(aTgt, 1) * 100), 100);
+                const visitPct = Math.min(Math.round(visits / Math.max(vTgt, 1) * 100), 100);
+                const reactPct = Math.min(Math.round(reactivations / rTgt * 100), 100);
                 const sc = tdrKpi ?? calcWeightedScore({
-                  agentPct:        Math.min(Math.round(agents / Math.max(aTgt, 1) * 100), 100),
+                  agentPct,
                   merchantPct:     0,
                   floatPct:        floatIssues === 0 ? 100 : Math.max(0, 100 - floatIssues * 10),
-                  reactivationPct: Math.min(Math.round(reactivations / Math.max(rTgt, 1) * 100), 100),
-                  visitPct:        Math.min(Math.round(visits / Math.max(vTgt, 1) * 100), 100),
+                  reactivationPct: reactPct,
+                  visitPct,
                 });
+                const band = getBand(sc);
+                const scColor = sc >= 70 ? '#00843D' : sc >= 40 ? '#f59e0b' : '#ef4444';
+                const scBg = sc >= 70 ? '#f0fdf4' : sc >= 40 ? '#fffbeb' : '#fef2f2';
                 return (
-                  <TDRPerfCard
-                    key={tdr.id}
-                    name={tdr.name}
-                    zone={tdr.zone}
-                    agents={agents}
-                    merchants={0}
-                    visits={visits}
-                    floatIssues={floatIssues}
-                    reactivations={reactivations}
-                    reactivationTarget={rTgt}
-                    score={sc}
-                    agentTarget={aTgt}
-                    merchantTarget={mTgt}
-                    visitTarget={vTgt}
-                    flagSeverity={tdrFlag?.severity === 'critical' ? 'critical' : tdrFlag ? 'warning' : null}
-                    onClick={() => viewTDR(tdr.id)}
-                    actionSlot={
-                      <div className="flex items-center gap-1">
-                        <button onClick={(e) => { e.stopPropagation(); releaseTDR(tdr.id); }}
-                          className="text-xs text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                          title="Release TDR">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => viewTDR(tdr.id)}
-                          className="flex items-center gap-1 text-xs font-semibold bg-green-50 px-2.5 py-1 rounded-xl"
-                          style={{ color: '#00843D' }}>
-                          <Eye className="w-3 h-3" /> View
-                        </button>
+                  <div key={tdr.id} className="relative rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl" style={{ background: scColor }} />
+                    <div className="pl-4 pr-3 py-3 flex items-center gap-3">
+                      <RingChart pct={sc} size={52} stroke={6} color={scColor} label="" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-gray-800 truncate">{tdr.name}</p>
+                        <p className="text-xs text-gray-400">{tdr.zone || 'No zone'}</p>
+                        <div className="mt-1.5 space-y-1">
+                          {([['Agents', agentPct, '#00843D'], ['Visits', visitPct, '#2563EB'], ['React', reactPct, '#F97316']] as const).map(([l,p,c]) => (
+                            <div key={l} className="flex items-center gap-1.5">
+                              <span className="text-[9px] text-gray-400 w-8 shrink-0">{l}</span>
+                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full">
+                                <div className="h-full rounded-full" style={{ width: `${p}%`, background: c }} />
+                              </div>
+                              <span className="text-[9px] font-bold text-gray-500 w-6 text-right">{p}%</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    }
-                  />
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="text-xs font-black px-2 py-1 rounded-xl" style={{ background: scBg, color: scColor }}>{sc}%</span>
+                        <div className="flex items-center gap-1">
+                          <button onClick={(e) => { e.stopPropagation(); releaseTDR(tdr.id); }}
+                            className="text-xs text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors"
+                            title="Release TDR">
+                            <X className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => viewTDR(tdr.id)}
+                            className="flex items-center gap-0.5 text-xs font-semibold bg-green-50 px-2 py-1 rounded-lg"
+                            style={{ color: '#00843D' }}>
+                            <Eye className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {tdrFlag && (
+                          <AlertTriangle className={`w-3.5 h-3.5 ${tdrFlag.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -695,6 +759,103 @@ export const ASEDashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SSO/ODR TAB ── */}
+      {tab === 'sso-odr' && (
+        <div className="px-4 pb-24">
+          {/* Outlet form modal */}
+          {ssoTab && <OutletForm type={ssoTab} onClose={() => setSsoTab(null)} onSuccess={() => { setSsoTab(null); loadSsoOdr(); }} />}
+
+          {/* Summary cards */}
+          {ssoSummary && (
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {[
+                { label: 'SSO Outlets', val: ssoSummary.totalSso, mtd: ssoSummary.mtdSso, target: ssoSummary.targetSso, color: '#8B5CF6', bg: '#F3E8FF' },
+                { label: 'ODR Outlets', val: ssoSummary.totalOdr, mtd: ssoSummary.mtdOdr, target: ssoSummary.targetOdr, color: '#F97316', bg: '#FFF7ED' },
+              ].map(c => (
+                <div key={c.label} className="rounded-2xl p-3 border border-gray-100" style={{ background: c.bg }}>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">{c.label}</p>
+                  <p className="text-2xl font-black" style={{ color: c.color }}>{c.val}</p>
+                  <p className="text-xs text-gray-400">MTD: {c.mtd}{c.target > 0 ? ` / ${c.target}` : ''}</p>
+                  {c.target > 0 && (
+                    <div className="mt-1.5 h-1.5 bg-white rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.round(c.mtd/c.target*100))}%`, background: c.color }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <button onClick={() => setSsoTab('SSO')}
+              className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
+              style={{ background: '#8B5CF6' }}>
+              <Store size={15} /> ➕ Add SSO
+            </button>
+            <button onClick={() => setSsoTab('ODR')}
+              className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
+              style={{ background: '#F97316' }}>
+              <Store size={15} /> ➕ Add ODR
+            </button>
+          </div>
+
+          {ssoLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+          ) : (
+            <>
+              {/* SSO list */}
+              {ssoData.sso.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wide">📡 SSO Outlets ({ssoData.sso.length})</p>
+                  <div className="space-y-2">
+                    {ssoData.sso.map((o: any) => (
+                      <div key={o.id} className="bg-white border border-purple-100 rounded-xl px-3 py-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">{o.outletName}</p>
+                          <p className="text-xs text-gray-400">{o.town} · TDR: {o.tdrName}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {o.latitude && <span className="text-xs text-green-600">📍</span>}
+                          <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full">{o.deviceType}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* ODR list */}
+              {ssoData.odr.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-orange-700 mb-2 uppercase tracking-wide">📦 ODR Outlets ({ssoData.odr.length})</p>
+                  <div className="space-y-2">
+                    {ssoData.odr.map((o: any) => (
+                      <div key={o.id} className="bg-white border border-orange-100 rounded-xl px-3 py-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">{o.outletName}</p>
+                          <p className="text-xs text-gray-400">{o.town} · TDR: {o.tdrName}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {o.latitude && <span className="text-xs text-green-600">📍</span>}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${o.deviceType === 'Zamtel' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{o.deviceType}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {ssoData.sso.length === 0 && ssoData.odr.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  <Store size={36} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm font-semibold">No SSO or ODR outlets yet</p>
+                  <p className="text-xs mt-1">Use the buttons above to register outlets</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

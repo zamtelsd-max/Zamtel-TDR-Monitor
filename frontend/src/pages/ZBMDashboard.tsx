@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download, Trophy, Users, RefreshCw, UserPlus, X, Plus, Smartphone } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Download, Trophy, Users, RefreshCw, UserPlus, X, Plus, Smartphone, Store } from 'lucide-react';
 import { AddDeviceModal } from '../components/AddDeviceModal';
 import { useNavigate, Link } from 'react-router-dom';
-import { zbmApi, flagsApi } from '../services/api';
+import { zbmApi, flagsApi, ssoOdrApi } from '../services/api';
 import type { ZBMDashboard, TDRStat, FloatIssue, Prospect, TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button } from '../components/UI';
@@ -13,6 +13,35 @@ import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
 import { getBand, calcWeightedScore, floatResolutionPct, WEIGHT_PCT, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
 import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
+
+// ── Ring (Donut) Chart ────────────────────────────────────────────────────────
+const RingChart: React.FC<{
+  pct: number; size?: number; stroke?: number;
+  color?: string; bg?: string; label?: string; sublabel?: string;
+}> = ({ pct, size = 88, stroke = 10, color = '#00843D', bg = '#e5e7eb', label, sublabel }) => {
+  const r   = (size - stroke) / 2;
+  const c   = 2 * Math.PI * r;
+  const off = c - (Math.min(pct, 100) / 100) * c;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={bg}      strokeWidth={stroke}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}   strokeWidth={stroke}
+          strokeDasharray={c} strokeDashoffset={off}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size/2} ${size/2})`}
+          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+        />
+        <text x={size/2} y={size/2 - (sublabel ? 5 : 0)} textAnchor="middle" dominantBaseline="central"
+          fontSize={size < 70 ? 13 : 15} fontWeight="800" fill={color}>{pct}%</text>
+        {sublabel && (
+          <text x={size/2} y={size/2 + 11} textAnchor="middle" fontSize={9} fill="#9ca3af">{sublabel}</text>
+        )}
+      </svg>
+      {label && <p className="text-[10px] font-semibold text-gray-500 text-center leading-tight">{label}</p>}
+    </div>
+  );
+};
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -61,6 +90,10 @@ export const ZBMDashboardPage: React.FC = () => {
   const [tdrFlags,     setTdrFlags]     = useState<TDRFlag[]>([]);
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [deviceRefresh, setDeviceRefresh] = useState(0);
+  const [ssoSummary, setSsoSummary] = useState<{ totalSso:number; totalOdr:number; mtdSso:number; mtdOdr:number; targetSso:number; targetOdr:number } | null>(null);
+  const [ssoTarget, setSsoTarget]   = useState({ targetSso: '', targetOdr: '' });
+  const [settingTarget, setSettingTarget] = useState(false);
+  const [zbmSortKey, setZbmSortKey] = useState<'score' | 'agents' | 'floatIssues'>('score');
 
   const loadAseTdrs = async () => {
     setAseTdrsLoading(true);
@@ -128,6 +161,7 @@ export const ZBMDashboardPage: React.FC = () => {
       setProspects(prospectsRes.data);
       if (mapRes.data?.data) setMapData(mapRes.data.data);
       localStorage.setItem('zamtel_zbm_dashboard', JSON.stringify(dashRes.data));
+      ssoOdrApi.summary().then(r => setSsoSummary(r.data.data)).catch(() => {});
     } catch {
       const cached = localStorage.getItem('zamtel_zbm_dashboard');
       if (cached) { try { setData(JSON.parse(cached) as ZBMDashboard); } catch { localStorage.removeItem('zamtel_zbm_dashboard'); } }
@@ -445,7 +479,36 @@ export const ZBMDashboardPage: React.FC = () => {
         );
       })()}
 
-      {/* Zone KPIs */}
+      {/* Zone KPI Ring Charts */}
+      {!loading && data && (() => {
+        const aTgt = data.zone.targets.agents    || 1;
+        const mTgt = data.zone.targets.merchants || 1;
+        const vTgt = data.zone.targets.visits    || 1;
+        const aPct = Math.min(Math.round(data.zone.totals.agents    / aTgt * 100), 100);
+        const mPct = Math.min(Math.round(data.zone.totals.merchants / mTgt * 100), 100);
+        const vPct = Math.min(Math.round(data.zone.totals.visits    / vTgt * 100), 100);
+        const fPct = floatResolutionPct(0, data.zone.totals.floatIssuesPending);
+        const rPct = Math.min(Math.round(((data.zone.totals.reactivations ?? 0) / Math.max(6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), 1)) * 100), 100);
+        const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, floatPct: fPct, reactivationPct: rPct, visitPct: vPct });
+        return (
+          <div className="grid grid-cols-2 gap-4 px-4 mb-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
+              <RingChart pct={sc} size={88} stroke={10} color="#00843D" label="Overall Score" />
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
+              <RingChart pct={aPct} size={88} stroke={10} color="#E4007C" label="Agents MTD" />
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
+              <RingChart pct={mPct} size={88} stroke={10} color="#2563EB" label="Merchants MTD" />
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
+              <RingChart pct={vPct} size={88} stroke={10} color="#F97316" label="Visits MTD" />
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Zone KPIs compact */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         {loading && !data ? (
           [0, 1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-2xl" />)
@@ -498,6 +561,61 @@ export const ZBMDashboardPage: React.FC = () => {
         )}
       </div>
 
+      {/* SSO/ODR KPI cards */}
+      {ssoSummary && (
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {[
+            { label: '📡 SSO Outlets', val: ssoSummary.mtdSso, total: ssoSummary.totalSso, target: ssoSummary.targetSso, color: '#8B5CF6', bg: '#F5F3FF' },
+            { label: '📦 ODR Outlets', val: ssoSummary.mtdOdr, total: ssoSummary.totalOdr, target: ssoSummary.targetOdr, color: '#F97316', bg: '#FFF7ED' },
+          ].map(c => (
+            <div key={c.label} className="rounded-2xl p-3 border border-gray-100" style={{ background: c.bg }}>
+              <p className="text-xs font-semibold text-gray-500 mb-1">{c.label}</p>
+              <p className="text-2xl font-black" style={{ color: c.color }}>{c.val} <span className="text-sm text-gray-400">MTD</span></p>
+              <p className="text-[10px] text-gray-400">Total: {c.total}{c.target > 0 ? ` · Target: ${c.target}` : ' · No target set'}</p>
+              {c.target > 0 && (
+                <div className="mt-1.5 h-1.5 bg-white rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round(c.val/c.target*100))}%`, background: c.color }} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Target setter for ZBM */}
+      <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+        <p className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wide">🎯 Set SSO/ODR Targets</p>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-xs text-gray-500 font-semibold block mb-1">SSO Target</label>
+            <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              value={ssoTarget.targetSso} onChange={e => setSsoTarget(p => ({ ...p, targetSso: e.target.value }))}
+              placeholder={String(ssoSummary?.targetSso || 10)} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 font-semibold block mb-1">ODR Target</label>
+            <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              value={ssoTarget.targetOdr} onChange={e => setSsoTarget(p => ({ ...p, targetOdr: e.target.value }))}
+              placeholder={String(ssoSummary?.targetOdr || 10)} />
+          </div>
+        </div>
+        <button disabled={settingTarget || !ssoTarget.targetSso || !ssoTarget.targetOdr}
+          onClick={async () => {
+            setSettingTarget(true);
+            try {
+              await ssoOdrApi.setTargets({ targetSso: Number(ssoTarget.targetSso), targetOdr: Number(ssoTarget.targetOdr) });
+              toast.success('Targets updated!');
+              setSsoTarget({ targetSso: '', targetOdr: '' });
+              ssoOdrApi.summary().then(r => setSsoSummary(r.data.data)).catch(() => {});
+            } catch { toast.error('Failed to set targets'); }
+            finally { setSettingTarget(false); }
+          }}
+          className="w-full text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-40 transition-all"
+          style={{ background: '#00843D' }}>
+          {settingTarget ? 'Saving...' : 'Set Monthly Targets'}
+        </button>
+      </div>
+
       {/* 🚩 STALE AGENTS — ZBM view */}
       {staleAgents.length > 0 && (
         <Card className="mb-4 border-l-4 border-red-500 bg-red-50">
@@ -537,37 +655,64 @@ export const ZBMDashboardPage: React.FC = () => {
         </Card>
       )}
 
-      {/* TDR Performance Cards — visual performance vs target */}
+      {/* TDR Performance Cards — compact ring+bar style */}
       {sortedTDRs && sortedTDRs.length > 0 && (
         <div className="mb-4">
-          <h3 className="font-bold text-sm text-gray-800 mb-3 flex items-center gap-2">
-            📊 TDR Performance Against Target
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {sortedTDRs.map((row: TDRStat) => {
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="font-bold text-sm text-gray-800 flex-1">📊 TDR Performance ({sortedTDRs.length})</h3>
+            {/* Sort buttons */}
+            <div className="flex gap-1">
+              {([['score','Score'],['agents','Agents'],['floatIssues','Float']] as const).map(([k,l]) => (
+                <button key={k} onClick={() => setZbmSortKey(k)}
+                  className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${zbmSortKey === k ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
+                  style={zbmSortKey === k ? { background: '#00843D' } : {}}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            {[...sortedTDRs].sort((a, b) => {
+              if (zbmSortKey === 'score') return tdrScore(b) - tdrScore(a);
+              if (zbmSortKey === 'agents') return b.agents - a.agents;
+              return b.floatIssues - a.floatIssues;
+            }).map((row: TDRStat) => {
               const sc    = tdrScore(row);
-              const aTgt  = prorateMtdTarget(96);
-              const mTgt  = prorateMtdTarget(96);
-              const vTgt  = visitMtdTarget();
-              const rTgt  = 6 * workingDaysElapsed();
+              const aTgt  = Math.max(prorateMtdTarget(96), 1);
+              const mTgt  = Math.max(prorateMtdTarget(96), 1);
+              const vTgt  = Math.max(visitMtdTarget(), 1);
+              const agentPct    = Math.min(Math.round(row.agents    / aTgt * 100), 100);
+              const merchantPct = Math.min(Math.round(row.merchants / mTgt * 100), 100);
+              const visitPct    = Math.min(Math.round(row.visits    / vTgt * 100), 100);
               const flag  = data?.tdrFlags?.find((f: any) => f.tdrId === row.tdr.id);
+              const scColor = sc >= 70 ? '#00843D' : sc >= 40 ? '#f59e0b' : '#ef4444';
+              const scBg    = sc >= 70 ? '#f0fdf4' : sc >= 40 ? '#fffbeb' : '#fef2f2';
               return (
-                <TDRPerfCard
-                  key={row.tdr.id}
-                  name={row.tdr.name}
-                  zone={row.tdr.zone}
-                  agents={row.agents}
-                  merchants={row.merchants}
-                  visits={row.visits}
-                  floatIssues={row.floatIssues}
-                  reactivations={row.reactivations ?? 0}
-                  reactivationTarget={rTgt}
-                  score={sc}
-                  agentTarget={aTgt}
-                  merchantTarget={mTgt}
-                  visitTarget={vTgt}
-                  flagSeverity={flag?.severity ?? null}
-                />
+                <div key={row.tdr.id} className="relative rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm">
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl" style={{ background: scColor }} />
+                  <div className="pl-4 pr-3 py-3 flex items-center gap-3">
+                    <RingChart pct={sc} size={52} stroke={6} color={scColor} label="" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">
+                        {row.tdr.name}
+                        {flag && <AlertTriangle className={`w-3 h-3 ${flag.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />}
+                      </p>
+                      <p className="text-xs text-gray-400">{row.tdr.zone}</p>
+                      <div className="mt-1.5 space-y-1">
+                        {([['Agents', agentPct, '#00843D'], ['Merch', merchantPct, '#E4007C'], ['Visits', visitPct, '#2563EB']] as const).map(([l,p,c]) => (
+                          <div key={l} className="flex items-center gap-1.5">
+                            <span className="text-[9px] text-gray-400 w-8 shrink-0">{l}</span>
+                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full">
+                              <div className="h-full rounded-full" style={{ width: `${p}%`, background: c }} />
+                            </div>
+                            <span className="text-[9px] font-bold text-gray-500 w-6 text-right">{p}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <span className="text-xs font-black px-2 py-1 rounded-xl" style={{ background: scBg, color: scColor }}>{sc}%</span>
+                  </div>
+                </div>
               );
             })}
           </div>

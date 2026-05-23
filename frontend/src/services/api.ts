@@ -381,3 +381,18 @@ export const dmApi = {
   getAses: (zone?: string) =>
     client.get('/dm/ases', { params: zone ? { zone } : {} }),
 };
+
+// ─── SSO/ODR ─────────────────────────────────────────────────────────────────
+export const ssoOdrApi = {
+  summary:    () => client.get('/sso-odr/summary'),
+  listSso:    () => client.get('/sso-odr/sso'),
+  listOdr:    () => client.get('/sso-odr/odr'),
+  createSso:  (data: any) => client.post('/sso-odr/sso', data),
+  createOdr:  (data: any) => client.post('/sso-odr/odr', data),
+  deleteSso:  (id: string) => client.delete(`/sso-odr/sso/${id}`),
+  deleteOdr:  (id: string) => client.delete(`/sso-odr/odr/${id}`),
+  getTargets: () => client.get('/sso-odr/targets'),
+  setTargets: (data: { targetSso: number; targetOdr: number; zone?: string; period?: string }) =>
+    client.post('/sso-odr/targets', data),
+  getMap:     () => client.get('/sso-odr/map'),
+};
