@@ -389,40 +389,36 @@ export const ZBMDashboardPage: React.FC = () => {
       {/* DASHBOARD Tab */}
       {mainTab === 'dashboard' && (<>
 
-      {/* MTD progress */}
-      {(() => { const el = workingDaysElapsed(); const tot = workingDaysThisMonth(); const pct = Math.round(el/tot*100); return (
-        <div className="mb-3">
-          <div className="flex items-center justify-between mb-1 px-0.5">
-            <span className="text-xs text-gray-500">📅 MTD — Working day <strong>{el}</strong> of <strong>{tot}</strong></span>
-            <span className="text-xs font-semibold text-gray-600">{pct}% of month</span>
-          </div>
-          <div className="h-1.5 bg-gray-100 rounded-full">
-            <div className="h-1.5 rounded-full bg-gray-400 transition-all" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-      ); })()}
-
-      {/* Action buttons */}
-      <div className="flex gap-2 mb-3 flex-wrap">
-        {/* Zone Leaderboard — prominent card */}
-        <Link to="/zbm/leaderboard" className="flex-1">
-          <div className="zamtel-gradient rounded-2xl px-4 py-3 flex items-center justify-between shadow-md cursor-pointer hover:opacity-90 transition-opacity">
-            <div>
-              <p className="text-white font-bold text-sm">🏆 Zone Leaderboard</p>
-              <p className="text-white/70 text-xs">TDR performance ranking</p>
+      {/* ── HEADER ROW: MTD bar + quick actions ── */}
+      {(() => {
+        const el = workingDaysElapsed(); const tot = workingDaysThisMonth();
+        const pct = Math.round(el/tot*100);
+        return (
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+                <span>Day {el} of {tot}</span><span>{pct}% of month</span>
+              </div>
+              <div className="h-1 bg-gray-100 rounded-full">
+                <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${pct}%` }} />
+              </div>
             </div>
-            <Trophy className="w-7 h-7 text-white opacity-80" />
+            <Link to="/zbm/leaderboard">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm" style={{ background: '#00843D' }}>
+                <Trophy size={12} /> Leaderboard
+              </div>
+            </Link>
+            <button onClick={handleExport} disabled={exporting} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 border border-gray-200 bg-white">
+              <Download size={12} /> {exporting ? '...' : 'Export'}
+            </button>
           </div>
-        </Link>
-        <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}
-          className="flex items-center gap-1.5 self-stretch">
-          <Download className="w-3.5 h-3.5" />
-          Export
-        </Button>
-      </div>
+        );
+      })()}
 
-      {/* Zone Performance vs Target — weighted score banner */}
-      {!loading && data && (() => {
+      {/* ── ZONE SCORE + 5 KPI CHIPS ── */}
+      {loading && !data ? (
+        <div className="h-28 bg-gray-100 rounded-2xl animate-pulse mb-4" />
+      ) : data && (() => {
         const aTgt = data.zone.targets.agents    || 1;
         const mTgt = data.zone.targets.merchants || 1;
         const vTgt = data.zone.targets.visits    || 1;
@@ -433,229 +429,140 @@ export const ZBMDashboardPage: React.FC = () => {
         const rPct = Math.min(Math.round(((data.zone.totals.reactivations ?? 0) / Math.max(6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), 1)) * 100), 100);
         const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, floatPct: fPct, reactivationPct: rPct, visitPct: vPct });
         const band = getBand(sc);
-        const callout = sc < 40 ? '🔴 Critical — Immediate Action Required'
-                      : sc < 60 ? '🟠 Below Target — Intervention Needed'
-                      : sc < 80 ? '🟡 Needs Attention — Monitor Closely'
-                      :           '🟢 On Track';
         return (
-          <div className={`rounded-2xl border-2 p-4 mb-4 ${band.bg} border-current`} style={{ borderColor: band.ring }}>
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="font-bold text-gray-800">{data.zbm.zone} — Zone Performance</p>
-                <p className="text-xs text-gray-500">{data.tdrStats?.length ?? 0} TDRs · Targets prorated to working day {workingDaysElapsed()}/{workingDaysThisMonth()}</p>
-              </div>
-              <div className="text-right">
-                <span className={`text-3xl font-black ${band.color}`}>{sc}%</span>
-                <p className={`text-[10px] font-bold ${band.color}`}>{band.label}</p>
-              </div>
-            </div>
-            {/* Weighted score bar */}
-            <div className="mb-3">
-              <div className="h-3 bg-white/60 rounded-full overflow-hidden border border-white/80 shadow-inner">
-                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${sc}%`, background: band.ring }} />
-              </div>
-              <div className="flex justify-between mt-0.5 text-[9px] text-gray-500">
-                <span>0%</span><span className="text-red-400">40</span><span className="text-amber-400">60</span><span className="text-green-400">80</span><span>100%</span>
+          <div className="rounded-2xl p-4 mb-4 shadow-sm" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)', border: `2px solid ${band.ring}20` }}>
+            {/* Score row */}
+            <div className="flex items-center gap-4 mb-3">
+              <RingChart pct={sc} size={72} stroke={8} color={band.ring} label="" />
+              <div className="flex-1">
+                <p className="font-black text-gray-900 text-base leading-tight">{data.zbm.zone} Zone</p>
+                <p className={`text-xs font-bold mb-1 ${band.color}`}>{band.label}</p>
+                <p className="text-[10px] text-gray-400">{data.tdrStats?.length ?? 0} TDRs · Working day {workingDaysElapsed()}/{workingDaysThisMonth()}</p>
+                {data.zone.totals.floatIssuesPending > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full mt-1">
+                    ⚠️ {data.zone.totals.floatIssuesPending} float issue{data.zone.totals.floatIssuesPending > 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
             </div>
-            {/* KPI bars */}
-            <div className="space-y-2.5 mb-3">
-              <PerformanceBar icon="👤" label="Agent Recruitment (40% weight)"   count={data.zone.totals.agents}              target={aTgt} />
-              <PerformanceBar icon="🏪" label="Merchant Enrollment (20% weight)" count={data.zone.totals.merchants}           target={mTgt} />
-              <PerformanceBar icon="📍" label="Outlet Visits (10% weight)"       count={data.zone.totals.visits}              target={vTgt} />
-              <PerformanceBar icon="🔄" label="Reactivations (15% weight)"       count={data.zone.totals.reactivations ?? 0}  target={6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1)} />
+            {/* 5 KPI mini bars */}
+            <div className="space-y-1.5">
+              {[
+                ['👤 Agents',      aPct, data.zone.totals.agents,                   data.zone.targets.agents,    '#00843D'],
+                ['🏪 Merchants',   mPct, data.zone.totals.merchants,                data.zone.targets.merchants, '#E4007C'],
+                ['📍 Visits',      vPct, data.zone.totals.visits,                   data.zone.targets.visits,    '#2563EB'],
+                ['🔄 Reactivations', rPct, data.zone.totals.reactivations ?? 0,     6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), '#8B5CF6'],
+              ].map(([l, p, v, t, c]) => (
+                <div key={l as string} className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 w-24 shrink-0">{l}</span>
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${p}%`, background: c as string }} />
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-600 w-14 text-right shrink-0">{v as number}/{t as number}</span>
+                </div>
+              ))}
             </div>
-            {/* Callout */}
-            <div className="rounded-xl bg-white/70 px-3 py-2">
-              <p className={`text-xs font-bold ${band.color}`}>{callout}</p>
-            </div>
-            {data.zone.totals.floatIssuesPending > 0 && (
-              <div className="mt-2 rounded-xl bg-red-100 px-3 py-1.5 flex items-center gap-2">
-                <span className="text-sm">⚠️</span>
-                <p className="text-xs font-semibold text-red-700">{data.zone.totals.floatIssuesPending} float issue{data.zone.totals.floatIssuesPending > 1 ? 's' : ''} pending resolution</p>
-              </div>
-            )}
           </div>
         );
       })()}
 
-      {/* Zone KPI Ring Charts */}
+      {/* ── 6 METRIC CHIPS ── */}
       {!loading && data && (() => {
-        const aTgt = data.zone.targets.agents    || 1;
+        const aTgt = data.zone.targets.agents || 1;
         const mTgt = data.zone.targets.merchants || 1;
-        const vTgt = data.zone.targets.visits    || 1;
-        const aPct = Math.min(Math.round(data.zone.totals.agents    / aTgt * 100), 100);
+        const vTgt = data.zone.targets.visits || 1;
+        const aPct = Math.min(Math.round(data.zone.totals.agents / aTgt * 100), 100);
         const mPct = Math.min(Math.round(data.zone.totals.merchants / mTgt * 100), 100);
-        const vPct = Math.min(Math.round(data.zone.totals.visits    / vTgt * 100), 100);
-        const fPct = floatResolutionPct(0, data.zone.totals.floatIssuesPending);
-        const rPct = Math.min(Math.round(((data.zone.totals.reactivations ?? 0) / Math.max(6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), 1)) * 100), 100);
-        const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, floatPct: fPct, reactivationPct: rPct, visitPct: vPct });
+        const vPct = Math.min(Math.round(data.zone.totals.visits / vTgt * 100), 100);
+        const chips = [
+          { label: 'Agents',    val: data.zone.totals.agents,    pct: aPct, color: '#00843D', bg: '#f0fdf4' },
+          { label: 'Merchants', val: data.zone.totals.merchants, pct: mPct, color: '#E4007C', bg: '#fdf2f8' },
+          { label: 'Visits',    val: data.zone.totals.visits,    pct: vPct, color: '#2563EB', bg: '#eff6ff' },
+          { label: 'Reactiv.',  val: data.zone.totals.reactivations ?? 0, pct: 0, color: '#8B5CF6', bg: '#f5f3ff' },
+          { label: 'SSO MTD',   val: ssoSummary?.mtdSso ?? 0,   pct: ssoSummary?.targetSso ? Math.min(100, Math.round((ssoSummary.mtdSso / ssoSummary.targetSso) * 100)) : 0, color: '#8B5CF6', bg: '#f5f3ff' },
+          { label: 'ODR MTD',   val: ssoSummary?.mtdOdr ?? 0,   pct: ssoSummary?.targetOdr ? Math.min(100, Math.round((ssoSummary.mtdOdr / ssoSummary.targetOdr) * 100)) : 0, color: '#F97316', bg: '#fff7ed' },
+        ];
         return (
-          <div className="grid grid-cols-2 gap-4 px-4 mb-4">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
-              <RingChart pct={sc} size={88} stroke={10} color="#00843D" label="Overall Score" />
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
-              <RingChart pct={aPct} size={88} stroke={10} color="#E4007C" label="Agents MTD" />
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
-              <RingChart pct={mPct} size={88} stroke={10} color="#2563EB" label="Merchants MTD" />
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
-              <RingChart pct={vPct} size={88} stroke={10} color="#F97316" label="Visits MTD" />
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Zone KPIs compact */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        {loading && !data ? (
-          [0, 1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-2xl" />)
-        ) : (
-          <>
-            <Card>
-              <p className="text-2xl font-bold text-zamtel-pink">{data?.zone.totals.agents}</p>
-              <p className="text-xs text-gray-500">Agents Recruited</p>
-              <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full zamtel-gradient rounded-full transition-all"
-                  style={{ width: `${progress(data?.zone.totals.agents || 0, data?.zone.targets.agents || 1)}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {progress(data?.zone.totals.agents || 0, data?.zone.targets.agents || 1)}% of {data?.zone.targets.agents}
-              </p>
-            </Card>
-            <Card>
-              <p className="text-2xl font-bold text-blue-600">{data?.zone.totals.merchants}</p>
-              <p className="text-xs text-gray-500">Merchants Recruited</p>
-              <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-600 rounded-full transition-all"
-                  style={{ width: `${progress(data?.zone.totals.merchants || 0, data?.zone.targets.merchants || 1)}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {progress(data?.zone.totals.merchants || 0, data?.zone.targets.merchants || 1)}% of {data?.zone.targets.merchants}
-              </p>
-            </Card>
-            <Card>
-              <p className="text-2xl font-bold text-green-700">{data?.zone.totals.visits}</p>
-              <p className="text-xs text-gray-500">Outlet Visits</p>
-              <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-green-600 rounded-full transition-all"
-                  style={{ width: `${progress(data?.zone.totals.visits || 0, data?.zone.targets.visits || 1)}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {progress(data?.zone.totals.visits || 0, data?.zone.targets.visits || 1)}% of {data?.zone.targets.visits}
-              </p>
-            </Card>
-            <Card>
-              <p className="text-2xl font-bold text-amber-600">{data?.zone.totals.floatIssuesPending}</p>
-              <p className="text-xs text-gray-500">Float Issues Pending</p>
-            </Card>
-          </>
-        )}
-      </div>
-
-      {/* SSO/ODR KPI cards */}
-      {ssoSummary && (
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {[
-            { label: '📡 SSO Outlets', val: ssoSummary.mtdSso, total: ssoSummary.totalSso, target: ssoSummary.targetSso, color: '#8B5CF6', bg: '#F5F3FF' },
-            { label: '📦 ODR Outlets', val: ssoSummary.mtdOdr, total: ssoSummary.totalOdr, target: ssoSummary.targetOdr, color: '#F97316', bg: '#FFF7ED' },
-          ].map(c => (
-            <div key={c.label} className="rounded-2xl p-3 border border-gray-100" style={{ background: c.bg }}>
-              <p className="text-xs font-semibold text-gray-500 mb-1">{c.label}</p>
-              <p className="text-2xl font-black" style={{ color: c.color }}>{c.val} <span className="text-sm text-gray-400">MTD</span></p>
-              <p className="text-[10px] text-gray-400">Total: {c.total}{c.target > 0 ? ` · Target: ${c.target}` : ' · No target set'}</p>
-              {c.target > 0 && (
-                <div className="mt-1.5 h-1.5 bg-white rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round(c.val/c.target*100))}%`, background: c.color }} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Target setter for ZBM */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
-        <p className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wide">🎯 Set SSO/ODR Targets</p>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="text-xs text-gray-500 font-semibold block mb-1">SSO Target</label>
-            <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-              value={ssoTarget.targetSso} onChange={e => setSsoTarget(p => ({ ...p, targetSso: e.target.value }))}
-              placeholder={String(ssoSummary?.targetSso || 10)} />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 font-semibold block mb-1">ODR Target</label>
-            <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-              value={ssoTarget.targetOdr} onChange={e => setSsoTarget(p => ({ ...p, targetOdr: e.target.value }))}
-              placeholder={String(ssoSummary?.targetOdr || 10)} />
-          </div>
-        </div>
-        <button disabled={settingTarget || !ssoTarget.targetSso || !ssoTarget.targetOdr}
-          onClick={async () => {
-            setSettingTarget(true);
-            try {
-              await ssoOdrApi.setTargets({ targetSso: Number(ssoTarget.targetSso), targetOdr: Number(ssoTarget.targetOdr) });
-              toast.success('Targets updated!');
-              setSsoTarget({ targetSso: '', targetOdr: '' });
-              ssoOdrApi.summary().then(r => setSsoSummary(r.data.data)).catch(() => {});
-            } catch { toast.error('Failed to set targets'); }
-            finally { setSettingTarget(false); }
-          }}
-          className="w-full text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-40 transition-all"
-          style={{ background: '#00843D' }}>
-          {settingTarget ? 'Saving...' : 'Set Monthly Targets'}
-        </button>
-      </div>
-
-      {/* 🚩 STALE AGENTS — ZBM view */}
-      {staleAgents.length > 0 && (
-        <Card className="mb-4 border-l-4 border-red-500 bg-red-50">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">🚩</span>
-            <h3 className="font-bold text-red-700 text-sm">Unvisited Outlets (4+ days)</h3>
-            <span className="ml-auto bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              {staleAgents.length}
-            </span>
-          </div>
-          <p className="text-xs text-red-500 mb-3">Agents / Merchants not visited in 4+ days — TDR action required</p>
-          <div className="space-y-2">
-            {(showAllStale ? staleAgents : staleAgents.slice(0, 5)).map((a: any) => (
-              <div key={a.id} className="flex items-center gap-3 bg-white border border-red-100 rounded-xl px-3 py-2">
-                <div className="w-7 h-7 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 text-sm">🚩</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{a.agentName}</p>
-                  <p className="text-xs text-gray-500">{a.type === 'merchant' ? '🏪 Merchant' : '👤 Agent'} · {a.town} · {a.tdrName || '—'}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xs font-bold text-red-600">
-                    {a.daysAgo === null ? 'Never visited' : `${a.daysAgo}d ago`}
-                  </p>
-                  <p className="text-[10px] text-gray-400">
-                    {a.lastVisitedAt ? new Date(a.lastVisitedAt).toLocaleDateString() : '—'}
-                  </p>
-                </div>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {chips.map(ch => (
+              <div key={ch.label} className="rounded-2xl px-3 py-2.5 border border-gray-100" style={{ background: ch.bg }}>
+                <p className="text-[10px] text-gray-500 font-semibold">{ch.label}</p>
+                <p className="text-xl font-black leading-tight" style={{ color: ch.color }}>{ch.val}</p>
+                {ch.pct > 0 && <div className="mt-1 h-1 bg-white rounded-full"><div className="h-full rounded-full" style={{ width: `${ch.pct}%`, background: ch.color }} /></div>}
               </div>
             ))}
           </div>
-          {staleAgents.length > 5 && (
+        );
+      })()}
+
+      {/* ── SET SSO/ODR TARGETS (collapsible-style, compact) ── */}
+      <details className="mb-4 bg-white border border-gray-100 rounded-2xl overflow-hidden">
+        <summary className="px-4 py-3 text-xs font-bold text-gray-600 cursor-pointer list-none flex items-center justify-between select-none">
+          <span>🎯 Set SSO/ODR Monthly Targets</span>
+          <ChevronDown size={14} className="text-gray-400" />
+        </summary>
+        <div className="px-4 pb-4 border-t border-gray-50 pt-3">
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="text-[10px] text-gray-500 font-semibold block mb-1">SSO Target</label>
+              <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                value={ssoTarget.targetSso} onChange={e => setSsoTarget(p => ({ ...p, targetSso: e.target.value }))}
+                placeholder={String(ssoSummary?.targetSso || 10)} />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 font-semibold block mb-1">ODR Target</label>
+              <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                value={ssoTarget.targetOdr} onChange={e => setSsoTarget(p => ({ ...p, targetOdr: e.target.value }))}
+                placeholder={String(ssoSummary?.targetOdr || 10)} />
+            </div>
+          </div>
+          <button disabled={settingTarget || !ssoTarget.targetSso || !ssoTarget.targetOdr}
+            onClick={async () => {
+              setSettingTarget(true);
+              try {
+                await ssoOdrApi.setTargets({ targetSso: Number(ssoTarget.targetSso), targetOdr: Number(ssoTarget.targetOdr) });
+                toast.success('Targets updated!');
+                setSsoTarget({ targetSso: '', targetOdr: '' });
+                ssoOdrApi.summary().then(r => setSsoSummary(r.data.data)).catch(() => {});
+              } catch { toast.error('Failed to set targets'); }
+              finally { setSettingTarget(false); }
+            }}
+            className="w-full text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-40 transition-all"
+            style={{ background: '#00843D' }}>
+            {settingTarget ? 'Saving...' : 'Save Targets'}
+          </button>
+        </div>
+      </details>
+
+      {/* ── STALE AGENTS (compact pill list) ── */}
+      {staleAgents.length > 0 && (
+        <div className="mb-4 bg-red-50 border border-red-100 rounded-2xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
+            <p className="text-xs font-bold text-red-700">Unvisited 4+ days ({staleAgents.length})</p>
+          </div>
+          <div className="space-y-1.5">
+            {(showAllStale ? staleAgents : staleAgents.slice(0, 4)).map((a: any) => (
+              <div key={a.id} className="flex items-center gap-2 bg-white border border-red-100 rounded-xl px-3 py-2">
+                <span className="text-xs">{a.type === 'merchant' ? '🏪' : '👤'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-800 truncate">{a.agentName}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{a.town} · {a.tdrName}</p>
+                </div>
+                <span className="text-[10px] font-bold text-red-600 shrink-0">{a.daysAgo === null ? 'Never' : `${a.daysAgo}d`}</span>
+              </div>
+            ))}
+          </div>
+          {staleAgents.length > 4 && (
             <button onClick={() => setShowAllStale(s => !s)}
-              className="mt-3 w-full text-xs text-red-600 font-semibold py-1.5 rounded-xl bg-red-100 hover:bg-red-200 transition">
-              {showAllStale ? `Show less` : `Show all ${staleAgents.length} unvisited outlets`}
+              className="mt-2 w-full text-[10px] text-red-600 font-bold py-1.5 rounded-xl bg-red-100 hover:bg-red-200 transition">
+              {showAllStale ? 'Show less' : `+ ${staleAgents.length - 4} more`}
             </button>
           )}
-        </Card>
+        </div>
       )}
 
-      {/* TDR Performance Cards — compact ring+bar style */}
+      {/* ── TDR PERFORMANCE (ring + mini bars, compact) ── */}
       {sortedTDRs && sortedTDRs.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-3">
@@ -719,191 +626,68 @@ export const ZBMDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* TDR Performance Table */}
-      <Card className="mb-4 overflow-x-auto">
-        <h3 className="font-semibold text-zamtel-dark text-sm mb-3">TDR Performance Summary</h3>
-        {loading && !data ? (
+      {/* ── FLOAT ALERTS (if any, compact) ── */}
+      {pendingIssues.length > 0 && (
+        <div className="mb-4 bg-amber-50 border border-amber-100 rounded-2xl p-3">
+          <p className="text-xs font-bold text-amber-700 mb-2 flex items-center gap-1.5">
+            <AlertTriangle size={12} /> Float Issues ({pendingIssues.length})
+          </p>
           <div className="space-y-2">
-            {[0, 1, 2].map(i => <Skeleton key={i} className="h-10" />)}
-          </div>
-        ) : (
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-gray-500 border-b">
-                <th className="text-left py-2 pr-3 font-medium">TDR</th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('agents')}>
-                  Agents <SortIcon col="agents" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('merchants')}>
-                  Mrch <SortIcon col="merchants" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('visits')}>
-                  Visits <SortIcon col="visits" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('floatIssues')}>
-                  Float <SortIcon col="floatIssues" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('pct')}>
-                  Raw% <SortIcon col="pct" />
-                </th>
-                <th className="text-right py-2 pl-2 font-medium cursor-pointer" onClick={() => handleSort('score')}>
-                  Score <SortIcon col="score" />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTDRs.map((row: TDRStat) => {
-                const sc = tdrScore(row);
-                const b  = getBand(sc);
-                return (
-                <tr key={row.tdr.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="py-2.5 pr-3 font-medium text-gray-800 truncate max-w-[90px]">{row.tdr.name}</td>
-                  <td className="text-right py-2.5 px-2">
-                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.agents/prorateMtdTarget(96)*100),100)).color)}>{row.agents}</span>
-                  </td>
-                  <td className="text-right py-2.5 px-2">
-                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.merchants/prorateMtdTarget(96)*100),100)).color)}>{row.merchants}</span>
-                  </td>
-                  <td className="text-right py-2.5 px-2">
-                    <span className={clsx('text-xs', getBand(Math.min(Math.round(row.visits/visitMtdTarget()*100),100)).color)}>{row.visits}</span>
-                  </td>
-                  <td className="text-right py-2.5 px-2">
-                    {row.floatIssues > 0
-                      ? <span className="text-red-600 font-semibold text-xs">{row.floatIssues}</span>
-                      : <span className="text-gray-400 text-xs">0</span>}
-                  </td>
-                  <td className="text-right py-2.5 px-2">
-                    <span className={clsx('px-1.5 py-0.5 rounded-full font-semibold text-xs', pctColor(row.pct))}>
-                      {row.pct}%
-                    </span>
-                  </td>
-                  <td className="text-right py-2.5 pl-2">
-                    <span className={clsx('px-2 py-0.5 rounded-full font-bold text-xs', b.bg, b.color)}>
-                      {sc}%
-                    </span>
-                  </td>
-                </tr>
-                );
-              })}
-              {sortedTDRs.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-6 text-gray-400">No TDRs in this zone</td></tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </Card>
-
-      {/* Float Issues */}
-      <Card className="mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <AlertTriangle className="w-4 h-4 text-amber-500" />
-          <h3 className="font-semibold text-zamtel-dark text-sm">Pending Float Issues ({pendingIssues.length})</h3>
-        </div>
-        {pendingIssues.length === 0 ? (
-          <div className="text-center py-6 text-gray-400 flex flex-col items-center gap-2">
-            <CheckCircle className="w-8 h-8 text-green-400" />
-            <p className="text-sm">All issues resolved</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {pendingIssues.slice(0, 10).map(issue => (
-              <div key={issue.id} className="border border-gray-100 rounded-xl p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{issue.agentName}</p>
-                    <p className="text-xs text-gray-500">{issue.agentCode} · {issue.tdrName}</p>
-                    <p className="text-xs text-gray-600 mt-1">{ISSUE_TYPE_LABELS[issue.issueType]}: {issue.description}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Float: ZMW {issue.reportedFloat.toLocaleString()} · {format(new Date(issue.reportedAt), 'dd MMM HH:mm')}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
-                    <Badge color={issue.status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}>
-                      {issue.status}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      loading={resolving === issue.id}
-                      onClick={() => handleResolve(issue.id)}
-                    >
-                      Resolve
-                    </Button>
-                  </div>
+            {pendingIssues.slice(0, 5).map(issue => (
+              <div key={issue.id} className="bg-white border border-amber-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-gray-800 truncate">{issue.agentName}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{ISSUE_TYPE_LABELS[issue.issueType]} · {issue.tdrName} · {format(new Date(issue.reportedAt), 'dd MMM')}</p>
                 </div>
+                <button onClick={() => handleResolve(issue.id)} disabled={resolving === issue.id}
+                  className="text-[10px] font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
+                  {resolving === issue.id ? '...' : 'Resolve'}
+                </button>
               </div>
             ))}
+            {pendingIssues.length > 5 && (
+              <p className="text-[10px] text-amber-600 text-center font-semibold">+ {pendingIssues.length - 5} more in Flags tab</p>
+            )}
           </div>
-        )}
-      </Card>
+        </div>
+      )}
 
-      {/* Prospects awaiting closure approval */}
+      {/* ── PROSPECT APPROVALS (if any) ── */}
       {prospects.filter(p => p.closedByTdr && p.status !== 'converted').length > 0 && (
-        <Card className="mb-4 border-l-4 border-amber-400">
-          <h3 className="font-semibold text-amber-800 text-sm mb-3 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" /> Awaiting Closure Approval ({prospects.filter(p => p.closedByTdr && p.status !== 'converted').length})
-          </h3>
-          <div className="space-y-2">
+        <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-2xl p-3">
+          <p className="text-xs font-bold text-yellow-800 mb-2 flex items-center gap-1.5">
+            <CheckCircle size={12} /> Awaiting Closure Approval ({prospects.filter(p => p.closedByTdr && p.status !== 'converted').length})
+          </p>
+          <div className="space-y-1.5">
             {prospects.filter(p => p.closedByTdr && p.status !== 'converted').map(p => (
-              <div key={p.id} className="flex items-center gap-3 bg-amber-50 rounded-xl px-3 py-2">
+              <div key={p.id} className="flex items-center gap-2 bg-white border border-yellow-100 rounded-xl px-3 py-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{p.businessName}</p>
-                  <p className="text-xs text-gray-500">{p.tdrName} · {p.prospectType}</p>
+                  <p className="text-xs font-bold text-gray-800 truncate">{p.businessName}</p>
+                  <p className="text-[10px] text-gray-400">{p.tdrName}</p>
                 </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      await zbmApi.approveProspectClosure(p.id);
-                      toast.success(`Approved closure for ${p.businessName}`);
-                      setProspects(prev => prev.map(x => x.id === p.id ? { ...x, status: 'converted' } : x));
-                    } catch { toast.error('Approval failed'); }
-                  }}
-                  className="text-xs text-green-700 font-medium bg-green-100 px-3 py-1.5 rounded-lg whitespace-nowrap">
+                <button onClick={async () => { try { await zbmApi.approveProspectClosure(p.id); toast.success('Approved!'); setProspects(prev => prev.map(x => x.id === p.id ? { ...x, status: 'converted' } : x)); } catch { toast.error('Failed'); } }}
+                  className="text-[10px] font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
                   ✅ Approve
                 </button>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Prospects Breakdown */}
-      {data && data.prospectsBreakdown.length > 0 && (
-        <Card className="mb-4">
-          <h3 className="font-semibold text-zamtel-dark text-sm mb-3">Prospects by Status</h3>
-          <div className="flex flex-wrap gap-2">
-            {data.prospectsBreakdown.map(p => (
-              <div key={p.status} className="flex items-center gap-1.5 bg-gray-50 rounded-xl px-3 py-2">
-                <span className="text-lg font-bold text-gray-800">{p._count}</span>
-                <span className="text-xs text-gray-500 capitalize">{p.status}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-      {/* GPS Field Map */}
-      <Card className="mb-4">
-        <h3 className="font-semibold text-sm mb-3" style={{ color: '#00843D' }}>
-          📍 {data?.zbm.zone ? `${data.zbm.zone} Zone` : 'National'} Field Map — Agents, Merchants & Visits
-        </h3>
-        {loading && !mapData.agents.length ? (
-          <div className="h-64 flex items-center justify-center text-gray-400 text-sm">
-            Loading map data…
-          </div>
-        ) : mapData.agents.length > 0 || mapData.visits.length > 0 ? (
-          <GeoMap
-            key={`zbm-map-${mapData.agents.length}`}
-            agents={mapData.agents}
-            visits={mapData.visits}
-            height="460px"
-            showVisits={true}
-          />
+      {/* ── GPS FIELD MAP (compact, always visible) ── */}
+      <div className="mb-4 bg-white border border-gray-100 rounded-2xl overflow-hidden">
+        <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-50">
+          <p className="text-xs font-bold text-gray-700">📍 Field Map</p>
+          <p className="text-[10px] text-gray-400">{mapData.agents.length} agents · {mapData.visits.length} visits</p>
+        </div>
+        {mapData.agents.length > 0 || mapData.visits.length > 0 ? (
+          <GeoMap key={`zbm-map-${mapData.agents.length}`} agents={mapData.agents} visits={mapData.visits} height="340px" showVisits={true} />
         ) : (
-          <div className="h-32 flex items-center justify-center text-gray-400 text-sm">
-            No GPS data available yet
-          </div>
+          <div className="h-32 flex items-center justify-center text-gray-400 text-xs">No GPS data yet</div>
         )}
-      </Card>
+      </div>
+      <div className="pb-8" />
       </>)}
 
       {/* ASE PERFORMANCE Tab */}
