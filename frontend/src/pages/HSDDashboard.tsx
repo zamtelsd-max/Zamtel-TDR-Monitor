@@ -461,78 +461,83 @@ export const HSDDashboardPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Zone Performance Cards — visual performance vs target */}
+      {/* ── Zone Performance — compact cards with rings ── */}
       {zones.length > 0 && (
         <div className="mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-zamtel-green" />
-            <h3 className="font-bold text-sm text-gray-800">Performance Against Target — All Zones</h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-zamtel-green" />
+              <h3 className="font-bold text-sm text-gray-800">Zone Performance</h3>
+            </div>
+            <div className="flex gap-1">
+              {(['score','agents','floatIssues'] as SortKey[]).map(k => (
+                <button key={k} onClick={() => handleSort(k)}
+                  className={`text-[10px] px-2 py-1 rounded-lg font-bold border transition-all ${
+                    sortKey === k ? 'bg-zamtel-green text-white border-zamtel-green' : 'bg-white text-gray-500 border-gray-200'
+                  }`}>
+                  {k === 'score' ? 'Score' : k === 'agents' ? 'Agents' : 'Float'}
+                  {sortKey === k && (sortDir === 'asc' ? ' ↑' : ' ↓')}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {sortedZones.map((z: ZoneStat) => {
-              const sc       = zoneScore(z);
-              const band     = getBand(sc);
-              const aTgt     = z.targets?.agents    ?? prorateMtdTarget(96);
-              const mTgt     = z.targets?.merchants ?? prorateMtdTarget(96);
-              const vTgt     = z.targets?.visits    ?? visitMtdTarget();
-              const aPct     = Math.min(Math.round(z.agents    / Math.max(aTgt, 1) * 100), 100);
-              const mPct     = Math.min(Math.round(z.merchants / Math.max(mTgt, 1) * 100), 100);
-              const vPct     = Math.min(Math.round(z.visits    / Math.max(vTgt, 1) * 100), 100);
-              const callout  = sc < 40   ? { bg: 'bg-red-50    border-red-300',    label: '🔴 Critical — Immediate Action Required',  text: 'text-red-700' }
-                             : sc < 60   ? { bg: 'bg-orange-50 border-orange-300', label: '🟠 Below Target — Intervention Needed',     text: 'text-orange-700' }
-                             : sc < 80   ? { bg: 'bg-amber-50  border-amber-300',  label: '🟡 Needs Attention — Monitor Closely',      text: 'text-amber-700' }
-                             :             { bg: 'bg-green-50  border-green-300',  label: '🟢 On Track',                               text: 'text-green-700' };
+          <div className="space-y-2">
+            {sortedZones.map((z: ZoneStat, idx: number) => {
+              const sc   = zoneScore(z);
+              const band = getBand(sc);
+              const aTgt = z.targets?.agents    ?? prorateMtdTarget(96);
+              const mTgt = z.targets?.merchants ?? prorateMtdTarget(96);
+              const vTgt = z.targets?.visits    ?? visitMtdTarget();
+              const aPct = Math.min(Math.round(z.agents    / Math.max(aTgt,1) * 100), 100);
+              const mPct = Math.min(Math.round(z.merchants / Math.max(mTgt,1) * 100), 100);
+              const vPct = Math.min(Math.round(z.visits    / Math.max(vTgt,1) * 100), 100);
               return (
-                <div key={z.zone} className={`rounded-2xl border-2 p-4 ${callout.bg}`}>
-                  {/* Zone header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-bold text-gray-800">{z.zone}</p>
-                      <p className="text-xs text-gray-500">{z.zbm} · {z.tdrs} TDRs</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
-                        Targets: {aTgt} agents · {mTgt} merchants · {vTgt} visits
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-2xl font-black ${band.color}`}>{sc}%</span>
-                      <p className={`text-[10px] font-bold ${band.color}`}>{band.label}</p>
+                <div key={z.zone} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  {/* Top strip — coloured by band */}
+                  <div className="h-1 w-full" style={{ background: band.ring }}/>
+                  <div className="p-4">
+                    <div className="flex items-center gap-3">
+                      {/* Ring */}
+                      <RingChart pct={sc} size={72} stroke={8} color={band.ring} sublabel={band.label.split(' ')[0]}/>
+                      {/* Zone info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-1">
+                          <div>
+                            <p className="font-bold text-gray-900 text-sm">{z.zone}</p>
+                            <p className="text-[10px] text-gray-500 truncate">{z.zbm} · {z.tdrs} TDRs</p>
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0">
+                            {z.floatIssues > 0 && (
+                              <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                <AlertTriangle size={9}/>{z.floatIssues}
+                              </span>
+                            )}
+                            <button onClick={() => setSelectedZone(z.zone)}
+                              className="bg-green-50 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 hover:bg-green-100 transition-colors">
+                              <Map size={9}/> Open
+                            </button>
+                          </div>
+                        </div>
+                        {/* Inline mini-bars */}
+                        <div className="mt-2 space-y-1">
+                          {([
+                            ['👤', z.agents,    aTgt, aPct, '#00843D'],
+                            ['🏪', z.merchants, mTgt, mPct, '#E4007C'],
+                            ['📍', z.visits,    vTgt, vPct, '#7c3aed'],
+                          ] as [string,number,number,number,string][]).map(([icon,val,tgt,pct,col]) => (
+                            <div key={icon} className="flex items-center gap-1.5">
+                              <span className="text-[10px] w-4">{icon}</span>
+                              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,background:col}}/>
+                              </div>
+                              <span className="text-[10px] font-semibold text-gray-600 w-16 text-right">{val}/{tgt}</span>
+                              <span className="text-[10px] font-bold w-8 text-right" style={{color:col}}>{pct}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  {/* Weighted score bar */}
-                  <div className="mb-3">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Weighted Score</span>
-                    </div>
-                    <div className="h-3 bg-white/60 rounded-full overflow-hidden border border-white/80 shadow-inner">
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${sc}%`, background: band.ring }} />
-                    </div>
-                    <div className="flex justify-between mt-0.5 text-[9px] text-gray-400">
-                      <span>0%</span><span className="text-red-400">40</span><span className="text-amber-400">60</span><span className="text-green-400">80</span><span>100%</span>
-                    </div>
-                  </div>
-                  {/* KPI bars */}
-                  <div className="space-y-2 mb-3">
-                    <PerformanceBar label="Agents Recruited"   icon="👤" count={z.agents}    target={aTgt} />
-                    <PerformanceBar label="Merchants Enrolled" icon="🏪" count={z.merchants} target={mTgt} />
-                    <PerformanceBar label="Outlet Visits"      icon="📍" count={z.visits}    target={vTgt} />
-                  </div>
-                  {/* Callout banner */}
-                  <div className={`rounded-xl px-3 py-2 flex items-center gap-2 bg-white/70`}>
-                    <p className={`text-xs font-bold ${callout.text}`}>{callout.label}</p>
-                  </div>
-                  {/* Float issues warning */}
-                  {z.floatIssues > 0 && (
-                    <div className="mt-2 rounded-xl px-3 py-1.5 bg-red-100 flex items-center gap-2">
-                      <AlertTriangle className="w-3 h-3 text-red-600 flex-shrink-0" />
-                      <p className="text-xs font-semibold text-red-700">{z.floatIssues} open float issue{z.floatIssues > 1 ? 's' : ''}</p>
-                    </div>
-                  )}
-                  {/* View drill-down */}
-                  <button onClick={() => setSelectedZone(z.zone)}
-                    className="mt-3 w-full text-xs font-bold text-zamtel-green bg-white/80 rounded-xl py-2 hover:bg-white transition-colors flex items-center justify-center gap-1.5">
-                    <Map className="w-3 h-3" /> View Full Zone Dashboard
-                  </button>
                 </div>
               );
             })}
@@ -540,179 +545,160 @@ export const HSDDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Zone Performance Table */}
-      <Card className="mb-4 overflow-x-auto">
-        <h3 className="font-semibold text-zamtel-dark text-sm mb-3">Zone Performance</h3>
-        {loading && zones.length === 0 ? (
-          <div className="space-y-2">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-10" />)}</div>
-        ) : (
-          <table className="w-full text-xs min-w-[560px]">
-            <thead>
-              <tr className="text-gray-500 border-b">
-                <th className="text-left py-2 pr-3 font-medium">Zone</th>
-                <th className="text-left py-2 pr-3 font-medium">ZBM</th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('tdrs')}>
-                  TDRs <SortIcon col="tdrs" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('agents')}>
-                  Agents <SortIcon col="agents" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('merchants')}>
-                  Mrch <SortIcon col="merchants" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('visits')}>
-                  Visits <SortIcon col="visits" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('floatIssues')}>
-                  Float <SortIcon col="floatIssues" />
-                </th>
-                <th className="text-right py-2 px-2 font-medium cursor-pointer" onClick={() => handleSort('pct')}>
-                  Raw% <SortIcon col="pct" />
-                </th>
-                <th className="text-right py-2 pl-2 font-medium cursor-pointer" onClick={() => handleSort('score')}>
-                  Score <SortIcon col="score" />
-                </th>
-                <th className="py-2 pl-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedZones.map((z: ZoneStat) => {
-                const sc = zoneScore(z);
-                const b  = getBand(sc);
-                return (
-                <tr key={z.zone} className="border-b border-gray-50 hover:bg-zamtel-green/5 transition-colors">
-                  <td className="py-2.5 pr-3 font-semibold text-gray-800">{z.zone}</td>
-                  <td className="py-2.5 pr-3 text-gray-600 truncate max-w-[70px]">{z.zbm}</td>
-                  <td className="text-right py-2.5 px-2 text-gray-700 text-xs">{z.tdrs}</td>
-                  <td className="text-right py-2.5 px-2 text-xs">
-                    <span className={getBand(Math.min(Math.round(z.agents/prorateMtdTarget(96)*100),100)).color}>{z.agents}</span>
-                  </td>
-                  <td className="text-right py-2.5 px-2 text-xs">
-                    <span className={getBand(Math.min(Math.round(z.merchants/prorateMtdTarget(96)*100),100)).color}>{z.merchants}</span>
-                  </td>
-                  <td className="text-right py-2.5 px-2 text-xs">
-                    <span className={getBand(Math.min(Math.round(z.visits/visitMtdTarget()*100),100)).color}>{z.visits}</span>
-                  </td>
-                  <td className="text-right py-2.5 px-2 text-xs">
-                    {z.floatIssues > 0
-                      ? <span className="text-red-600 font-semibold">{z.floatIssues}</span>
-                      : <span className="text-gray-400">0</span>}
-                  </td>
-                  <td className="text-right py-2.5 px-2">
-                    <span className={clsx('px-1.5 py-0.5 rounded-full font-semibold text-xs', pctColor(z.pct))}>
-                      {z.pct}%
-                    </span>
-                  </td>
-                  <td className="text-right py-2.5 pl-2">
-                    <span className={clsx('px-2 py-0.5 rounded-full font-bold text-xs', b.bg, b.color)}>
-                      {sc}%
-                    </span>
-                  </td>
-                  <td className="py-2.5 pl-2">
-                    <button
-                      onClick={() => setSelectedZone(z.zone)}
-                      className="text-xs text-zamtel-green font-semibold hover:underline whitespace-nowrap flex items-center gap-0.5"
-                      title={`Open full ZBM dashboard for ${z.zone}`}
-                    >
-                      <Map className="w-3 h-3" /> View
-                    </button>
-                  </td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </Card>
-
       {/* 🏆 Leaderboard Banner */}
       <button
         onClick={() => navigate('/leaderboard')}
-        className="w-full mb-4 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-md shadow-yellow-100 active:scale-[0.98] transition-transform"
+        className="w-full mb-4 bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 rounded-2xl px-5 py-4 flex items-center justify-between shadow-lg shadow-yellow-100/60 active:scale-[0.98] transition-all hover:shadow-yellow-200"
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🏆</span>
+          <span className="text-3xl drop-shadow">🏆</span>
           <div className="text-left">
-            <p className="text-sm font-bold text-yellow-900">Sales Leaderboard</p>
-            <p className="text-xs text-yellow-800 opacity-80">Top 30 TDRs · Zone Rankings</p>
+            <p className="text-sm font-black text-yellow-900">National Sales Leaderboard</p>
+            <p className="text-[10px] text-yellow-800">Top 30 TDRs · Zone Rankings · MTD</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 bg-yellow-600/20 rounded-xl px-3 py-1.5">
-          <span className="text-xs font-bold text-yellow-900">View</span>
-          <span className="text-yellow-900">→</span>
+        <div className="bg-yellow-900/10 rounded-xl px-3 py-2 text-xs font-black text-yellow-900 flex items-center gap-1">
+          View <Trophy size={12}/>
         </div>
       </button>
 
-      {/* GPS Field Map */}
-      <Card className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm" style={{ color: '#00843D' }}>📍 Agent & Merchant Geofencing Map</h3>
-          <button
-            onClick={() => setShowMap(m => !m)}
-            className="text-xs px-3 py-1 rounded-lg font-semibold border transition"
-            style={{ borderColor: '#00843D', color: '#00843D' }}
-          >{showMap ? 'Hide Map' : 'Show Map'}</button>
-        </div>
-        {showMap && (
+      {/* GPS Field Map — full-screen capable */}
+      <div className={`mb-4 ${showMap ? 'fixed inset-0 z-40 bg-white flex flex-col' : ''}`}>
+        <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden ${showMap ? 'flex-1 flex flex-col rounded-none' : ''}`}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>
+              <h3 className="font-bold text-sm text-gray-800">📍 Agent & Merchant Field Map</h3>
+              <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+                {mapData.agents.length} agents
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-400">Leaflet · Zambia</span>
+              <button
+                onClick={() => setShowMap(m => !m)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl font-bold border-2 transition-all hover:shadow"
+                style={{ borderColor: '#00843D', color: showMap ? '#fff' : '#00843D', background: showMap ? '#00843D' : 'transparent' }}
+              >
+                {showMap ? (
+                  <><ArrowLeft size={11}/> Exit</>
+                ) : (
+                  <><Map size={11}/> Full Screen</>
+                )}
+              </button>
+            </div>
+          </div>
+          {/* Map tips bar */}
+          {!showMap && (
+            <div className="px-4 py-2 bg-blue-50 flex gap-4 text-[10px] text-blue-600 border-b border-blue-100">
+              <span>🖱 Scroll to zoom</span>
+              <span>✋ Drag to pan</span>
+              <span>📍 Click pin for details</span>
+              <span>🔍 Full screen for best experience</span>
+            </div>
+          )}
           <GeoMap
             agents={mapData.agents}
             visits={mapData.visits}
-            height="480px"
+            height={showMap ? 'calc(100vh - 110px)' : '420px'}
             showVisits={true}
           />
-        )}
-      </Card>
+        </div>
+      </div>
+      {/* Close overlay backdrop for fullscreen */}
+      {showMap && (
+        <button
+          onClick={() => setShowMap(false)}
+          className="fixed top-4 right-4 z-50 bg-white shadow-lg rounded-xl px-4 py-2 text-sm font-bold text-gray-700 flex items-center gap-2 border border-gray-200 hover:bg-gray-50"
+        >
+          <ArrowLeft size={14}/> Close Map
+        </button>
+      )}
 
       {/* Critical Float Alerts */}
       {dashboard && dashboard.criticalAlerts.length > 0 && (
-        <Card className="mb-4 border-red-200 bg-red-50">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 bg-red-100 border-b border-red-200">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
             <AlertTriangle className="w-4 h-4 text-red-600" />
-            <h3 className="font-semibold text-red-800 text-sm">
-              Critical Float Alerts ({dashboard.criticalAlerts.length} — pending &gt;48hrs)
+            <h3 className="font-bold text-red-800 text-sm flex-1">
+              Critical Float Alerts — {dashboard.criticalAlerts.length} pending &gt;48hrs
             </h3>
           </div>
-          <div className="space-y-2">
+          <div className="divide-y divide-red-100">
             {dashboard.criticalAlerts.slice(0, 5).map((issue: FloatIssue) => (
-              <div key={issue.id} className="bg-white rounded-xl p-3 flex items-start justify-between gap-2">
+              <div key={issue.id} className="px-4 py-3 flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-red-800">{issue.agentName} ({issue.agentCode})</p>
-                  <p className="text-xs text-red-600">{issue.zone} · {issue.tdrName}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold text-red-800">{issue.agentName}</p>
+                    <span className="text-[10px] bg-red-200 text-red-700 font-bold px-2 py-0.5 rounded-full">{issue.agentCode}</span>
+                  </div>
+                  <p className="text-xs text-red-600 mt-0.5">{issue.zone} · {issue.tdrName}</p>
                   <p className="text-xs text-gray-600 mt-1">{ISSUE_TYPE_LABELS[issue.issueType]}: {issue.description}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {differenceInHours(new Date(), new Date(issue.reportedAt))}hrs ago · ZMW {issue.reportedFloat.toLocaleString()}
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    ⏱ {differenceInHours(new Date(), new Date(issue.reportedAt))}hrs pending · ZMW {issue.reportedFloat.toLocaleString()}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  loading={resolving === issue.id}
-                  onClick={() => handleResolveAlert(issue.id)}
-                >
+                <Button size="sm" variant="danger" loading={resolving === issue.id}
+                  onClick={() => handleResolveAlert(issue.id)}>
                   Resolve
                 </Button>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Prospects Funnel */}
       {dashboard && dashboard.prospectsBreakdown.length > 0 && (
-        <Card className="mb-4">
-          <h3 className="font-semibold text-zamtel-dark text-sm mb-3">National Prospects Funnel</h3>
-          <div className="flex flex-wrap gap-2">
-            {['identified', 'contacted', 'interested', 'converted', 'rejected'].map(status => {
-              const item = dashboard.prospectsBreakdown.find(p => p.status === status);
-              return (
-                <div key={status} className="flex-1 min-w-[80px] text-center bg-gray-50 rounded-xl px-3 py-3">
-                  <p className="text-2xl font-bold text-gray-800">{item?._count || 0}</p>
-                  <p className="text-xs text-gray-500 capitalize mt-0.5">{status}</p>
-                </div>
-              );
-            })}
+        <div className="mb-4 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-50">
+            <p className="text-sm font-bold text-gray-700">Prospects Funnel — National</p>
           </div>
-        </Card>
+          <div className="px-4 py-3">
+            {(() => {
+              const stages = [
+                { s:'identified', emoji:'🔍', color:'#6366f1' },
+                { s:'contacted',  emoji:'📞', color:'#3b82f6' },
+                { s:'interested', emoji:'⭐', color:'#f59e0b' },
+                { s:'converted',  emoji:'✅', color:'#00843D' },
+                { s:'rejected',   emoji:'❌', color:'#ef4444' },
+              ];
+              const total = dashboard.prospectsBreakdown.reduce((s: number, p: any) => s + (p._count||0), 0);
+              return (
+                <>
+                  <div className="flex gap-2 mb-3">
+                    {stages.map(({s,emoji,color}) => {
+                      const item = dashboard.prospectsBreakdown.find((p:any) => p.status === s);
+                      const cnt  = item?._count || 0;
+                      const pct  = total > 0 ? Math.round(cnt/total*100) : 0;
+                      return (
+                        <div key={s} className="flex-1 text-center">
+                          <div className="text-lg mb-1">{emoji}</div>
+                          <p className="text-lg font-black" style={{color}}>{cnt}</p>
+                          <p className="text-[9px] text-gray-500 capitalize">{s}</p>
+                          <p className="text-[9px] font-bold" style={{color}}>{pct}%</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Funnel bar */}
+                  <div className="flex h-3 rounded-full overflow-hidden gap-px">
+                    {stages.map(({s,color}) => {
+                      const item = dashboard.prospectsBreakdown.find((p:any) => p.status === s);
+                      const cnt  = item?._count || 0;
+                      const pct  = total > 0 ? cnt/total*100 : 0;
+                      return pct > 0 ? (
+                        <div key={s} className="transition-all" style={{width:`${pct}%`,background:color}}/>
+                      ) : null;
+                    })}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1.5 text-right">{total} total prospects</p>
+                </>
+              );
+            })()}
+          </div>
+        </div>
       )}
       </>)}
 
