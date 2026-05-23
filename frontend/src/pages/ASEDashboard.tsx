@@ -68,6 +68,7 @@ export const ASEDashboardPage: React.FC = () => {
   // ── ALL hooks must be declared before any early returns ──
   const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'pick-tdrs' | 'map'>('my-tdrs');
   const [mapData, setMapData]           = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
+  const [mapTdrNames, setMapTdrNames]   = useState<string[]>([]);
   const [mapLoading, setMapLoading]     = useState(false);
   const [dashData, setDashData]         = useState<DashboardData | null>(null);
   const [loading, setLoading]           = useState(true);
@@ -139,7 +140,10 @@ export const ASEDashboardPage: React.FC = () => {
   const loadMap = useCallback(() => {
     setMapLoading(true);
     aseApi.getMap()
-      .then(r => setMapData(r.data.data || { agents: [], visits: [] }))
+      .then(r => {
+        setMapData(r.data.data || { agents: [], visits: [] });
+        setMapTdrNames(r.data.tdrNames || []);
+      })
       .catch(() => toast.error('Failed to load map'))
       .finally(() => setMapLoading(false));
   }, []);
@@ -749,32 +753,63 @@ export const ASEDashboardPage: React.FC = () => {
       {/* ── Map Tab ── */}
       {tab === 'map' && (
         <div className="px-4 pb-24">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-sm font-bold text-gray-700">Field Map — {user?.zone || 'Your Zone'}</p>
-              <p className="text-xs text-gray-400">All agents & outlets registered in your zone</p>
+          {/* Scope info banner */}
+          <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 mb-3 flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-green-800">Your TDRs' Field Activity</p>
+              <p className="text-xs text-green-600 mt-0.5">
+                Only agents & outlets registered by your {mapTdrNames.length > 0 ? mapTdrNames.length : stats.length} assigned TDRs are shown
+              </p>
+              {mapTdrNames.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {mapTdrNames.map(n => (
+                    <span key={n} className="text-[10px] bg-white border border-green-200 text-green-700 font-semibold px-2 py-0.5 rounded-full">{n}</span>
+                  ))}
+                </div>
+              )}
             </div>
             <button onClick={loadMap} disabled={mapLoading}
-              className="flex items-center gap-1.5 text-xs text-green-700 font-semibold hover:bg-green-50 px-3 py-1.5 rounded-lg transition-colors">
+              className="flex items-center gap-1.5 text-xs text-green-700 font-bold hover:bg-green-100 px-3 py-1.5 rounded-xl transition-colors flex-shrink-0 border border-green-200">
               <RefreshCw size={12} className={mapLoading ? 'animate-spin' : ''}/>
               Refresh
             </button>
           </div>
+
+          {/* Stats row */}
+          {!mapLoading && mapData.agents.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {[
+                ['Agents',    mapData.agents.filter((a:any) => a.type !== 'merchant').length, 'text-green-700', 'bg-green-50'],
+                ['Merchants', mapData.agents.filter((a:any) => a.type === 'merchant').length, 'text-pink-700',  'bg-pink-50'],
+                ['Visits',    mapData.visits.length, 'text-blue-700', 'bg-blue-50'],
+              ].map(([l,v,tc,bg]) => (
+                <div key={l as string} className={`${bg} rounded-xl py-2 text-center`}>
+                  <p className={`text-lg font-black ${tc}`}>{v}</p>
+                  <p className="text-[10px] text-gray-500">{l}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {mapLoading ? (
             <div className="h-[420px] bg-gray-100 rounded-2xl animate-pulse flex items-center justify-center">
-              <p className="text-gray-400 text-sm">Loading map...</p>
+              <p className="text-gray-400 text-sm">Loading map…</p>
             </div>
           ) : mapData.agents.length === 0 && mapData.visits.length === 0 ? (
             <div className="h-[420px] bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-gray-400">
               <Map size={40} className="mb-3 opacity-30"/>
               <p className="text-sm font-semibold">No GPS data yet</p>
-              <p className="text-xs mt-1">Agents with GPS coordinates will appear here</p>
+              <p className="text-xs mt-1">
+                {stats.length === 0
+                  ? 'Assign TDRs to your account first'
+                  : 'Your TDRs have not recorded GPS locations yet'}
+              </p>
             </div>
           ) : (
             <GeoMap
               agents={mapData.agents}
               visits={mapData.visits}
-              height="480px"
+              height="460px"
               showVisits={true}
             />
           )}

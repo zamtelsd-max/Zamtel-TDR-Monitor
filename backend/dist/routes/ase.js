@@ -247,30 +247,55 @@ exports.aseRouter.get('/tdr/:id', async (req, res) => {
 // ─── GET /ase/map — zone-scoped agent & visit map data ───────────────────────
 exports.aseRouter.get('/map', (0, responseCache_1.responseCache)(45), async (req, res) => {
     try {
-        const aseUser = req.user;
-        const zone = aseUser.zone ?? undefined;
+        const aseId = req.user.userId;
+        // Only fetch agents/visits belonging to TDRs assigned to this ASE
+        const myTdrs = await prisma_1.prisma.user.findMany({
+            where: { aseId, role: 'TDR', active: true },
+            select: { id: true, name: true },
+        });
+        const tdrIds = myTdrs.map((t) => t.id);
+        const tdrNames = myTdrs.map((t) => t.name);
+        if (tdrIds.length === 0) {
+            res.json({ success: true, data: { agents: [], visits: [] }, tdrCount: 0 });
+            return;
+        }
         const [agents, visits] = await Promise.all([
             prisma_1.prisma.agent.findMany({
-                where: { ...(zone ? { zone } : {}), latitude: { not: null }, longitude: { not: null } },
+                where: {
+                    tdrId: { in: tdrIds },
+                    latitude: { not: null },
+                    longitude: { not: null },
+                },
                 select: {
                     id: true, agentName: true, agentCode: true, type: true,
                     tdrName: true, zone: true, town: true,
                     latitude: true, longitude: true, initialFloat: true,
                     merchantCategory: true, createdAt: true,
                 },
-                orderBy: { createdAt: 'desc' }, take: 1000,
+                orderBy: { createdAt: 'desc' },
+                take: 2000,
             }),
             prisma_1.prisma.visit.findMany({
-                where: { ...(zone ? { zone } : {}), latitude: { not: null }, longitude: { not: null } },
+                where: {
+                    tdrId: { in: tdrIds },
+                    latitude: { not: null },
+                    longitude: { not: null },
+                },
                 select: {
                     id: true, outletName: true, agentCode: true,
                     tdrName: true, zone: true, town: true,
                     latitude: true, longitude: true, floatAmount: true, createdAt: true,
                 },
-                orderBy: { createdAt: 'desc' }, take: 1000,
+                orderBy: { createdAt: 'desc' },
+                take: 2000,
             }),
         ]);
-        res.json({ success: true, data: { agents, visits } });
+        res.json({
+            success: true,
+            data: { agents, visits },
+            tdrCount: tdrIds.length,
+            tdrNames,
+        });
     }
     catch (err) {
         res.status(500).json({ error: 'Failed to fetch map data' });
