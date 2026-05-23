@@ -747,6 +747,7 @@ export const ZBMDashboardPage: React.FC = () => {
           </div>
         ) : mapData.agents.length > 0 || mapData.visits.length > 0 ? (
           <GeoMap
+            key={`zbm-map-${mapData.agents.length}`}
             agents={mapData.agents}
             visits={mapData.visits}
             height="460px"

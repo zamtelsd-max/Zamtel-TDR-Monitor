@@ -598,6 +598,7 @@ export const HSDDashboardPage: React.FC = () => {
             </div>
           )}
           <GeoMap
+            key={showMap ? 'fullscreen' : 'normal'}
             agents={mapData.agents}
             visits={mapData.visits}
             height={showMap ? 'calc(100vh - 110px)' : '420px'}

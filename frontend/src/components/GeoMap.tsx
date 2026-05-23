@@ -106,6 +106,12 @@ export const GeoMap: React.FC<GeoMapProps> = ({
   useEffect(() => {
     if (!mapRef.current) return
 
+    // Destroy any previous instance (handles tab remount)
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+
     // Zambia bounding box: SW (-18.08, 21.99) → NE (-8.22, 33.71)
     const zambiaBounds: L.LatLngBoundsExpression = [[-18.08, 21.99], [-8.22, 33.71]];
 
@@ -114,9 +120,9 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       minZoom: 6,
       maxZoom: 18,
       maxBounds: zambiaBounds,
-      maxBoundsViscosity: 1.0,   // hard wall — can't pan outside
+      maxBoundsViscosity: 1.0,
     }).setView([-13.1339, 27.8493], 7);
-    map.fitBounds(zambiaBounds);
+
     mapInstanceRef.current = map
 
     // OSM tile layer
@@ -125,7 +131,20 @@ export const GeoMap: React.FC<GeoMapProps> = ({
       maxZoom: 18,
     }).addTo(map)
 
-    return () => { map.remove(); mapInstanceRef.current = null }
+    // Critical: force size recalc after the DOM has painted
+    // Needed when map renders inside a tab/conditional that was hidden
+    const t1 = setTimeout(() => {
+      map.invalidateSize();
+      map.fitBounds(zambiaBounds);
+    }, 50);
+    const t2 = setTimeout(() => { map.invalidateSize(); }, 250);
+    const t3 = setTimeout(() => { map.invalidateSize(); }, 600);
+
+    return () => {
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+      map.remove();
+      mapInstanceRef.current = null;
+    }
   }, [])
 
   useEffect(() => {
@@ -244,6 +263,18 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     const handler = () => window.dispatchEvent(new Event('resize'));
     window.addEventListener('zamtel-offline-synced', handler);
     return () => window.removeEventListener('zamtel-offline-synced', handler);
+  }, []);
+
+  // ResizeObserver — invalidate Leaflet size whenever the container resizes
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const m = mapInstanceRef.current;
+      if (m) { m.invalidateSize(); }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   const scopedAgents = activeZone === 'all' ? agents
