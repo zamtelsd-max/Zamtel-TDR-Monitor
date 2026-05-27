@@ -126,7 +126,32 @@ function AppRoutes() {
 }
 
 export default function App() {
-  // Register service worker event listeners
+  // ── Screen Wake Lock — keep screen on while app is open ──────────────────
+  useEffect(() => {
+    if (!('wakeLock' in navigator)) return; // not supported → do nothing silently
+    let lock: WakeLockSentinel | null = null;
+
+    const acquire = async () => {
+      try {
+        lock = await (navigator as any).wakeLock.request('screen');
+      } catch (_) { /* denied or not supported — ignore */ }
+    };
+
+    // Re-acquire after phone wakes from sleep or tab becomes visible again
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') acquire();
+    };
+
+    acquire();
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      lock?.release().catch(() => {});
+    };
+  }, []);
+
+  // ── Service Worker ────────────────────────────────────────────────────────
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(() => {

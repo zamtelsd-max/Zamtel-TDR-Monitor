@@ -129,7 +129,18 @@ tdrRouter.post('/agents', async (req: Request, res: Response): Promise<void> => 
       where: { agentCode: parsed.data.agentCode },
     });
     if (existing) {
-      res.status(409).json({ error: `Agent code ${parsed.data.agentCode} is already registered in the system.` });
+      const owner = await prisma.user.findUnique({ where: { id: existing.tdrId }, select: { name: true, zone: true, id: true } });
+      res.status(409).json({
+        error: `Agent code ${parsed.data.agentCode} is already registered in the system.`,
+        duplicate: {
+          agentCode:  existing.agentCode,
+          agentName:  existing.agentName,
+          tdrName:    owner?.name || existing.tdrName,
+          tdrId:      existing.tdrId,
+          zone:       existing.zone || owner?.zone || '',
+          registeredAt: existing.createdAt,
+        },
+      });
       return;
     }
 
@@ -147,7 +158,22 @@ tdrRouter.post('/agents', async (req: Request, res: Response): Promise<void> => 
     res.status(201).json(agent);
   } catch (err: any) {
     if (err?.code === 'P2002') {
-      res.status(409).json({ error: `Agent code ${(req.body as any)?.agentCode} is already registered in the system.` });
+      // Race condition — look up owner for enriched response
+      try {
+        const race = await prisma.agent.findUnique({ where: { agentCode: (req.body as any)?.agentCode } });
+        const owner = race ? await prisma.user.findUnique({ where: { id: race.tdrId }, select: { name: true, zone: true } }) : null;
+        res.status(409).json({
+          error: `Agent code ${(req.body as any)?.agentCode} is already registered in the system.`,
+          duplicate: race ? {
+            agentCode:    race.agentCode,
+            agentName:    race.agentName,
+            tdrName:      owner?.name || race.tdrName,
+            tdrId:        race.tdrId,
+            zone:         race.zone || owner?.zone || '',
+            registeredAt: race.createdAt,
+          } : undefined,
+        });
+      } catch { res.status(409).json({ error: `Agent code already registered.` }); }
     } else {
       res.status(500).json({ error: 'Failed to create agent' });
     }
@@ -417,14 +443,16 @@ tdrRouter.get('/agents/check-code', async (req: Request, res: Response): Promise
       res.json({
         status: 'existing_agent',
         agent: {
-          agentCode:  agent.agentCode,
-          agentName:  agent.agentName,
-          type:       agent.type,
-          zone:       agent.zone,
-          town:       agent.town,
-          tdrName:    agent.tdrName,
-          ownerName:  owner?.name || agent.tdrName,
-          createdAt:  agent.createdAt,
+          agentCode:    agent.agentCode,
+          agentName:    agent.agentName,
+          type:         agent.type,
+          zone:         agent.zone,
+          town:         agent.town,
+          tdrName:      agent.tdrName,
+          tdrId:        agent.tdrId,
+          ownerName:    owner?.name || agent.tdrName,
+          createdAt:    agent.createdAt,
+          registeredAt: agent.createdAt,
         },
       });
       return;

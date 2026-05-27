@@ -28,18 +28,18 @@ exports.aseRouter.get('/dashboard', async (req, res) => {
         const aseId = req.user.userId;
         const aseName = req.user.name;
         // TDRs assigned to this ASE
-        const tdrs = await prisma_1.prisma.user.findMany({
+        const tdrs = await prisma_1.prisma.users.findMany({
             where: { aseId: aseId, role: 'TDR', active: true },
         });
         const tdrIds = tdrs.map(t => t.id);
         const { start, end } = (0, mtd_1.mtdRange)();
         const [agentsGrp, merchantsGrp, visitsGrp, floatsGrp, reactivGrp, prospectsGrp] = await Promise.all([
-            prisma_1.prisma.agent.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.agent.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.visit.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.floatIssue.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, status: { not: 'resolved' } } }),
+            prisma_1.prisma.agents.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, type: 'normal', createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.agents.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, type: 'merchant', createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.visits.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } } }),
+            prisma_1.prisma.float_issues.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, status: { not: 'resolved' } } }),
             prisma_1.prisma.reactivation.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } } }),
-            prisma_1.prisma.prospect.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds } } }),
+            prisma_1.prisma.prospects.groupBy({ by: ['tdrId'], _count: true, where: { tdrId: { in: tdrIds } } }),
         ]);
         const aM = Object.fromEntries(agentsGrp.map((r) => [r.tdrId, r._count]));
         const mM = Object.fromEntries(merchantsGrp.map((r) => [r.tdrId, r._count]));
@@ -172,7 +172,7 @@ exports.aseRouter.get('/available-tdrs', async (req, res) => {
     try {
         const aseId = req.user.userId;
         const zone = req.user.zone;
-        const tdrs = await prisma_1.prisma.user.findMany({
+        const tdrs = await prisma_1.prisma.users.findMany({
             where: { role: 'TDR', active: true, ...(zone ? { zone } : {}), OR: [{ aseId: null }, { aseId: aseId }] },
             select: { id: true, name: true, zone: true, aseId: true },
             orderBy: { name: 'asc' },
@@ -192,7 +192,7 @@ exports.aseRouter.post('/pick-tdr', async (req, res) => {
             res.status(400).json({ error: 'tdrId required' });
             return;
         }
-        const tdr = await prisma_1.prisma.user.findUnique({ where: { id: tdrId } });
+        const tdr = await prisma_1.prisma.users.findUnique({ where: { id: tdrId } });
         if (!tdr) {
             res.status(404).json({ error: 'TDR not found' });
             return;
@@ -201,7 +201,7 @@ exports.aseRouter.post('/pick-tdr', async (req, res) => {
             res.status(409).json({ error: 'TDR already assigned to another ASE' });
             return;
         }
-        await prisma_1.prisma.user.update({ where: { id: tdrId }, data: { aseId } });
+        await prisma_1.prisma.users.update({ where: { id: tdrId }, data: { aseId } });
         res.json({ success: true, message: 'TDR assigned to you' });
     }
     catch (err) {
@@ -212,12 +212,12 @@ exports.aseRouter.post('/pick-tdr', async (req, res) => {
 exports.aseRouter.delete('/pick-tdr/:tdrId', async (req, res) => {
     try {
         const aseId = req.user.userId;
-        const tdr = await prisma_1.prisma.user.findUnique({ where: { id: req.params.tdrId } });
+        const tdr = await prisma_1.prisma.users.findUnique({ where: { id: req.params.tdrId } });
         if (!tdr || tdr.aseId !== aseId) {
             res.status(403).json({ error: 'Not authorized' });
             return;
         }
-        await prisma_1.prisma.user.update({ where: { id: req.params.tdrId }, data: { aseId: null } });
+        await prisma_1.prisma.users.update({ where: { id: req.params.tdrId }, data: { aseId: null } });
         res.json({ success: true, message: 'TDR released' });
     }
     catch (err) {
@@ -227,16 +227,16 @@ exports.aseRouter.delete('/pick-tdr/:tdrId', async (req, res) => {
 // ─── GET /ase/tdr/:id ─────────────────────────────────────────────────────────
 exports.aseRouter.get('/tdr/:id', async (req, res) => {
     try {
-        const tdr = await prisma_1.prisma.user.findFirst({ where: { id: req.params.id, aseId: req.user.userId, role: 'TDR' } });
+        const tdr = await prisma_1.prisma.users.findFirst({ where: { id: req.params.id, aseId: req.user.userId, role: 'TDR' } });
         if (!tdr) {
             res.status(403).json({ error: 'TDR not assigned to you' });
             return;
         }
         const [agents, visits, floatIssues, prospects] = await Promise.all([
-            prisma_1.prisma.agent.findMany({ where: { tdrId: tdr.id }, orderBy: { createdAt: 'desc' }, take: 50 }),
-            prisma_1.prisma.visit.findMany({ where: { tdrId: tdr.id }, orderBy: { createdAt: 'desc' }, take: 50 }),
-            prisma_1.prisma.floatIssue.findMany({ where: { tdrId: tdr.id }, orderBy: { reportedAt: 'desc' }, take: 20 }),
-            prisma_1.prisma.prospect.findMany({ where: { tdrId: tdr.id }, orderBy: { createdAt: 'desc' }, take: 20 }),
+            prisma_1.prisma.agents.findMany({ where: { tdrId: tdr.id }, orderBy: { createdAt: 'desc' }, take: 50 }),
+            prisma_1.prisma.visits.findMany({ where: { tdrId: tdr.id }, orderBy: { createdAt: 'desc' }, take: 50 }),
+            prisma_1.prisma.float_issues.findMany({ where: { tdrId: tdr.id }, orderBy: { reportedAt: 'desc' }, take: 20 }),
+            prisma_1.prisma.prospects.findMany({ where: { tdrId: tdr.id }, orderBy: { createdAt: 'desc' }, take: 20 }),
         ]);
         res.json({ tdr: { id: tdr.id, name: tdr.name, zone: tdr.zone }, agents, visits, floatIssues, prospects });
     }
@@ -249,7 +249,7 @@ exports.aseRouter.get('/map', (0, responseCache_1.responseCache)(45), async (req
     try {
         const aseId = req.user.userId;
         // Only fetch agents/visits belonging to TDRs assigned to this ASE
-        const myTdrs = await prisma_1.prisma.user.findMany({
+        const myTdrs = await prisma_1.prisma.users.findMany({
             where: { aseId, role: 'TDR', active: true },
             select: { id: true, name: true },
         });
@@ -260,7 +260,7 @@ exports.aseRouter.get('/map', (0, responseCache_1.responseCache)(45), async (req
             return;
         }
         const [agents, visits] = await Promise.all([
-            prisma_1.prisma.agent.findMany({
+            prisma_1.prisma.agents.findMany({
                 where: {
                     tdrId: { in: tdrIds },
                     latitude: { not: null },
@@ -275,7 +275,7 @@ exports.aseRouter.get('/map', (0, responseCache_1.responseCache)(45), async (req
                 orderBy: { createdAt: 'desc' },
                 take: 2000,
             }),
-            prisma_1.prisma.visit.findMany({
+            prisma_1.prisma.visits.findMany({
                 where: {
                     tdrId: { in: tdrIds },
                     latitude: { not: null },

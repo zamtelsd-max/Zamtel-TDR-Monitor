@@ -51,8 +51,8 @@ exports.adminRouter.post('/migrate-from-sheets', async (req, res) => {
     // Migrate agents
     for (const row of agents) {
         try {
-            const zbm = await prisma_1.prisma.user.findFirst({ where: { role: 'ZBM', zone: row.zone || '' } });
-            await prisma_1.prisma.agent.upsert({
+            const zbm = await prisma_1.prisma.users.findFirst({ where: { role: 'ZBM', zone: row.zone || '' } });
+            await prisma_1.prisma.agents.upsert({
                 where: { agentCode: row.agentCode || `MIGRATED-${Date.now()}-${agentCount}` },
                 update: {},
                 create: {
@@ -82,8 +82,8 @@ exports.adminRouter.post('/migrate-from-sheets', async (req, res) => {
     // Migrate visits
     for (const row of visits) {
         try {
-            const zbm = await prisma_1.prisma.user.findFirst({ where: { role: 'ZBM', zone: row.zone || '' } });
-            await prisma_1.prisma.visit.create({
+            const zbm = await prisma_1.prisma.users.findFirst({ where: { role: 'ZBM', zone: row.zone || '' } });
+            await prisma_1.prisma.visits.create({
                 data: {
                     outletName: row.outletName || row.agentName || 'Unknown',
                     agentCode: row.agentCode || '',
@@ -114,7 +114,7 @@ exports.adminRouter.post('/migrate-from-sheets', async (req, res) => {
 });
 // ─── GET /admin/users ─────────────────────────────────────────────────────────
 exports.adminRouter.get('/users', async (_req, res) => {
-    const users = await prisma_1.prisma.user.findMany({
+    const users = await prisma_1.prisma.users.findMany({
         select: { id: true, name: true, role: true, zone: true, active: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
     });
@@ -130,12 +130,12 @@ exports.adminRouter.post('/users', async (req, res) => {
         }
         const bcrypt = await Promise.resolve().then(() => __importStar(require('bcryptjs')));
         const pinHash = await bcrypt.hash(pin, 10);
-        const existing = await prisma_1.prisma.user.findUnique({ where: { id } });
+        const existing = await prisma_1.prisma.users.findUnique({ where: { id } });
         if (existing) {
             res.status(409).json({ error: `User ID "${id}" already exists` });
             return;
         }
-        const user = await prisma_1.prisma.user.create({
+        const user = await prisma_1.prisma.users.create({
             data: { id, name, role: role, zone: zone || null, pin: pinHash, active: true },
         });
         res.status(201).json({ id: user.id, name: user.name, role: user.role, zone: user.zone });
@@ -154,7 +154,7 @@ exports.adminRouter.patch('/users/:id/pin', async (req, res) => {
         }
         const bcrypt = await Promise.resolve().then(() => __importStar(require('bcryptjs')));
         const pinHash = await bcrypt.hash(pin, 10);
-        await prisma_1.prisma.user.update({ where: { id: req.params.id }, data: { pin: pinHash } });
+        await prisma_1.prisma.users.update({ where: { id: req.params.id }, data: { pin: pinHash } });
         res.json({ success: true, message: `PIN reset for ${req.params.id}` });
     }
     catch {
@@ -169,7 +169,7 @@ exports.adminRouter.delete('/users/:id', async (req, res) => {
             res.status(400).json({ error: 'Cannot delete yourself' });
             return;
         }
-        await prisma_1.prisma.user.delete({ where: { id: req.params.id } });
+        await prisma_1.prisma.users.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     }
     catch {
@@ -181,8 +181,8 @@ exports.adminRouter.get('/zones', async (_req, res) => {
     try {
         // Return distinct zones from agents + users tables
         const [agentZones, userZones] = await Promise.all([
-            prisma_1.prisma.agent.findMany({ select: { zone: true }, distinct: ['zone'] }),
-            prisma_1.prisma.user.findMany({ where: { zone: { not: null } }, select: { zone: true }, distinct: ['zone'] }),
+            prisma_1.prisma.agents.findMany({ select: { zone: true }, distinct: ['zone'] }),
+            prisma_1.prisma.users.findMany({ where: { zone: { not: null } }, select: { zone: true }, distinct: ['zone'] }),
         ]);
         const all = [...new Set([
                 ...agentZones.map(a => a.zone).filter(Boolean),
@@ -220,13 +220,13 @@ exports.adminRouter.patch('/users/:id', async (req, res) => {
         const requester = req.user;
         // ZBM can only update TDRs in their own zone
         if (requester.role === 'ZBM') {
-            const target = await prisma_1.prisma.user.findUnique({ where: { id: req.params.id } });
+            const target = await prisma_1.prisma.users.findUnique({ where: { id: req.params.id } });
             if (!target || target.role !== 'TDR' || target.zone !== requester.zone) {
                 res.status(403).json({ error: 'ZBM can only update TDRs in their own zone' });
                 return;
             }
         }
-        const updated = await prisma_1.prisma.user.update({
+        const updated = await prisma_1.prisma.users.update({
             where: { id: req.params.id },
             data: {
                 ...(name !== undefined && { name }),
@@ -251,7 +251,7 @@ exports.adminRouter.delete('/zones/:name', async (req, res) => {
     }
     const zoneName = decodeURIComponent(req.params.name);
     // Check if zone has active users
-    const activeUsers = await prisma_1.prisma.user.count({ where: { zone: zoneName, active: true } });
+    const activeUsers = await prisma_1.prisma.users.count({ where: { zone: zoneName, active: true } });
     if (activeUsers > 0) {
         res.status(400).json({ error: `Zone has ${activeUsers} active user(s). Reassign them first.` });
         return;

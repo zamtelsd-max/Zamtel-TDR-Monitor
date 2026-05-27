@@ -11,16 +11,81 @@ import { useGPS } from '../hooks/useGPS';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { enqueueOffline } from '../utils/offlineQueue';
 
+// ── Duplicate Agent Popup ───────────────────────────────────────────────────
+type DuplicateInfo = {
+  agentCode: string;
+  agentName: string;
+  tdrName: string;
+  tdrId: string;
+  zone: string;
+  registeredAt: string;
+};
+
+const DuplicatePopup: React.FC<{ info: DuplicateInfo; onClose: () => void }> = ({ info, onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onClose}>
+    <div
+      className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="bg-red-600 px-5 py-4 flex items-center gap-3">
+        <span className="text-3xl">🚫</span>
+        <div>
+          <p className="text-white font-black text-base leading-tight">Duplicate Agent Code</p>
+          <p className="text-red-200 text-xs mt-0.5">This code is already in the system</p>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="px-5 py-4 space-y-3">
+        <div className="bg-red-50 rounded-xl p-4 border border-red-200 space-y-2">
+          <Row label="Agent Code" value={info.agentCode} mono />
+          <Row label="Agent Name" value={info.agentName} />
+        </div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">First registered by</p>
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-2">
+          <Row label="TDR Name" value={info.tdrName} />
+          <Row label="TDR ID" value={info.tdrId.slice(0, 8).toUpperCase()} mono />
+          <Row label="Zone" value={info.zone} />
+          <Row label="Date" value={new Date(info.registeredAt).toLocaleDateString('en-ZM', { day:'2-digit', month:'short', year:'numeric' })} />
+        </div>
+        <p className="text-xs text-gray-500 text-center leading-relaxed">
+          If this agent is inactive, use the <strong>Reactivation Form</strong> to earn NT points.
+        </p>
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 pb-5">
+        <button
+          onClick={onClose}
+          className="w-full bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold py-3 rounded-xl transition-all"
+        >
+          OK, Got It
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+const Row: React.FC<{ label: string; value: string; mono?: boolean }> = ({ label, value, mono }) => (
+  <div className="flex justify-between items-center gap-2">
+    <span className="text-xs text-gray-500 shrink-0">{label}</span>
+    <span className={`text-sm font-bold text-gray-900 text-right ${mono ? 'font-mono' : ''}`}>{value}</span>
+  </div>
+);
+
+// ── Main Form ───────────────────────────────────────────────────────────────
 export const AddAgentForm: React.FC = () => {
   const navigate  = useNavigate();
   const user      = useAppSelector(s => s.auth.user);
   const { capture: captureGPS, loading: gpsLoading } = useGPS();
 
   const [submitting, setSubmitting] = useState(false);
+  const [duplicatePopup, setDuplicatePopup] = useState<DuplicateInfo | null>(null);
   const [codeChecking, setCodeChecking] = useState(false);
   const [codeStatus, setCodeStatus] = useState<null | {
     status: 'existing_agent' | 'nt_base' | 'not_found';
-    agent?: { agentCode: string; agentName: string; type: string; zone: string; town: string; ownerName: string; createdAt: string };
+    agent?: { agentCode: string; agentName: string; type: string; zone: string; town: string; ownerName: string; tdrId: string; createdAt: string; registeredAt: string };
     ntRecord?: { agent_code: string; zone: string | null; agent_name: string | null; town: string | null };
   }>(null);
   const [ntConfirmed, setNtConfirmed] = useState(false);
@@ -83,9 +148,16 @@ export const AddAgentForm: React.FC = () => {
       toast.error('Please fill in required fields');
       return;
     }
-    // Block if code already registered in system
-    if (codeStatus?.status === 'existing_agent') {
-      toast.error('This agent code is already in the system — you cannot re-register it.');
+    // Block if code already registered in system — show popup
+    if (codeStatus?.status === 'existing_agent' && codeStatus.agent) {
+      setDuplicatePopup({
+        agentCode:    codeStatus.agent.agentCode,
+        agentName:    codeStatus.agent.agentName,
+        tdrName:      codeStatus.agent.ownerName,
+        tdrId:        codeStatus.agent.tdrId || codeStatus.agent.ownerName,
+        zone:         codeStatus.agent.zone,
+        registeredAt: codeStatus.agent.registeredAt || codeStatus.agent.createdAt,
+      });
       return;
     }
     // NT base — require acknowledgement
@@ -129,8 +201,14 @@ export const AddAgentForm: React.FC = () => {
         toast.success('📴 Saved offline — will sync when internet restores', { duration: 5000 });
         navigate('/tdr');
       } else {
-        const msg = (err as any)?.response?.data?.error;
-        toast.error(typeof msg === 'string' ? msg : 'Failed to save. Try again.');
+        const respData = (err as any)?.response?.data;
+        // Show enriched duplicate popup if backend returns conflict info
+        if ((err as any)?.response?.status === 409 && respData?.duplicate) {
+          setDuplicatePopup(respData.duplicate as DuplicateInfo);
+        } else {
+          const msg = respData?.error;
+          toast.error(typeof msg === 'string' ? msg : 'Failed to save. Try again.');
+        }
       }
     } finally {
       setSubmitting(false);
@@ -139,6 +217,10 @@ export const AddAgentForm: React.FC = () => {
 
   return (
     <Layout title="Add Agent" showBack backTo="/tdr">
+      {/* Duplicate popup */}
+      {duplicatePopup && (
+        <DuplicatePopup info={duplicatePopup} onClose={() => setDuplicatePopup(null)} />
+      )}
       <form onSubmit={handleSubmit} className="space-y-4 max-w-lg mx-auto pb-8">
         <h2 className="text-lg font-bold text-zamtel-dark mb-2">New Agent Recruitment</h2>
 
