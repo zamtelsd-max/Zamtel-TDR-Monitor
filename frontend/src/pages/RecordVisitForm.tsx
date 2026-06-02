@@ -16,6 +16,7 @@ export const RecordVisitForm: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
   const [agentStale, setAgentStale] = useState<{ daysAgo: number | null } | null>(null);
+  const [outletInfo, setOutletInfo] = useState<{ registeredBy: string; lastVisitedBy: string; lastVisitedAt: string | null } | null>(null);
   const DRAFT_KEY = 'draft_visit';
   type VisitForm = { outletName: string; agentCode: string; contactPhone: string; town: string; cluster: string; market: string; floatAmount: string; latitude: string; longitude: string; notes: string; };
   const defaultForm: VisitForm = { outletName: '', agentCode: '', contactPhone: '', town: '', cluster: '', market: '', floatAmount: '', latitude: '', longitude: '', notes: '' };
@@ -34,9 +35,11 @@ export const RecordVisitForm: React.FC = () => {
     if (!code) return;
     setLookingUp(true);
     setAgentStale(null);
+    setOutletInfo(null);
     try {
       const r = await tdrApi.getAgentByCode(code);
       const a = r.data as any;
+      setOutletInfo({ registeredBy: a.registeredBy ?? a.tdrName, lastVisitedBy: a.lastVisitedBy ?? a.tdrName, lastVisitedAt: a.lastVisitedAt ?? null });
       setForm(prev => {
         const next = {
           ...prev,
@@ -163,13 +166,25 @@ export const RecordVisitForm: React.FC = () => {
           </div>
         )}
 
+        {/* Outlet footprint — registered owner never changes; last visitor shown */}
+        {outletInfo && (
+          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 space-y-1">
+            <p className="text-sm font-bold text-green-800">📌 Existing Outlet — details auto-filled</p>
+            <p className="text-xs text-gray-600">Registered by: <span className="font-semibold text-gray-800">{outletInfo.registeredBy}</span> <span className="text-gray-400">(footprint — unchanged)</span></p>
+            <p className="text-xs text-gray-600">
+              Last visited by: <span className="font-semibold text-gray-800">{outletInfo.lastVisitedBy}</span>
+              {outletInfo.lastVisitedAt && <span className="text-gray-400"> · {new Date(outletInfo.lastVisitedAt).toLocaleDateString()}</span>}
+            </p>
+          </div>
+        )}
+
         <Input label="Outlet / Business Name *" value={form.outletName} onChange={set('outletName')} placeholder="e.g. Mwamba Grocery" required />
 
         <div className="grid grid-cols-2 gap-3">
           <Input
             label={`Agent Code * ${lookingUp ? '(looking up…)' : ''}`}
             value={form.agentCode}
-            onChange={e => { setAgentStale(null); set('agentCode')(e); }}
+            onChange={e => { setAgentStale(null); setOutletInfo(null); set('agentCode')(e); }}
             onBlur={handleAgentCodeBlur}
             placeholder="e.g. ZM-COP-0023"
             required

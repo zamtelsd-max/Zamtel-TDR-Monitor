@@ -480,19 +480,67 @@ tdrRouter.get('/agents/by-code/:code', async (req: Request, res: Response): Prom
   try {
     const agent = await prisma.agent.findUnique({ where: { agentCode: req.params.code } });
     if (!agent) { res.status(404).json({ error: 'Agent not found' }); return; }
-    // Include last visit info for stale detection
+    // Include last visit info for stale detection + WHO last visited (the footprint stays, the visitor is shown)
     const lastVisit = await prisma.visit.findFirst({
       where:   { agentCode: agent.agentCode },
       orderBy: { createdAt: 'desc' },
-      select:  { createdAt: true },
+      select:  { createdAt: true, tdrName: true, tdrId: true },
     });
-    const lastVisitedAt = lastVisit?.createdAt ?? null;
+    const lastVisitedAt   = lastVisit?.createdAt ?? null;
+    // Last TDR to visit: prefer the most recent visit's TDR; fall back to the registering TDR
+    const lastVisitedBy   = lastVisit?.tdrName ?? agent.tdrName;
+    const lastVisitedById = lastVisit?.tdrId   ?? agent.tdrId;
     const daysAgo = lastVisitedAt
       ? Math.floor((Date.now() - lastVisitedAt.getTime()) / 86400000)
       : null;
-    res.json({ ...agent, lastVisitedAt, daysAgo, isStale: daysAgo === null || daysAgo >= 4 });
+    res.json({
+      ...agent,
+      registeredBy:    agent.tdrName,   // original footprint owner — never changes
+      lastVisitedAt,
+      lastVisitedBy,                    // most recent TDR to visit this outlet
+      lastVisitedById,
+      daysAgo,
+      isStale: daysAgo === null || daysAgo >= 4,
+    });
   } catch (err) {
     res.status(500).json({ error: 'Lookup failed' });
+  }
+});
+
+// ─── GET /tdr/agents/search?q= ── name OR code autocomplete (footprint lookup) ──
+// Returns matching outlets so the form can auto-fill on entering a name or code.
+tdrRouter.get('/agents/search', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) { res.json({ data: [] }); return; }
+    const matches = await prisma.agent.findMany({
+      where: {
+        OR: [
+          { agentName: { contains: q, mode: 'insensitive' } },
+          { agentCode: { contains: q, mode: 'insensitive' } },
+          { contactPhone: { contains: q } },
+        ],
+      },
+      orderBy: { agentName: 'asc' },
+      take: 10,
+    });
+    // attach last-visitor info for each match
+    const enriched = await Promise.all(matches.map(async (a) => {
+      const lv = await prisma.visit.findFirst({
+        where: { agentCode: a.agentCode },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, tdrName: true },
+      });
+      return {
+        ...a,
+        registeredBy:  a.tdrName,
+        lastVisitedAt: lv?.createdAt ?? null,
+        lastVisitedBy: lv?.tdrName ?? a.tdrName,
+      };
+    }));
+    res.json({ data: enriched });
+  } catch (err) {
+    res.status(500).json({ error: 'Search failed' });
   }
 });
 

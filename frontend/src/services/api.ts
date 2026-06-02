@@ -131,6 +131,9 @@ export const tdrApi = {
   getAgentByCode: (code: string) =>
     client.get<Agent>(`/tdr/agents/by-code/${encodeURIComponent(code)}`),
 
+  searchAgents: (q: string) =>
+    client.get<{ data: Agent[] }>(`/tdr/agents/search?q=${encodeURIComponent(q)}`),
+
   createVisit: (data: Partial<Visit>) =>
     client.post<Visit>('/tdr/visits', data),
 
