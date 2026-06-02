@@ -335,6 +335,8 @@ model SiteFocus {
   odrsRec     Int      @default(0)   // ODRs recruited
   dataActs    Int      @default(0)   // customers activated on Data offers
   dtuSold     Float    @default(0)   // K500 DTU threshold
+  latitude    Float?   // GPS latitude captured by ASE at site
+  longitude   Float?   // GPS longitude captured by ASE at site
   notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

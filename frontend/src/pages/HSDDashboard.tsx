@@ -797,7 +797,7 @@ export const HSDDashboardPage: React.FC = () => {
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-50">
                   <p className="text-sm font-bold text-gray-700">ASE Performance Ranking ({asePerf.ases.length})</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Sorted by KPI score — KYC Device 36% · Supervision 32% · SIM Outlet 23% · Own Device 9%</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Sorted by KPI score — KYC 33% · Supervision 29% · Agent Recr. 20% · Site Focus 10% · Own Device 8%</p>
                 </div>
                 <div className="divide-y divide-gray-50">
                   {asePerf.ases.map((ase: any, idx: number) => (
@@ -823,14 +823,18 @@ export const HSDDashboardPage: React.FC = () => {
                         </div>
                       </div>
                       {/* Sub-scores */}
-                      <div className="grid grid-cols-4 gap-1 mt-2 text-center">
+                      <div className="grid grid-cols-5 gap-1 mt-2 text-center">
                         <div className="bg-green-50 rounded-lg py-1">
                           <p className="text-xs font-bold text-green-700">{ase.kycDeviceScore}%</p>
                           <p className="text-[8px] text-gray-400">KYC Dev</p>
                         </div>
                         <div className="bg-blue-50 rounded-lg py-1">
                           <p className="text-xs font-bold text-blue-700">{ase.supervisionScore}%</p>
-                          <p className="text-[8px] text-gray-400">Supervision</p>
+                          <p className="text-[8px] text-gray-400">Supervis.</p>
+                        </div>
+                        <div className="bg-pink-50 rounded-lg py-1">
+                          <p className="text-xs font-bold text-pink-700">{ase.siteFocusScore ?? 0}%</p>
+                          <p className="text-[8px] text-gray-400">Site Focus</p>
                         </div>
                         <div className="bg-gray-50 rounded-lg py-1">
                           <p className="text-xs font-bold text-gray-700">{ase.devices.total}</p>
@@ -841,6 +845,9 @@ export const HSDDashboardPage: React.FC = () => {
                           <p className="text-[8px] text-gray-400">Active</p>
                         </div>
                       </div>
+                      {(ase.siteFocusSites ?? 0) > 0 && (
+                        <p className="text-[9px] text-gray-400 mt-1">📍 {ase.siteFocusSites}/10 focus sites logged this week</p>
+                      )}
                       {/* Mini device activity bar */}
                       {ase.devices.total > 0 && (
                         <div className="mt-2">

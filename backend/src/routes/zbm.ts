@@ -115,20 +115,49 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
     devMap[(d.aseName?.toLowerCase() || '')] = { total: d.total, active: d.active || 0 };
   }
 
+  // Weekly Site Focus — current week (Mon–Sun) per ASE
+  const sfWeekStart = (() => {
+    const d = new Date(); const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    const mon = new Date(d); mon.setDate(d.getDate() + diff); mon.setHours(0,0,0,0);
+    return mon;
+  })();
+  const sfWeekEnd = new Date(sfWeekStart); sfWeekEnd.setDate(sfWeekStart.getDate() + 6); sfWeekEnd.setHours(23,59,59,999);
+  const aseIdList = ases.map(a => a.id);
+  const zoneSiteFocus = aseIdList.length > 0 ? await prisma.siteFocus.findMany({
+    where: { aseId: { in: aseIdList }, weekStart: { gte: sfWeekStart, lte: sfWeekEnd } },
+  }) : [];
+  const sfByAse: Record<string, any[]> = {};
+  for (const s of zoneSiteFocus) { (sfByAse[s.aseId] = sfByAse[s.aseId] || []).push(s); }
+  const calcSfScore = (sites: any[]): number => {
+    if (!sites.length) return 0;
+    const perSite = sites.map((s: any) => {
+      const parts = [
+        Math.min(s.agentsRec / 3 * 100, 100),
+        Math.min(s.ssosRec   / 2 * 100, 100),
+        Math.min(s.odrsRec   / 1 * 100, 100),
+        Math.min(s.dataActs  / 15 * 100, 100),
+        Math.min(s.dtuSold   / 500 * 100, 100),
+      ];
+      return parts.reduce((a, b) => a + b, 0) / parts.length;
+    });
+    const coverage = Math.min(sites.length / 10, 1);
+    return Math.round((perSite.reduce((a, b) => a + b, 0) / perSite.length) * coverage);
+  };
+
   // TDR counts and avg score per ASE
   const aseStats = ases.map(ase => {
     const aseTdrs = tdrs.filter((t: any) => t.aseId === ase.id);
     const aseTdrIds = aseTdrs.map((t: any) => t.id);
     const aseTdrScores = aseTdrIds.map((tid: string) => {
       const a = agentMap[tid]        || 0;
-      const m = merchantMap[tid]     || 0;
       const v = visitMap[tid]        || 0;
       const r = reactivationMap[tid] || 0;
-      const aT = agentTarget; const mT = merchantTarget; const vT = visitTarget;
+      const aT = agentTarget; const vT = visitTarget;
       const rT = 6 * workingDaysElapsed();
+      // Merchant KPI removed — agents 60%, visits 10%, reactivation 15%
       return Math.round(
-        Math.min(a/Math.max(aT,1),1)*100*0.40 +
-        Math.min(m/Math.max(mT,1),1)*100*0.20 +
+        Math.min(a/Math.max(aT,1),1)*100*0.60 +
         Math.min(v/Math.max(vT,1),1)*100*0.10 +
         Math.min(r/Math.max(rT,1),1)*100*0.15
       );
@@ -136,10 +165,15 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
     const supervisionScore = aseTdrIds.length > 0 ? Math.round(aseTdrScores.reduce((a: number,b: number)=>a+b,0)/aseTdrIds.length) : 0;
     const devData = devMap[ase.name.toLowerCase()] || { total: 0, active: 0 };
     const kycScore = devData.total > 0 ? Math.round(devData.active / devData.total * 100) : 0;
-    const finalScore = Math.round(kycScore * 0.3636 + supervisionScore * 0.3182 + supervisionScore * 0.3182);
+    const aseSites = sfByAse[ase.id] || [];
+    const siteFocusScore = calcSfScore(aseSites);
+    // ASE KPI weights: KYC 32.73%, Supervision 28.64%, Agent Recruitment 20.45%, Site Focus 10%, Own Device 8.18%
+    const finalScore = Math.round(kycScore * 0.3273 + supervisionScore * 0.2864 + supervisionScore * 0.2045 + siteFocusScore * 0.10 + kycScore * 0.0818);
     return {
       id: ase.id, name: ase.name, zone: ase.zone, tdrCount: aseTdrIds.length,
       supervisionScore,
+      siteFocusScore,
+      siteFocusSites: aseSites.length,
       devices: { total: devData.total, active: devData.active, inactive: devData.total - devData.active, kycScore },
       finalScore
     };
@@ -533,8 +567,9 @@ zbmRouter.get('/leaderboard', responseCache(60), async (req: Request, res: Respo
     const merchantPct = Math.min(Math.round(merchants / Math.max(mt, 1) * 100), 100);
     const visitPct    = Math.min(Math.round(visits    / Math.max(vt, 1) * 100), 100);
     const floatPct    = floatTotal > 0 ? Math.round(floatResolved / floatTotal * 100) : 100;
-    const score = Math.round(agentPct * 0.4 + merchantPct * 0.2 + floatPct * 0.3 + visitPct * 0.1);
-    const pct   = Math.round((agentPct + merchantPct + visitPct) / 3);
+    // Merchant KPI removed from scoring — weight folded into agents (60%). Merchants still tracked for classification.
+    const score = Math.round(agentPct * 0.6 + floatPct * 0.3 + visitPct * 0.1);
+    const pct   = Math.round((agentPct + visitPct) / 2);
     return { id: tdr.id, name: tdr.name, zone: tdr.zone || 'Unassigned', agents, merchants, visits, floatTotal, floatResolved, agentPct, merchantPct, visitPct, floatPct, score, pct };
   });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2, TrendingUp, Smartphone, Map, Store } from 'lucide-react';
+import { Users, Eye, AlertTriangle, X, RefreshCw, ChevronDown, ChevronUp, Link2, TrendingUp, Smartphone, Map, Store, MapPin } from 'lucide-react';
 import { GeoMap } from '../components/GeoMap';
 import toast from 'react-hot-toast';
 import { aseApi, flagsApi, ssoOdrApi } from '../services/api';
@@ -124,8 +124,9 @@ export const ASEDashboardPage: React.FC = () => {
   // Site Focus state
   const [siteFocusData, setSiteFocusData] = useState<any[]>([]);
   const [siteFocusLoading, setSiteFocusLoading] = useState(false);
-  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '' });
+  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '' });
   const [sfFormOpen, setSfFormOpen]     = useState(false);
+  const [sfGpsLoading, setSfGpsLoading] = useState(false);
   const [sfSaving, setSfSaving]         = useState(false);
 
   const stats = dashData?.tdrStats ?? [];
@@ -225,11 +226,13 @@ export const ASEDashboardPage: React.FC = () => {
         odrsRec:   Number(sfForm.odrsRec)   || 0,
         dataActs:  Number(sfForm.dataActs)  || 0,
         dtuSold:   Number(sfForm.dtuSold)   || 0,
+        latitude:  sfForm.latitude  !== '' ? Number(sfForm.latitude)  : undefined,
+        longitude: sfForm.longitude !== '' ? Number(sfForm.longitude) : undefined,
         notes:     sfForm.notes || undefined,
       });
       toast.success('Site saved!');
       setSfFormOpen(false);
-      setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '' });
+      setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '' });
       loadSiteFocus();
       loadDashboard();
     } catch (e: any) {
@@ -246,6 +249,23 @@ export const ASEDashboardPage: React.FC = () => {
       loadSiteFocus();
       loadDashboard();
     } catch { toast.error('Failed to remove site'); }
+  };
+
+  const captureGps = () => {
+    if (!navigator.geolocation) { toast.error('GPS not supported on this device'); return; }
+    setSfGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setSfForm(f => ({ ...f, latitude: pos.coords.latitude.toFixed(6), longitude: pos.coords.longitude.toFixed(6) }));
+        setSfGpsLoading(false);
+        toast.success('GPS location captured');
+      },
+      (err) => {
+        setSfGpsLoading(false);
+        toast.error(err.code === 1 ? 'Location permission denied' : 'Could not get GPS location');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   const pickTDR = async (tdrId: string) => {
@@ -795,6 +815,10 @@ export const ASEDashboardPage: React.FC = () => {
                 <input type="number" value={sfForm.dataActs} onChange={e => setSfForm({...sfForm, dataActs: e.target.value})} placeholder="Data Acts (15)" className="border rounded-xl px-3 py-2 text-sm" />
                 <input type="number" value={sfForm.dtuSold} onChange={e => setSfForm({...sfForm, dtuSold: e.target.value})} placeholder="DTU K (500)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                 <input value={sfForm.notes} onChange={e => setSfForm({...sfForm, notes: e.target.value})} placeholder="Notes (optional)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                <button type="button" onClick={captureGps} disabled={sfGpsLoading} className="col-span-2 flex items-center justify-center gap-2 border-2 border-dashed rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ borderColor: '#00843D', color: '#00843D' }}>
+                  <MapPin className="w-4 h-4" />
+                  {sfGpsLoading ? 'Getting location…' : (sfForm.latitude ? `📍 ${sfForm.latitude}, ${sfForm.longitude}` : 'Capture GPS Coordinates')}
+                </button>
               </div>
               <button onClick={saveSiteFocus} disabled={sfSaving} className="w-full text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50" style={{ background: '#00843D' }}>
                 {sfSaving ? 'Saving...' : 'Save Site'}
@@ -847,7 +871,12 @@ export const ASEDashboardPage: React.FC = () => {
                         );
                       })}
                     </div>
-                    {s.notes && <p className="text-[10px] text-gray-400 mt-2 italic">{s.notes}</p>}
+                    {(s.latitude != null && s.longitude != null) && (
+                      <a href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`} target="_blank" rel="noreferrer" className="text-[10px] mt-2 inline-flex items-center gap-1 font-semibold" style={{ color: '#00843D' }}>
+                        <MapPin className="w-3 h-3" /> {Number(s.latitude).toFixed(5)}, {Number(s.longitude).toFixed(5)}
+                      </a>
+                    )}
+                    {s.notes && <p className="text-[10px] text-gray-400 mt-1 italic">{s.notes}</p>}
                   </div>
                 );
               })}

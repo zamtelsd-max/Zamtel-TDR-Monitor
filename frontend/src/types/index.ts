@@ -146,6 +146,7 @@ export interface TDRStat {
 export interface ASEPerformanceEntry {
   id: string; name: string; zone: string | null; tdrCount: number;
   supervisionScore: number; finalScore: number;
+  siteFocusScore?: number; siteFocusSites?: number;
   devices: { total: number; active: number; inactive: number; kycScore: number };
 }
 

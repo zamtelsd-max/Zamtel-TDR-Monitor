@@ -577,6 +577,22 @@ hsdRouter.get('/ase-performance', responseCache(60), async (req: Request, res: R
     const mchMap = Object.fromEntries(merchantsByTdr.map((r: any) => [r.tdrId, r._count]));
     const visMap = Object.fromEntries(visitsByTdr.map((r: any)    => [r.tdrId, r._count]));
 
+    // Weekly Site Focus — current week (Mon–Sun), grouped by ASE
+    const sfWeekStart = (() => {
+      const d = new Date(); const day = d.getDay();
+      const diff = (day === 0 ? -6 : 1 - day);
+      const mon = new Date(d); mon.setDate(d.getDate() + diff); mon.setHours(0,0,0,0);
+      return mon;
+    })();
+    const sfWeekEnd = new Date(sfWeekStart); sfWeekEnd.setDate(sfWeekStart.getDate() + 6); sfWeekEnd.setHours(23,59,59,999);
+    const allSiteFocus = await prisma.siteFocus.findMany({
+      where: { weekStart: { gte: sfWeekStart, lte: sfWeekEnd } },
+    });
+    const siteFocusByAse: Record<string, any[]> = {};
+    for (const s of allSiteFocus) {
+      (siteFocusByAse[s.aseId] = siteFocusByAse[s.aseId] || []).push(s);
+    }
+
     const aseList = ases.map((ase: any) => {
       const aseTdrIds = aseTdrMap[ase.id] || [];
       const tdrCount  = aseTdrIds.length;
@@ -584,15 +600,32 @@ hsdRouter.get('/ase-performance', responseCache(60), async (req: Request, res: R
       let tdrScoreSum = 0;
       for (const tid of aseTdrIds) {
         const ag = agMap[tid]  || 0;
-        const mc = mchMap[tid] || 0;
         const vi = visMap[tid] || 0;
-        tdrScoreSum += Math.round((ag/96)*40 + (mc/96)*20 + (vi/20)*10);
+        // Merchant KPI removed — agents 60%, visits 10% (float handled at TDR level)
+        tdrScoreSum += Math.round((ag/96)*60 + (vi/20)*10);
       }
       const supervisionScore = tdrCount > 0 ? Math.round(tdrScoreSum / tdrCount) : 0;
       const devData = devMap[ase.name.toLowerCase()] || { total: 0, active: 0, kyc_reg: 0, gross_adds: 0, activity_pct: 0 };
       const kycDeviceScore = devData.total > 0 ? Math.round(devData.active / devData.total * 100) : 0;
-      // ASE KPI weights: KYC Device 36.36%, Supervision 31.82%, Sim Outlet 22.73%, Own Device 9.09%
-      const finalScore = Math.round(kycDeviceScore * 0.3636 + supervisionScore * 0.3182 + supervisionScore * 0.2273);
+      // Weekly Site Focus score (10%): avg of per-site KPI completion for current week
+      const sf = siteFocusByAse[ase.id] || [];
+      let sfScore = 0;
+      if (sf.length > 0) {
+        const perSite = sf.map((s: any) => {
+          const parts = [
+            Math.min(s.agentsRec / 3 * 100, 100),
+            Math.min(s.ssosRec   / 2 * 100, 100),
+            Math.min(s.odrsRec   / 1 * 100, 100),
+            Math.min(s.dataActs  / 15 * 100, 100),
+            Math.min(s.dtuSold   / 500 * 100, 100),
+          ];
+          return parts.reduce((a, b) => a + b, 0) / parts.length;
+        });
+        const siteCoverage = Math.min(sf.length / 10, 1); // 10 sites/week target
+        sfScore = Math.round((perSite.reduce((a, b) => a + b, 0) / perSite.length) * siteCoverage);
+      }
+      // ASE KPI weights: KYC 32.73%, Supervision 28.64%, Agent Recruitment 20.45%, Site Focus 10%, Own Device 8.18%
+      const finalScore = Math.round(kycDeviceScore * 0.3273 + supervisionScore * 0.2864 + supervisionScore * 0.2045 + sfScore * 0.10 + kycDeviceScore * 0.0818);
       return {
         id: ase.id, name: ase.name, zone: ase.zone, tdrCount,
         devices: {
@@ -603,6 +636,8 @@ hsdRouter.get('/ase-performance', responseCache(60), async (req: Request, res: R
         },
         supervisionScore,
         kycDeviceScore,
+        siteFocusScore: sfScore,
+        siteFocusSites: sf.length,
         finalScore,
       };
     });

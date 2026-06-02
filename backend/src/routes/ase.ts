@@ -400,7 +400,9 @@ aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
 aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void> => {
   try {
     const aseId = req.user!.userId;
-    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, notes } = req.body;
+    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, notes, latitude, longitude } = req.body;
+    const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? Number(latitude) : null;
+    const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? Number(longitude) : null;
     if (!siteName || !siteRef) {
       res.status(400).json({ error: 'siteName and siteId are required' });
       return;
@@ -425,6 +427,8 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
           odrsRec:   Number(odrsRec)   || 0,
           dataActs:  Number(dataActs)  || 0,
           dtuSold:   Number(dtuSold)   || 0,
+          ...(lat !== null ? { latitude: lat } : {}),
+          ...(lng !== null ? { longitude: lng } : {}),
           notes:     notes || null,
         },
       });
@@ -443,6 +447,8 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
           odrsRec:   Number(odrsRec)   || 0,
           dataActs:  Number(dataActs)  || 0,
           dtuSold:   Number(dtuSold)   || 0,
+          latitude:  lat,
+          longitude: lng,
           notes:     notes || null,
         },
       });

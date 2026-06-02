@@ -800,6 +800,20 @@ export const ZBMDashboardPage: React.FC = () => {
                               <p>TDR Score</p>
                             </div>
                           </div>
+                          {/* Weekly Site Focus */}
+                          <div className="mt-3 pt-3 border-t border-gray-50">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs text-gray-500">📍 Weekly Site Focus <span className="text-[10px] text-gray-400">({ase.siteFocusSites ?? 0}/10 sites)</span></span>
+                              <span className={`text-xs font-bold ${scoreColor(ase.siteFocusScore ?? 0)}`}>{ase.siteFocusScore ?? 0}%</span>
+                            </div>
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${ase.siteFocusScore ?? 0}%`,
+                                  background: (ase.siteFocusScore ?? 0) >= 70 ? '#00843D' : (ase.siteFocusScore ?? 0) >= 40 ? '#f59e0b' : '#ef4444'
+                                }} />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
