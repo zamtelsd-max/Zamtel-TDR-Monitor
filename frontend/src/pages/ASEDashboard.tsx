@@ -336,6 +336,20 @@ export const ASEDashboardPage: React.FC = () => {
         </div>
       ) : (
         <div className="px-4 pb-3">
+          {/* Primary ASE KPI Score banner — official weighted performance */}
+          <div className={`rounded-2xl border-2 p-4 mb-3 ${scoreBg(kpiScore?.finalScore ?? 0)}`} style={{ borderColor: (kpiScore?.finalScore ?? 0) >= 70 ? '#00843D' : (kpiScore?.finalScore ?? 0) >= 40 ? '#f59e0b' : '#ef4444' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">My ASE KPI Score</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Official weighted performance · all 5 KPIs</p>
+              </div>
+              <div className="text-right">
+                <span className={`text-4xl font-black ${scoreColor(kpiScore?.finalScore ?? 0)}`}>{kpiScore?.finalScore ?? 0}%</span>
+                <p className={`text-[10px] font-bold ${scoreColor(kpiScore?.finalScore ?? 0)}`}>{(kpiScore?.finalScore ?? 0) >= 70 ? '🟢 On Track' : (kpiScore?.finalScore ?? 0) >= 40 ? '🟡 Needs Attention' : '🔴 Critical'}</p>
+              </div>
+            </div>
+            <button onClick={() => setTab('kpi-score')} className="mt-2 text-[11px] font-semibold underline underline-offset-2" style={{ color: '#00843D' }}>View KPI breakdown →</button>
+          </div>
           {/* 4 Ring Charts */}
           <div className="grid grid-cols-2 gap-3 mb-3">
             {(() => {
@@ -352,7 +366,7 @@ export const ASEDashboardPage: React.FC = () => {
               return (
                 <>
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
-                    <RingChart pct={overallScore} size={80} stroke={9} color="#00843D" label="Overall Score" />
+                    <RingChart pct={overallScore} size={80} stroke={9} color="#00843D" label="Team TDR Score" />
                   </div>
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
                     <RingChart pct={agentPct} size={80} stroke={9} color="#E4007C" label="Agents MTD" />
@@ -381,10 +395,15 @@ export const ASEDashboardPage: React.FC = () => {
               <p className="text-base font-black text-purple-600">{stats.length}</p>
               <p className="text-[9px] text-gray-400">TDRs</p>
             </div>
-            <div className={`rounded-xl border p-2 text-center ${scoreBg(kpiScore?.finalScore ?? 0)}`}>
-              <p className={`text-base font-black ${scoreColor(kpiScore?.finalScore ?? 0)}`}>{kpiScore?.finalScore ?? 0}%</p>
-              <p className="text-[9px] text-gray-400">KPI</p>
+            {(() => {
+              const teamAvg = stats.length > 0 ? Math.round(stats.reduce((acc, s) => acc + (s.kpiScore ?? 0), 0) / stats.length) : 0;
+              return (
+            <div className={`rounded-xl border p-2 text-center ${scoreBg(teamAvg)}`}>
+              <p className={`text-base font-black ${scoreColor(teamAvg)}`}>{teamAvg}%</p>
+              <p className="text-[9px] text-gray-400">Avg TDR</p>
             </div>
+              );
+            })()}
           </div>
         </div>
       )}
