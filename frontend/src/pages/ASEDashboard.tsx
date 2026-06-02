@@ -96,7 +96,7 @@ export const ASEDashboardPage: React.FC = () => {
   const user = useAppSelector(s => s.auth.user);
 
   // ── ALL hooks must be declared before any early returns ──
-  const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'sso-odr' | 'pick-tdrs' | 'map'>('my-tdrs');
+  const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'sso-odr' | 'pick-tdrs' | 'map' | 'site-focus'>('my-tdrs');
   const [ssoTab, setSsoTab]             = useState<'SSO' | 'ODR' | null>(null);
   const [ssoData, setSsoData]           = useState<{ sso: any[]; odr: any[] }>({ sso: [], odr: [] });
   const [ssoSummary, setSsoSummary]     = useState<{ totalSso:number; totalOdr:number; mtdSso:number; mtdOdr:number; targetSso:number; targetOdr:number } | null>(null);
@@ -121,6 +121,12 @@ export const ASEDashboardPage: React.FC = () => {
   const [devLoading, setDevLoading]     = useState(false);
   const [devSource, setDevSource]       = useState<string>('all');
   const [devStatus, setDevStatus]       = useState<string>('all');
+  // Site Focus state
+  const [siteFocusData, setSiteFocusData] = useState<any[]>([]);
+  const [siteFocusLoading, setSiteFocusLoading] = useState(false);
+  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '' });
+  const [sfFormOpen, setSfFormOpen]     = useState(false);
+  const [sfSaving, setSfSaving]         = useState(false);
 
   const stats = dashData?.tdrStats ?? [];
 
@@ -199,6 +205,49 @@ export const ASEDashboardPage: React.FC = () => {
 
   useEffect(() => { if (tab === 'sso-odr') loadSsoOdr(); }, [tab, loadSsoOdr]);
 
+  const loadSiteFocus = useCallback(() => {
+    setSiteFocusLoading(true);
+    aseApi.getSiteFocus()
+      .then(r => setSiteFocusData(r.data.data || []))
+      .catch(() => toast.error('Failed to load site focus'))
+      .finally(() => setSiteFocusLoading(false));
+  }, []);
+  useEffect(() => { if (tab === 'site-focus') loadSiteFocus(); }, [tab, loadSiteFocus]);
+
+  const saveSiteFocus = async () => {
+    if (!sfForm.siteName || !sfForm.siteId) { toast.error('Site name and ID are required'); return; }
+    setSfSaving(true);
+    try {
+      await aseApi.saveSiteFocus({
+        siteName: sfForm.siteName, siteId: sfForm.siteId,
+        agentsRec: Number(sfForm.agentsRec) || 0,
+        ssosRec:   Number(sfForm.ssosRec)   || 0,
+        odrsRec:   Number(sfForm.odrsRec)   || 0,
+        dataActs:  Number(sfForm.dataActs)  || 0,
+        dtuSold:   Number(sfForm.dtuSold)   || 0,
+        notes:     sfForm.notes || undefined,
+      });
+      toast.success('Site saved!');
+      setSfFormOpen(false);
+      setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '' });
+      loadSiteFocus();
+      loadDashboard();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to save site');
+    } finally {
+      setSfSaving(false);
+    }
+  };
+
+  const deleteSiteFocus = async (id: string) => {
+    try {
+      await aseApi.deleteSiteFocus(id);
+      toast.success('Site removed');
+      loadSiteFocus();
+      loadDashboard();
+    } catch { toast.error('Failed to remove site'); }
+  };
+
   const pickTDR = async (tdrId: string) => {
     setPicking(tdrId);
     try {
@@ -250,6 +299,7 @@ export const ASEDashboardPage: React.FC = () => {
     { id: 'my-tdrs',     label: `👥 TDRs (${stats.length})` },
     { id: 'kyc-devices', label: `📱 KYC Devices` },
     { id: 'kpi-score',   label: `🎯 KPI Score` },
+    { id: 'site-focus',  label: `📍 Site Focus` },
     { id: 'sso-odr',     label: `📡 SSO/ODR` },
     { id: 'pick-tdrs',   label: `➕ Pick TDRs` },
     { id: 'map',         label: `🗺️ Field Map` },
@@ -657,10 +707,11 @@ export const ASEDashboardPage: React.FC = () => {
                 </div>
                 <div className="divide-y divide-gray-50">
                   {[
-                    { label: 'Device Activation (KYC)', score: kpiScore.kycDeviceScore, weight: '36.36%', icon: '📱' },
-                    { label: 'Sim Outlet (Agent Recr.)', score: kpiScore.simOutletScore, weight: '22.73%', icon: '👤' },
-                    { label: 'Own Device (Merchant)', score: kpiScore.ownDeviceScore, weight: '9.09%', icon: '🏪' },
-                    { label: 'TDR Supervision', score: kpiScore.supervisionScore, weight: '31.82%', icon: '👥' },
+                    { label: 'Device Activation (KYC)', score: kpiScore.kycDeviceScore,   weight: '32.73%', icon: '📱' },
+                    { label: 'Agent Recruitment',        score: kpiScore.simOutletScore,   weight: '20.45%', icon: '👤' },
+                    { label: 'TDR Supervision',          score: kpiScore.supervisionScore, weight: '28.64%', icon: '👥' },
+                    { label: 'Weekly Site Focus',         score: (kpiScore as any).siteFocusScore ?? 0, weight: '10.00%', icon: '📍', sub: `${(kpiScore as any).siteFocusSites ?? 0}/10 sites` },
+                    { label: 'Own Device (KYC)',          score: kpiScore.ownDeviceScore,   weight: '8.18%',  icon: '🏪' },
                   ].map(row => (
                     <div key={row.label} className="px-4 py-3">
                       <div className="flex items-center justify-between mb-1.5">
@@ -668,7 +719,7 @@ export const ASEDashboardPage: React.FC = () => {
                           <span>{row.icon}</span>
                           <div>
                             <p className="text-xs font-semibold text-gray-700">{row.label}</p>
-                            <p className="text-[10px] text-gray-400">Weight: {row.weight}</p>
+                            <p className="text-[10px] text-gray-400">Weight: {row.weight}{(row as any).sub ? ` · ${(row as any).sub}` : ''}</p>
                           </div>
                         </div>
                         <span className={`text-sm font-black ${scoreColor(row.score)}`}>{row.score}%</span>
@@ -710,6 +761,97 @@ export const ASEDashboardPage: React.FC = () => {
                 </Card>
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {/* SITE FOCUS TAB */}
+      {tab === 'site-focus' && (
+        <div className="px-4 py-2 mb-24">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-sm text-gray-800">📍 Weekly Site Focus</h3>
+              <p className="text-xs text-gray-400">{siteFocusData.length}/10 sites logged this week</p>
+            </div>
+            <button onClick={() => setSfFormOpen(!sfFormOpen)} className="text-white text-xs font-bold px-3 py-2 rounded-xl" style={{ background: '#00843D' }}>
+              {sfFormOpen ? 'Close' : '+ Log Site'}
+            </button>
+          </div>
+          {/* Progress summary */}
+          <div className="mb-3">
+            <div className="h-2 bg-gray-100 rounded-full">
+              <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min(siteFocusData.length/10*100,100)}%`, background: '#00843D' }} />
+            </div>
+          </div>
+          {/* Add-site form */}
+          {sfFormOpen && (
+            <Card className="mb-4 p-4">
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <input value={sfForm.siteName} onChange={e => setSfForm({...sfForm, siteName: e.target.value})} placeholder="Site Name" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                <input value={sfForm.siteId} onChange={e => setSfForm({...sfForm, siteId: e.target.value})} placeholder="Site ID" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                <input type="number" value={sfForm.agentsRec} onChange={e => setSfForm({...sfForm, agentsRec: e.target.value})} placeholder="Agents (3)" className="border rounded-xl px-3 py-2 text-sm" />
+                <input type="number" value={sfForm.ssosRec} onChange={e => setSfForm({...sfForm, ssosRec: e.target.value})} placeholder="SSOs (2)" className="border rounded-xl px-3 py-2 text-sm" />
+                <input type="number" value={sfForm.odrsRec} onChange={e => setSfForm({...sfForm, odrsRec: e.target.value})} placeholder="ODRs (1)" className="border rounded-xl px-3 py-2 text-sm" />
+                <input type="number" value={sfForm.dataActs} onChange={e => setSfForm({...sfForm, dataActs: e.target.value})} placeholder="Data Acts (15)" className="border rounded-xl px-3 py-2 text-sm" />
+                <input type="number" value={sfForm.dtuSold} onChange={e => setSfForm({...sfForm, dtuSold: e.target.value})} placeholder="DTU K (500)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                <input value={sfForm.notes} onChange={e => setSfForm({...sfForm, notes: e.target.value})} placeholder="Notes (optional)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+              </div>
+              <button onClick={saveSiteFocus} disabled={sfSaving} className="w-full text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50" style={{ background: '#00843D' }}>
+                {sfSaving ? 'Saving...' : 'Save Site'}
+              </button>
+            </Card>
+          )}
+          {/* Logged sites list */}
+          {siteFocusLoading ? (
+            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-2xl" />)}</div>
+          ) : siteFocusData.length === 0 ? (
+            <Card className="text-center py-8 text-gray-400">
+              <p className="text-sm">No sites logged this week yet.</p>
+              <p className="text-xs mt-1">Target: 10 focus sites per week.</p>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {siteFocusData.map((s: any) => {
+                const kpis = [
+                  { l: 'Agents', v: s.agentsRec, t: 3,   c: '#00843D' },
+                  { l: 'SSOs',   v: s.ssosRec,   t: 2,   c: '#2563EB' },
+                  { l: 'ODRs',   v: s.odrsRec,   t: 1,   c: '#7C3AED' },
+                  { l: 'Data',   v: s.dataActs,  t: 15,  c: '#F97316' },
+                  { l: 'DTU K',  v: s.dtuSold,   t: 500, c: '#E4007C' },
+                ];
+                const siteScore = Math.round(kpis.reduce((a, k) => a + Math.min(k.v / k.t * 100, 100), 0) / kpis.length);
+                const scColor = siteScore >= 70 ? '#00843D' : siteScore >= 40 ? '#f59e0b' : '#ef4444';
+                return (
+                  <div key={s.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-gray-800 truncate">{s.siteName}</p>
+                        <p className="text-[10px] text-gray-400">ID: {s.siteId}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-black" style={{ color: scColor }}>{siteScore}%</span>
+                        <button onClick={() => deleteSiteFocus(s.id)} className="text-gray-300 hover:text-red-500 text-xs">✕</button>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      {kpis.map(k => {
+                        const pct = Math.min(Math.round(k.v / k.t * 100), 100);
+                        return (
+                          <div key={k.l} className="flex items-center gap-1.5">
+                            <span className="text-[9px] text-gray-400 w-10 shrink-0">{k.l}</span>
+                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full">
+                              <div className="h-full rounded-full" style={{ width: `${pct}%`, background: k.c }} />
+                            </div>
+                            <span className="text-[9px] font-bold text-gray-500 w-12 text-right">{k.v}/{k.t}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {s.notes && <p className="text-[10px] text-gray-400 mt-2 italic">{s.notes}</p>}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

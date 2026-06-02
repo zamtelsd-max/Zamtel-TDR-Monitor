@@ -2,11 +2,14 @@
  * Zamtel TDR Performance Scoring
  * ─────────────────────────────────────────────────────────────────
  * Weights:
- *   Agent Recruitment      40%
- *   Merchant Recruitment   20%
+ *   Agent Recruitment      60%  (was 40%; merchant 20% absorbed here)
  *   Float Issue Resolution 15%
  *   Agent Reactivation     15%
  *   Trade Visitations      10%
+ *
+ * Note: Merchant KPI removed from scoring. Agents are still classified
+ * by category (Booth, Restaurant, Barbershop, etc.) for reporting but
+ * all agent types count equally toward the Recruitment score.
  *
  * Performance Bands:
  *   ≥ 80%  → Green   (On Track / Excellent)
@@ -16,8 +19,8 @@
  */
 
 export const WEIGHTS = {
-  agents:       0.40,   // Agent Recruitment      40%
-  merchants:    0.20,   // Merchant Recruitment   20%
+  agents:       0.60,   // Agent Recruitment      60%  (merchants folded in)
+  merchants:    0.00,   // Merchant Recruitment    0%  (removed — classification only)
   floats:       0.15,   // Float Issue Resolution 15%
   reactivation: 0.15,   // Agent Reactivation     15%
   visits:       0.10,   // Trade Visitations      10%
@@ -81,15 +84,15 @@ export const VISIT_DAILY_TARGET = 20;
 
 export const WEIGHT_LABELS = {
   agents:       'Agent Recruitment',
-  merchants:    'Merchant Recruitment',
+  merchants:    'Agent Classification (info only)',
   floats:       'Float Issue Resolution',
   reactivation: 'Agent Reactivation',
   visits:       'Trade Visitations',
 } as const;
 
 export const WEIGHT_PCT = {
-  agents:       '40%',
-  merchants:    '20%',
+  agents:       '60%',
+  merchants:    '0%',
   floats:       '15%',
   reactivation: '15%',
   visits:       '10%',

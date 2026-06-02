@@ -9,17 +9,41 @@ export const aseRouter = Router();
 aseRouter.use(requireAuth('ASE', 'ZBM', 'HSD'));
 aseRouter.use(apiRateLimit);
 
-// ─── Helper: calc TDR KPI score (same weights as ZBM dashboard) ─────────────
-function calcTdrScore(agents: number, merchants: number, visits: number, reactivations: number): number {
-  const agentTarget       = prorateMtdTarget(96);
-  const merchantTarget    = prorateMtdTarget(96);
-  const visitTarget       = visitMtdTarget();
+// ─── Helper: calc TDR KPI score ──────────────────────────────────────────────
+// Merchant KPI removed — merchants still classified but weight moved to agents.
+// New weights: Agents 60%, Float 15%, Reactivation 15%, Visits 10%.
+function calcTdrScore(agents: number, _merchants: number, visits: number, reactivations: number): number {
+  const agentTarget        = prorateMtdTarget(96);
+  const visitTarget        = visitMtdTarget();
   const reactivationTarget = 6 * workingDaysElapsed();
-  const agentPct       = Math.min(agents       / Math.max(agentTarget, 1),       1) * 100;
-  const merchantPct    = Math.min(merchants    / Math.max(merchantTarget, 1),    1) * 100;
-  const visitPct       = Math.min(visits       / Math.max(visitTarget, 1),       1) * 100;
-  const reactivPct     = Math.min(reactivations/ Math.max(reactivationTarget, 1),1) * 100;
-  return Math.round(agentPct * 0.40 + merchantPct * 0.20 + visitPct * 0.10 + reactivPct * 0.15);
+  const agentPct    = Math.min(agents        / Math.max(agentTarget,        1), 1) * 100;
+  const visitPct    = Math.min(visits        / Math.max(visitTarget,        1), 1) * 100;
+  const reactivPct  = Math.min(reactivations / Math.max(reactivationTarget, 1), 1) * 100;
+  return Math.round(agentPct * 0.60 + visitPct * 0.10 + reactivPct * 0.15);
+}
+
+// ─── Helper: calc weekly site focus score (0–100) ────────────────────────────
+// Per site targets: 3 agents, 2 SSOs, 1 ODR, 15 data activations, K500 DTU.
+// Score = average achievement across all 5 sub-KPIs per site, then averaged.
+function calcSiteFocusScore(sites: Array<{
+  agentsRec: number; ssosRec: number; odrsRec: number; dataActs: number; dtuSold: number;
+}>): number {
+  if (sites.length === 0) return 0;
+  const AGENT_TGT = 3; const SSO_TGT = 2; const ODR_TGT = 1;
+  const DATA_TGT  = 15; const DTU_TGT = 500;
+  const siteScores = sites.map(s => {
+    const a = Math.min(s.agentsRec / AGENT_TGT, 1) * 100;
+    const sso = Math.min(s.ssosRec  / SSO_TGT,   1) * 100;
+    const odr = Math.min(s.odrsRec  / ODR_TGT,   1) * 100;
+    const d   = Math.min(s.dataActs / DATA_TGT,   1) * 100;
+    const dtu = Math.min(s.dtuSold  / DTU_TGT,    1) * 100;
+    return (a + sso + odr + d + dtu) / 5;
+  });
+  // Achievement across 10 required sites
+  const SITES_REQUIRED = 10;
+  const siteCountPct = Math.min(sites.length / SITES_REQUIRED, 1) * 100;
+  const avgSiteScore  = siteScores.reduce((a, b) => a + b, 0) / siteScores.length;
+  return Math.round((siteCountPct + avgSiteScore) / 2);
 }
 
 // ─── GET /ase/dashboard ───────────────────────────────────────────────────────
@@ -81,42 +105,68 @@ aseRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
     const kycScore  = totalDev > 0 ? Math.round(activeDev / totalDev * 100) : 0;
 
     // KPI component scores
-    const teamAgents      = tdrStats.reduce((s,t) => s + t.agents, 0);
-    const teamMerchants   = tdrStats.reduce((s,t) => s + t.merchants, 0);
-    const teamVisits      = tdrStats.reduce((s,t) => s + t.visits, 0);
+    // ASE weights (total = 100%):
+    //   KYC Device Mgmt:    32.73%
+    //   TDR Supervision:    28.64%
+    //   SIM Outlet (agents):20.45%
+    //   Own Device (merch.): 8.18%
+    //   Weekly Site Focus:  10.00%
+    const teamAgents        = tdrStats.reduce((s,t) => s + t.agents, 0);
+    const teamMerchants     = tdrStats.reduce((s,t) => s + t.merchants, 0);
+    const teamVisits        = tdrStats.reduce((s,t) => s + t.visits, 0);
     const teamReactivations = tdrStats.reduce((s,t) => s + t.reactivations, 0);
-    const tdrCount        = tdrs.length;
-    const agentTarget     = prorateMtdTarget(96) * Math.max(tdrCount, 1);
-    const merchantTarget  = prorateMtdTarget(96) * Math.max(tdrCount, 1);
-    const simOutletScore  = Math.min(Math.round(teamAgents / Math.max(agentTarget, 1) * 100), 100);
-    const ownDeviceScore  = Math.min(Math.round(teamMerchants / Math.max(merchantTarget, 1) * 100), 100);
-    const tdrScores       = tdrStats.map(t => t.kpiScore);
-    const supervisionScore = tdrCount > 0 ? Math.round(tdrScores.reduce((a,b) => a+b, 0) / tdrCount) : 0;
-    const finalScore      = Math.round(
-      kycScore       * 0.3636 +
-      simOutletScore * 0.2273 +
-      ownDeviceScore * 0.0909 +
-      supervisionScore * 0.3182
+    const tdrCount          = tdrs.length;
+    const agentTarget       = prorateMtdTarget(96) * Math.max(tdrCount, 1);
+    const merchantTarget    = prorateMtdTarget(96) * Math.max(tdrCount, 1);
+    const simOutletScore    = Math.min(Math.round(teamAgents    / Math.max(agentTarget,    1) * 100), 100);
+    const ownDeviceScore    = Math.min(Math.round(teamMerchants / Math.max(merchantTarget, 1) * 100), 100);
+    const tdrScores         = tdrStats.map(t => t.kpiScore);
+    const supervisionScore  = tdrCount > 0 ? Math.round(tdrScores.reduce((a,b) => a+b, 0) / tdrCount) : 0;
+
+    // Weekly site focus — fetch current ISO week's sites for this ASE
+    const weekStart = (() => {
+      const d = new Date(); const day = d.getDay();
+      const diff = (day === 0 ? -6 : 1 - day);
+      const mon = new Date(d); mon.setDate(d.getDate() + diff); mon.setHours(0,0,0,0);
+      return mon;
+    })();
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6); weekEnd.setHours(23,59,59,999);
+    const weekSites = await prisma.siteFocus.findMany({
+      where: { aseId, weekStart: { gte: weekStart, lte: weekEnd } },
+      select: { agentsRec: true, ssosRec: true, odrsRec: true, dataActs: true, dtuSold: true },
+    });
+    const siteFocusScore = calcSiteFocusScore(weekSites);
+
+    const finalScore = Math.round(
+      kycScore        * 0.3273 +
+      simOutletScore  * 0.2045 +
+      ownDeviceScore  * 0.0818 +
+      supervisionScore * 0.2864 +
+      siteFocusScore  * 0.10
     );
 
-    const agentMtdTarget        = prorateMtdTarget(96) * Math.max(tdrCount, 1);
-    const merchantMtdTarget     = prorateMtdTarget(96) * Math.max(tdrCount, 1);
-    const visitMtdTgt           = visitMtdTarget()     * Math.max(tdrCount, 1);
-    const reactivationTarget    = 6 * workingDaysElapsed() * Math.max(tdrCount, 1);
+    const agentMtdTarget     = prorateMtdTarget(96) * Math.max(tdrCount, 1);
+    const merchantMtdTarget  = prorateMtdTarget(96) * Math.max(tdrCount, 1);
+    const visitMtdTgt        = visitMtdTarget()     * Math.max(tdrCount, 1);
+    const reactivationTarget = 6 * workingDaysElapsed() * Math.max(tdrCount, 1);
 
     res.json({
       ase: { id: aseId, name: aseName, zone: req.user!.zone },
       kycDevices: {
         total: totalDev, active: activeDev, inactive: inactiveDev, kycScore,
         bySource: { mobiGo: dev.mobi_go || 0, a100c: dev.a100c || 0 },
-        totalKyc: dev.total_kyc || 0, totalGa: dev.total_ga || 0
+        totalKyc: dev.total_kyc || 0, totalGa: dev.total_ga || 0,
       },
       tdrStats,
       team: {
         totals:  { agents: teamAgents, merchants: teamMerchants, visits: teamVisits, reactivations: teamReactivations },
         targets: { agents: agentMtdTarget, merchants: merchantMtdTarget, visits: visitMtdTgt, reactivations: reactivationTarget },
       },
-      aseKpiScore: { kycDeviceScore: kycScore, simOutletScore, ownDeviceScore, supervisionScore, finalScore },
+      aseKpiScore: {
+        kycDeviceScore: kycScore, simOutletScore, ownDeviceScore, supervisionScore,
+        siteFocusScore, finalScore,
+        siteFocusSites: weekSites.length,
+      },
       mtd: { workingDaysElapsed: workingDaysElapsed(), workingDaysTotal: workingDaysThisMonth() },
     });
   } catch (err) {
@@ -296,5 +346,123 @@ aseRouter.get('/map', responseCache(45), async (req: Request, res: Response): Pr
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch map data' });
+  }
+});
+
+// ─── Weekly Site Focus endpoints ─────────────────────────────────────────────
+
+// GET /ase/site-focus?week=YYYY-MM-DD  (optional — defaults to current week)
+aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseId = req.user!.userId;
+    const weekStart = req.query.week
+      ? new Date(req.query.week as string)
+      : (() => {
+          const d = new Date(); const day = d.getDay();
+          const diff = (day === 0 ? -6 : 1 - day);
+          const mon = new Date(d); mon.setDate(d.getDate() + diff); mon.setHours(0,0,0,0);
+          return mon;
+        })();
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6); weekEnd.setHours(23,59,59,999);
+
+    const sites = await prisma.siteFocus.findMany({
+      where: { aseId, weekStart: { gte: weekStart, lte: weekEnd } },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Per-site score
+    const AGENT_TGT = 3; const SSO_TGT = 2; const ODR_TGT = 1;
+    const DATA_TGT = 15; const DTU_TGT = 500;
+    const scored = sites.map(s => ({
+      ...s,
+      score: Math.round(
+        (Math.min(s.agentsRec / AGENT_TGT, 1) +
+         Math.min(s.ssosRec   / SSO_TGT,   1) +
+         Math.min(s.odrsRec   / ODR_TGT,   1) +
+         Math.min(s.dataActs  / DATA_TGT,   1) +
+         Math.min(s.dtuSold   / DTU_TGT,    1)) / 5 * 100
+      ),
+    }));
+
+    res.json({
+      success: true,
+      weekStart,
+      sitesCount: sites.length,
+      targetSites: 10,
+      data: scored,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load site focus' });
+  }
+});
+
+// POST /ase/site-focus — add or update a site visit for the current week
+aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseId = req.user!.userId;
+    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, notes } = req.body;
+    if (!siteName || !siteRef) {
+      res.status(400).json({ error: 'siteName and siteId are required' });
+      return;
+    }
+    // Week start (Monday)
+    const d = new Date(); const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    const weekStart = new Date(d); weekStart.setDate(d.getDate() + diff); weekStart.setHours(0,0,0,0);
+
+    // Upsert by aseId + siteId + weekStart
+    const existing = await prisma.siteFocus.findFirst({
+      where: { aseId, siteId: siteRef, weekStart },
+    });
+    let record;
+    if (existing) {
+      record = await prisma.siteFocus.update({
+        where: { id: existing.id },
+        data: {
+          siteName,
+          agentsRec: Number(agentsRec) || 0,
+          ssosRec:   Number(ssosRec)   || 0,
+          odrsRec:   Number(odrsRec)   || 0,
+          dataActs:  Number(dataActs)  || 0,
+          dtuSold:   Number(dtuSold)   || 0,
+          notes:     notes || null,
+        },
+      });
+    } else {
+      // Check 10-site cap
+      const existingCount = await prisma.siteFocus.count({ where: { aseId, weekStart } });
+      if (existingCount >= 10) {
+        res.status(400).json({ error: 'Maximum 10 focus sites per week reached' });
+        return;
+      }
+      record = await prisma.siteFocus.create({
+        data: {
+          aseId, weekStart, siteName, siteId: siteRef,
+          agentsRec: Number(agentsRec) || 0,
+          ssosRec:   Number(ssosRec)   || 0,
+          odrsRec:   Number(odrsRec)   || 0,
+          dataActs:  Number(dataActs)  || 0,
+          dtuSold:   Number(dtuSold)   || 0,
+          notes:     notes || null,
+        },
+      });
+    }
+    res.json({ success: true, data: record });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save site focus' });
+  }
+});
+
+// DELETE /ase/site-focus/:id
+aseRouter.delete('/site-focus/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseId = req.user!.userId;
+    const site = await prisma.siteFocus.findFirst({ where: { id: req.params.id, aseId } });
+    if (!site) { res.status(404).json({ error: 'Site not found' }); return; }
+    await prisma.siteFocus.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete site' });
   }
 });

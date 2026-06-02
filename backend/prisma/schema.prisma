@@ -122,6 +122,7 @@ model User {
   ssoOdrTargets SsoOdrTarget[] @relation("ZbmSsoOdrTargets")
   ssoOutlets    SsoOutlet[]    @relation("TdrSsoOutlets")
   visits        Visit[]
+  siteFocuses   SiteFocus[]    @relation("AseSiteFocus")
 
   @@map("users")
 }
@@ -320,4 +321,24 @@ enum Role {
   HSD
   ASE
   DM
+}
+
+// ── Weekly Site Focus ─────────────────────────────────────────────────────────
+model SiteFocus {
+  id          String   @id @default(cuid())
+  aseId       String
+  weekStart   DateTime // Monday of the ISO week
+  siteName    String
+  siteId      String   // site reference / location ID
+  agentsRec   Int      @default(0)   // agents recruited at this site
+  ssosRec     Int      @default(0)   // SSOs recruited
+  odrsRec     Int      @default(0)   // ODRs recruited
+  dataActs    Int      @default(0)   // customers activated on Data offers
+  dtuSold     Float    @default(0)   // K500 DTU threshold
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  ase         User     @relation("AseSiteFocus", fields: [aseId], references: [id])
+
+  @@map("site_focus")
 }

@@ -354,6 +354,14 @@ export const aseApi = {
 
   getMap: () =>
     client.get('/ase/map'),
+
+  // Site Focus
+  getSiteFocus: (week?: string) =>
+    client.get('/ase/site-focus', { params: week ? { week } : {} }),
+  saveSiteFocus: (data: { siteName: string; siteId: string; agentsRec: number; ssosRec: number; odrsRec: number; dataActs: number; dtuSold: number; notes?: string }) =>
+    client.post('/ase/site-focus', data),
+  deleteSiteFocus: (id: string) =>
+    client.delete(`/ase/site-focus/${id}`),
 };
 
 // ─── Flags ───────────────────────────────────────────────────────────────────
