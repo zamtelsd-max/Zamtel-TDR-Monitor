@@ -429,7 +429,9 @@ export const ZBMDashboardPage: React.FC = () => {
         const vPct = Math.min(Math.round(data.zone.totals.visits    / vTgt * 100), 100);
         const fPct = floatResolutionPct(0, data.zone.totals.floatIssuesPending);
         const rPct = Math.min(Math.round(((data.zone.totals.reactivations ?? 0) / Math.max(6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), 1)) * 100), 100);
-        const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, floatPct: fPct, reactivationPct: rPct, visitPct: vPct });
+        const pTgtZone = Math.max(prorateMtdTarget(20) * (data.tdrStats?.length ?? 1), 1);
+        const pPct = Math.min(Math.round(((data.zone.totals.prospects ?? 0) / pTgtZone) * 100), 100);
+        const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, prospectPct: pPct, floatPct: fPct, reactivationPct: rPct, visitPct: vPct });
         const band = getBand(sc);
         return (
           <div className="rounded-2xl p-4 mb-4 shadow-sm" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #fff 100%)', border: `2px solid ${band.ring}20` }}>
@@ -451,6 +453,7 @@ export const ZBMDashboardPage: React.FC = () => {
             <div className="space-y-1.5">
               {[
                 ['👤 Agent Recruitment', aPct, data.zone.totals.agents,             data.zone.targets.agents,    '#00843D'],
+                ['🎯 Prospects',   pPct, data.zone.totals.prospects ?? 0,           pTgtZone,                    '#0EA5E9'],
                 ['📍 Visits',      vPct, data.zone.totals.visits,                   data.zone.targets.visits,    '#2563EB'],
                 ['🔄 Reactivations', rPct, data.zone.totals.reactivations ?? 0,     6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), '#8B5CF6'],
               ].map(([l, p, v, t, c]) => (
@@ -475,6 +478,7 @@ export const ZBMDashboardPage: React.FC = () => {
         const vPct = Math.min(Math.round(data.zone.totals.visits / vTgt * 100), 100);
         const chips = [
           { label: 'Agents',    val: data.zone.totals.agents,    pct: aPct, color: '#00843D', bg: '#f0fdf4' },
+          { label: 'Prospects', val: data.zone.totals.prospects ?? 0, pct: 0, color: '#0EA5E9', bg: '#f0f9ff' },
           { label: 'Visits',    val: data.zone.totals.visits,    pct: vPct, color: '#2563EB', bg: '#eff6ff' },
           { label: 'Reactiv.',  val: data.zone.totals.reactivations ?? 0, pct: 0, color: '#8B5CF6', bg: '#f5f3ff' },
           { label: 'SSO MTD',   val: ssoSummary?.mtdSso ?? 0,   pct: ssoSummary?.targetSso ? Math.min(100, Math.round((ssoSummary.mtdSso / ssoSummary.targetSso) * 100)) : 0, color: '#8B5CF6', bg: '#f5f3ff' },

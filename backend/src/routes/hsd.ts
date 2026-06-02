@@ -70,6 +70,7 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
 
   const totalRecruits     = totalAgents + totalMerchants;
   const totalConversions  = await prisma.prospect.count({ where: { status: 'converted', convertedAt: { gte: start, lte: end } } });
+  const totalProspects    = await prisma.prospect.count({ where: { createdAt: { gte: start, lte: end } } });
   const conversionRate    = totalRecruits > 0 ? Math.round(totalConversions / totalRecruits * 100) : 0;
 
   // National targets = sum of all zone-level targets (each zone target is per-TDR × TDR count)
@@ -87,15 +88,20 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
     nationalMerchantTarget += isCurrentMonth ? prorateMtdTarget(t?.targetMerchants || 96 * tdrs) : (t?.targetMerchants || 96 * tdrs);
     nationalVisitTarget    += isCurrentMonth ? visitMtdTarget() * tdrs : (t?.targetOutlets || visitMonthlyTarget() * tdrs);
   }
+  const nationalTdrCount   = Object.values(tdrCountMap).reduce((s: number, n: any) => s + (n || 0), 0);
+  const nationalProspectTarget     = (isCurrentMonth ? prorateMtdTarget(20) : 20) * Math.max(nationalTdrCount, 1);
+  const nationalReactivationTarget = 6 * workingDaysElapsed() * Math.max(nationalTdrCount, 1);
 
   res.json({
     period,
     kpis: {
-      totalAgents, totalMerchants, totalVisits, openFloatIssues: openIssues, conversionRate,
-      agentPct:    nationalAgentTarget    > 0 ? Math.min(Math.round(totalAgents    / nationalAgentTarget    * 100), 100) : 0,
-      merchantPct: nationalMerchantTarget > 0 ? Math.min(Math.round(totalMerchants / nationalMerchantTarget * 100), 100) : 0,
-      visitPct:    nationalVisitTarget    > 0 ? Math.min(Math.round(totalVisits    / nationalVisitTarget    * 100), 100) : 0,
-      nationalTargets: { agents: nationalAgentTarget, merchants: nationalMerchantTarget, visits: nationalVisitTarget },
+      totalAgents, totalMerchants, totalVisits, totalProspects, totalReactivations, openFloatIssues: openIssues, conversionRate,
+      agentPct:      nationalAgentTarget    > 0 ? Math.min(Math.round(totalAgents    / nationalAgentTarget    * 100), 100) : 0,
+      merchantPct:   nationalMerchantTarget > 0 ? Math.min(Math.round(totalMerchants / nationalMerchantTarget * 100), 100) : 0,
+      visitPct:      nationalVisitTarget    > 0 ? Math.min(Math.round(totalVisits    / nationalVisitTarget    * 100), 100) : 0,
+      prospectPct:   nationalProspectTarget > 0 ? Math.min(Math.round(totalProspects / nationalProspectTarget * 100), 100) : 0,
+      reactivationPct: nationalReactivationTarget > 0 ? Math.min(Math.round(totalReactivations / nationalReactivationTarget * 100), 100) : 0,
+      nationalTargets: { agents: nationalAgentTarget, merchants: nationalMerchantTarget, visits: nationalVisitTarget, prospects: nationalProspectTarget, reactivations: nationalReactivationTarget },
     },
     ntBase: {
       totalInactive:   ntTotal,
@@ -123,6 +129,12 @@ hsdRouter.get('/zones', responseCache(30), async (req: Request, res: Response): 
     prisma.floatIssue.groupBy({ by: ['zone'], _count: true, where: { zone: { in: ZONES }, status: { not: 'resolved' } } }),
     prisma.salesTarget.findMany({ where: { period, zone: { in: ZONES } } }),
   ]);
+  const [zProspects, zReactivations] = await Promise.all([
+    prisma.prospect.groupBy({ by: ['zone'], _count: true, where: { zone: { in: ZONES }, createdAt: { gte: start, lte: end } } }).catch(() => [] as any[]),
+    prisma.reactivation.groupBy({ by: ['zone'], _count: true, where: { zone: { in: ZONES }, createdAt: { gte: start, lte: end } } }).catch(() => [] as any[]),
+  ]);
+  const prospZMap = Object.fromEntries(zProspects.map((r: any) => [r.zone, r._count]));
+  const reactZMap = Object.fromEntries(zReactivations.map((r: any) => [r.zone, r._count]));
 
   const zbmMap    = Object.fromEntries(zbmUsers.map((u: any) => [u.zone, u.name]));
   const tdrMap    = Object.fromEntries(tdrCounts.map((r: any) => [r.zone, r._count]));
@@ -142,11 +154,15 @@ hsdRouter.get('/zones', responseCache(30), async (req: Request, res: Response): 
     const agentTarget    = isCurrentMonth ? prorateMtdTarget(target?.targetAgents    || 96 * tdrs) : (target?.targetAgents    || 96 * tdrs);
     const merchantTarget = isCurrentMonth ? prorateMtdTarget(target?.targetMerchants || 96 * tdrs) : (target?.targetMerchants || 96 * tdrs);
     const visitTarget    = isCurrentMonth ? visitMtdTarget() * tdrs : (target?.targetOutlets || visitMonthlyTarget() * tdrs);
+    const prospects   = prospZMap[zone] || 0;
+    const reactivations = reactZMap[zone] || 0;
+    const prospectTarget     = (isCurrentMonth ? prorateMtdTarget(20) : 20) * Math.max(tdrs, 1);
+    const reactivationTarget = 6 * workingDaysElapsed() * Math.max(tdrs, 1);
     const pct = tdrs > 0
       ? Math.round(((agents / Math.max(agentTarget,1)) + (merchants / Math.max(merchantTarget,1)) + (visits / Math.max(visitTarget,1))) / 3 * 100)
       : 0;
-    return { zone, zbm: zbmMap[zone] || 'Unassigned', tdrs, agents, merchants, visits, floatIssues, pct,
-             targets: { agents: agentTarget, merchants: merchantTarget, visits: visitTarget } };
+    return { zone, zbm: zbmMap[zone] || 'Unassigned', tdrs, agents, merchants, visits, floatIssues, prospects, reactivations, pct,
+             targets: { agents: agentTarget, merchants: merchantTarget, visits: visitTarget, prospects: prospectTarget, reactivations: reactivationTarget } };
   });
 
   res.json({

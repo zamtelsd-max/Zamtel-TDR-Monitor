@@ -11,15 +11,17 @@ aseRouter.use(apiRateLimit);
 
 // ─── Helper: calc TDR KPI score ──────────────────────────────────────────────
 // Merchant KPI removed — merchants still classified but weight moved to agents.
-// New weights: Agents 60%, Float 15%, Reactivation 15%, Visits 10%.
-function calcTdrScore(agents: number, _merchants: number, visits: number, reactivations: number): number {
+// Weights: Agents 50%, Prospects 10%, Float 15%, Reactivation 15%, Visits 10%.
+function calcTdrScore(agents: number, _merchants: number, visits: number, reactivations: number, prospects = 0): number {
   const agentTarget        = prorateMtdTarget(96);
   const visitTarget        = visitMtdTarget();
   const reactivationTarget = 6 * workingDaysElapsed();
+  const prospectTarget     = prorateMtdTarget(20);
   const agentPct    = Math.min(agents        / Math.max(agentTarget,        1), 1) * 100;
   const visitPct    = Math.min(visits        / Math.max(visitTarget,        1), 1) * 100;
   const reactivPct  = Math.min(reactivations / Math.max(reactivationTarget, 1), 1) * 100;
-  return Math.round(agentPct * 0.60 + visitPct * 0.10 + reactivPct * 0.15);
+  const prospectPct = Math.min(prospects     / Math.max(prospectTarget,     1), 1) * 100;
+  return Math.round(agentPct * 0.50 + prospectPct * 0.10 + visitPct * 0.10 + reactivPct * 0.15);
 }
 
 // ─── Helper: calc weekly site focus score (0–100) ────────────────────────────
@@ -82,7 +84,7 @@ aseRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
       const floatIssues   = fM[tdr.id] || 0;
       const reactivations = rM[tdr.id] || 0;
       const prospects     = pM[tdr.id] || 0;
-      const kpiScore      = calcTdrScore(agents, merchants, visits, reactivations);
+      const kpiScore      = calcTdrScore(agents, merchants, visits, reactivations, prospects);
       return { tdr: { id: tdr.id, name: tdr.name, zone: tdr.zone }, agents, merchants, visits, floatIssues, reactivations, prospects, kpiScore };
     });
 
@@ -115,6 +117,7 @@ aseRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
     const teamMerchants     = tdrStats.reduce((s,t) => s + t.merchants, 0);
     const teamVisits        = tdrStats.reduce((s,t) => s + t.visits, 0);
     const teamReactivations = tdrStats.reduce((s,t) => s + t.reactivations, 0);
+    const teamProspects     = tdrStats.reduce((s,t) => s + (t.prospects || 0), 0);
     const tdrCount          = tdrs.length;
     const agentTarget       = prorateMtdTarget(96) * Math.max(tdrCount, 1);
     const merchantTarget    = prorateMtdTarget(96) * Math.max(tdrCount, 1);
@@ -159,7 +162,7 @@ aseRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
       },
       tdrStats,
       team: {
-        totals:  { agents: teamAgents, merchants: teamMerchants, visits: teamVisits, reactivations: teamReactivations },
+        totals:  { agents: teamAgents, merchants: teamMerchants, visits: teamVisits, reactivations: teamReactivations, prospects: teamProspects },
         targets: { agents: agentMtdTarget, merchants: merchantMtdTarget, visits: visitMtdTgt, reactivations: reactivationTarget },
       },
       aseKpiScore: {

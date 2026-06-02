@@ -19,8 +19,9 @@
  */
 
 export const WEIGHTS = {
-  agents:       0.60,   // Agent Recruitment      60%  (merchants folded in)
+  agents:       0.50,   // Agent Recruitment      50%  (merchants folded in; 10% moved to prospects)
   merchants:    0.00,   // Merchant Recruitment    0%  (removed — classification only)
+  prospects:    0.10,   // Prospects              10%  (carved out of agent recruitment)
   floats:       0.15,   // Float Issue Resolution 15%
   reactivation: 0.15,   // Agent Reactivation     15%
   visits:       0.10,   // Trade Visitations      10%
@@ -85,14 +86,16 @@ export const VISIT_DAILY_TARGET = 20;
 export const WEIGHT_LABELS = {
   agents:       'Agent Recruitment',
   merchants:    'Agent Classification (info only)',
+  prospects:    'Prospects',
   floats:       'Float Issue Resolution',
   reactivation: 'Agent Reactivation',
   visits:       'Trade Visitations',
 } as const;
 
 export const WEIGHT_PCT = {
-  agents:       '60%',
+  agents:       '50%',
   merchants:    '0%',
+  prospects:    '10%',
   floats:       '15%',
   reactivation: '15%',
   visits:       '10%',
@@ -100,6 +103,14 @@ export const WEIGHT_PCT = {
 
 /** Daily reactivation target */
 export const REACTIVATION_DAILY_TARGET = 6;
+
+/** Full-month prospects target per TDR */
+export const PROSPECT_MONTHLY_TARGET = 20;
+
+/** Prorated MTD prospects target */
+export function prospectMtdTarget(): number {
+  return prorateMtdTarget(PROSPECT_MONTHLY_TARGET);
+}
 
 // ─── Performance Band ──────────────────────────────────────────────────────────
 export type Band = 'excellent' | 'good' | 'attention' | 'critical';
@@ -142,6 +153,7 @@ export function getBand(pct: number): BandInfo {
 export interface KPIInputs {
   agentPct:       number;   // 0–100
   merchantPct:    number;   // 0–100
+  prospectPct?:   number;   // 0–100  (prospects / MTD target)
   floatPct:       number;   // 0–100  (resolved / total, or 100 if none)
   reactivationPct: number;  // 0–100  (reactivations / MTD target)
   visitPct:       number;   // 0–100
@@ -154,6 +166,7 @@ export function calcWeightedScore(k: KPIInputs): number {
   return Math.round(
     Math.min(k.agentPct,          100) * WEIGHTS.agents       +
     Math.min(k.merchantPct,       100) * WEIGHTS.merchants     +
+    Math.min(k.prospectPct ?? 0,  100) * WEIGHTS.prospects     +
     Math.min(k.floatPct,          100) * WEIGHTS.floats        +
     Math.min(k.reactivationPct,   100) * WEIGHTS.reactivation  +
     Math.min(k.visitPct,          100) * WEIGHTS.visits

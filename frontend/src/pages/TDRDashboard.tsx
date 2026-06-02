@@ -11,7 +11,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import {
   getBand, calcWeightedScore, floatResolutionPct,
-  WEIGHT_PCT, WEIGHT_LABELS, visitMtdTarget, prorateMtdTarget,
+  WEIGHT_PCT, WEIGHT_LABELS, visitMtdTarget, prorateMtdTarget, prospectMtdTarget,
   workingDaysElapsed, workingDaysThisMonth, REACTIVATION_DAILY_TARGET,
 } from '../utils/performance';
 
@@ -306,7 +306,9 @@ export const TDRDashboardPage: React.FC = () => {
   const visitPct        = data ? Math.min(Math.round(data.stats.visits.count        / data.stats.visits.target        * 100), 100) : 0;
   const floatPct        = data ? floatResolutionPct(data.floatIssues.resolved, data.floatIssues.total) : 100;
   const reactivationPct = data ? Math.min(Math.round((data.stats.reactivations?.count ?? 0) / Math.max(data.stats.reactivations?.target ?? 1, 1) * 100), 100) : 0;
-  const score           = data ? calcWeightedScore({ agentPct, merchantPct, floatPct, reactivationPct, visitPct }) : 0;
+  const prospectTgt     = prospectMtdTarget();
+  const prospectPct     = data ? Math.min(Math.round((data.prospects?.total ?? 0) / Math.max(prospectTgt, 1) * 100), 100) : 0;
+  const score           = data ? calcWeightedScore({ agentPct, merchantPct, prospectPct, floatPct, reactivationPct, visitPct }) : 0;
 
   const elapsed = workingDaysElapsed();
   const total   = workingDaysThisMonth();
@@ -465,12 +467,12 @@ export const TDRDashboardPage: React.FC = () => {
       {/* Composite score banner */}
       <ScoreBanner score={score} loading={loading && !data} />
 
-      {/* KPI rings — 5 weighted categories */}
+      {/* KPI rings — weighted categories */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
         <KPIRing pct={agentPct}    label={WEIGHT_LABELS.agents}    weight={WEIGHT_PCT.agents}
           count={data?.stats.agents.count ?? 0}    target={data?.stats.agents.target ?? 96}    loading={loading && !data} />
-        <KPIRing pct={merchantPct} label={WEIGHT_LABELS.merchants} weight={WEIGHT_PCT.merchants}
-          count={data?.stats.merchants.count ?? 0} target={data?.stats.merchants.target ?? 96} loading={loading && !data} />
+        <KPIRing pct={prospectPct} label={WEIGHT_LABELS.prospects} weight={WEIGHT_PCT.prospects}
+          count={data?.prospects?.total ?? 0}      target={prospectTgt}                         loading={loading && !data} />
         <KPIRing pct={visitPct}    label={WEIGHT_LABELS.visits}    weight={WEIGHT_PCT.visits}
           count={data?.stats.visits.count ?? 0}    target={data?.stats.visits.target ?? visitMtdTarget()}    loading={loading && !data} />
         <Card className={`flex flex-col items-center py-3 border-t-2 ${getBand(floatPct).border}`}>

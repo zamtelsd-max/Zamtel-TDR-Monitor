@@ -154,7 +154,7 @@ export interface ZBMDashboard {
   zbm:   { id: string; name: string; zone: string };
   month: string;
   zone: {
-    totals:  { agents: number; merchants: number; visits: number; floatIssuesPending: number; reactivations?: number };
+    totals:  { agents: number; merchants: number; visits: number; floatIssuesPending: number; reactivations?: number; prospects?: number };
     targets: { agents: number; merchants: number; visits: number };
   };
   tdrStats: TDRStat[];
@@ -174,7 +174,10 @@ export interface ZoneStat {
   merchants:   number;
   visits:      number;
   floatIssues: number;
+  prospects?:  number;
+  reactivations?: number;
   pct:         number;
+  targets?:    { agents: number; merchants: number; visits: number; prospects?: number; reactivations?: number };
 }
 
 export interface HSDDashboard {

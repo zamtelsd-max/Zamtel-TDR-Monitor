@@ -55,16 +55,19 @@ function pctColor(pct: number) {
   return `${b.color} ${b.bg}`;
 }
 
-function zoneScore(z: { agents: number; merchants: number; visits: number; floatIssues: number; targets?: { agents: number; merchants: number; visits: number } }): number {
+function zoneScore(z: any): number {
   // Use MTD targets for current-month scoring; fallback to targets from API when available
   const ta = z.targets?.agents    ?? prorateMtdTarget(96);
   const tm = z.targets?.merchants ?? prorateMtdTarget(96);
   const tv = z.targets?.visits    ?? visitMtdTarget();
+  const tp = z.targets?.prospects ?? prorateMtdTarget(20);
+  const tr = z.targets?.reactivations ?? Math.max((z.reactivationTarget ?? 1), 1);
   return calcWeightedScore({
     agentPct:        Math.min(Math.round(z.agents    / ta * 100), 100),
     merchantPct:     Math.min(Math.round(z.merchants / tm * 100), 100),
+    prospectPct:     Math.min(Math.round(((z.prospects ?? 0) / Math.max(tp, 1)) * 100), 100),
     floatPct:        floatResolutionPct(0, z.floatIssues),
-    reactivationPct: Math.min(Math.round(((z.reactivations ?? 0) / Math.max((z.reactivationTarget ?? 1), 1)) * 100), 100),
+    reactivationPct: Math.min(Math.round(((z.reactivations ?? 0) / Math.max(tr, 1)) * 100), 100),
     visitPct:        Math.min(Math.round(z.visits    / tv * 100), 100),
   });
 }
@@ -382,17 +385,21 @@ export const HSDDashboardPage: React.FC = () => {
             const kpis = dashboard.kpis as any;
             const aPct = kpis.agentPct    ?? 0;
             const vPct = kpis.visitPct    ?? 0;
-            // Merchant KPI removed — folded into Agent Recruitment (60%), Visits 10%, Float 30%
+            const pPct = kpis.prospectPct ?? 0;
+            const reactPct = kpis.reactivationPct ?? 0;
+            // Weights: Agents 50%, Prospects 10%, Visits 10%, Reactivation 15%, Float 15%
             const fPct = floatResolutionPct(0, kpis.openFloatIssues ?? 0);
-            const overall = Math.round(aPct * 0.6 + vPct * 0.1 + fPct * 0.3);
+            const overall = Math.round(aPct * 0.5 + pPct * 0.1 + vPct * 0.1 + reactPct * 0.15 + fPct * 0.15);
             const band = getBand(overall);
             return (
               <>
                 {/* Ring charts row */}
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   <RingChart pct={overall}  color={band.ring || '#00843D'} label="Overall" sublabel="weighted"/>
-                  <RingChart pct={Math.min(aPct,100)} color="#00843D" label="Agents" sublabel="60% wt"/>
+                  <RingChart pct={Math.min(aPct,100)} color="#00843D" label="Agents" sublabel="50% wt"/>
+                  <RingChart pct={Math.min(pPct,100)} color="#0EA5E9" label="Prospects" sublabel="10% wt"/>
                   <RingChart pct={Math.min(vPct,100)} color="#7c3aed" label="Visits" sublabel="10% wt"/>
+                  <RingChart pct={Math.min(reactPct,100)} color="#8B5CF6" label="Reactivations" sublabel="15% wt"/>
                 </div>
                 {/* Overall score banner */}
                 <div className={`rounded-xl p-3 mb-3 flex items-center justify-between ${band.bg}`}>
@@ -408,10 +415,14 @@ export const HSDDashboardPage: React.FC = () => {
                 </div>
                 {/* Per-KPI bars */}
                 <div className="space-y-3">
-                  <PerformanceBar label="Agent Recruitment (60% weight)" icon="👤"
+                  <PerformanceBar label="Agent Recruitment (50% weight)" icon="👤"
                     count={kpis.totalAgents || 0} target={kpis.nationalTargets?.agents || 1}/>
+                  <PerformanceBar label="Prospects (10% weight)" icon="🎯"
+                    count={kpis.totalProspects || 0} target={kpis.nationalTargets?.prospects || 1}/>
                   <PerformanceBar label="Outlet Visits (10% weight)" icon="📍"
                     count={kpis.totalVisits || 0} target={kpis.nationalTargets?.visits || 1}/>
+                  <PerformanceBar label="Agent Reactivation (15% weight)" icon="🔄"
+                    count={kpis.totalReactivations || 0} target={kpis.nationalTargets?.reactivations || 1}/>
                 </div>
               </>
             );

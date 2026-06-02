@@ -90,6 +90,7 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       : prisma.$queryRaw`SELECT status, COUNT(*)::int AS "_count" FROM prospects GROUP BY status`.catch(() => [])),
     prisma.reactivation.count({ where: { ...(zoneWhere.zone ? { zone: zoneWhere.zone } : {}), createdAt: { gte: start, lte: end } } }),
   ]);
+  const totalProspects = await prisma.prospect.count({ where: { ...(zoneWhere.zone ? { zone: zoneWhere.zone } : {}), createdAt: { gte: start, lte: end } } });
 
   const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const target = zone
@@ -198,7 +199,7 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       workingDaysTotal:   workingDaysThisMonth(),
     },
     zone: {
-      totals: { agents: totalAgents, merchants: totalMerchants, visits: totalVisits, floatIssuesPending, reactivations: totalReactivations },
+      totals: { agents: totalAgents, merchants: totalMerchants, visits: totalVisits, floatIssuesPending, reactivations: totalReactivations, prospects: totalProspects },
       targets: {
         agents:    prorateMtdTarget(target?.targetAgents    || 96 * tdrs.length),
         merchants: prorateMtdTarget(target?.targetMerchants || 96 * tdrs.length),

@@ -504,6 +504,7 @@ export const ASEDashboardPage: React.FC = () => {
                 </div>
                 <div className="space-y-2.5 mb-3">
                   <PerformanceBar icon="👤" label={`Agent Recruitment`} count={team.totals.agents} target={aTgt} />
+                  <PerformanceBar icon="🎯" label={`Prospects`} count={(team.totals as any).prospects ?? 0} target={Math.max(prorateMtdTarget(20) * stats.length, 1)} />
                   <PerformanceBar icon="📍" label={`Outlet Visits`} count={team.totals.visits} target={vTgt} />
                   <PerformanceBar icon="🔄" label={`Reactivations`} count={team.totals.reactivations} target={rTgt} />
                 </div>
@@ -528,17 +529,20 @@ export const ASEDashboardPage: React.FC = () => {
                 <TrendingUp className="w-4 h-4" style={{ color: '#00843D' }} />
                 <h3 className="font-bold text-sm text-gray-800">TDR Performance ({stats.length})</h3>
               </div>
-              {stats.map(({ tdr, agents, visits, floatIssues, reactivations, kpiScore: tdrKpi }) => {
+              {stats.map(({ tdr, agents, visits, floatIssues, reactivations, prospects, kpiScore: tdrKpi }) => {
                 const tdrFlag = flags.find(f => f.tdrId === tdr.id);
                 const aTgt = prorateMtdTarget(96);
                 const vTgt = visitMtdTarget();
                 const rTgt = Math.max(6 * workingDaysElapsed(), 1);
+                const pTgt = Math.max(prorateMtdTarget(20), 1);
                 const agentPct = Math.min(Math.round(agents / Math.max(aTgt, 1) * 100), 100);
                 const visitPct = Math.min(Math.round(visits / Math.max(vTgt, 1) * 100), 100);
                 const reactPct = Math.min(Math.round(reactivations / rTgt * 100), 100);
+                const prospectPct = Math.min(Math.round((prospects ?? 0) / pTgt * 100), 100);
                 const sc = tdrKpi ?? calcWeightedScore({
                   agentPct,
                   merchantPct:     0,
+                  prospectPct,
                   floatPct:        floatIssues === 0 ? 100 : Math.max(0, 100 - floatIssues * 10),
                   reactivationPct: reactPct,
                   visitPct,
@@ -555,7 +559,7 @@ export const ASEDashboardPage: React.FC = () => {
                         <p className="font-bold text-sm text-gray-800 truncate">{tdr.name}</p>
                         <p className="text-xs text-gray-400">{tdr.zone || 'No zone'}</p>
                         <div className="mt-1.5 space-y-1">
-                          {([['Agents', agentPct, '#00843D'], ['Visits', visitPct, '#2563EB'], ['React', reactPct, '#F97316']] as const).map(([l,p,c]) => (
+                          {([['Agents', agentPct, '#00843D'], ['Prosp', prospectPct, '#0EA5E9'], ['Visits', visitPct, '#2563EB'], ['React', reactPct, '#F97316']] as const).map(([l,p,c]) => (
                             <div key={l} className="flex items-center gap-1.5">
                               <span className="text-[9px] text-gray-400 w-8 shrink-0">{l}</span>
                               <div className="flex-1 h-1.5 bg-gray-100 rounded-full">
