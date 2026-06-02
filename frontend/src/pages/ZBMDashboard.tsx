@@ -448,8 +448,7 @@ export const ZBMDashboardPage: React.FC = () => {
             {/* 5 KPI mini bars */}
             <div className="space-y-1.5">
               {[
-                ['👤 Agents',      aPct, data.zone.totals.agents,                   data.zone.targets.agents,    '#00843D'],
-                ['🏪 Merchants',   mPct, data.zone.totals.merchants,                data.zone.targets.merchants, '#E4007C'],
+                ['👤 Agent Recruitment', aPct, data.zone.totals.agents,             data.zone.targets.agents,    '#00843D'],
                 ['📍 Visits',      vPct, data.zone.totals.visits,                   data.zone.targets.visits,    '#2563EB'],
                 ['🔄 Reactivations', rPct, data.zone.totals.reactivations ?? 0,     6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), '#8B5CF6'],
               ].map(([l, p, v, t, c]) => (
@@ -469,14 +468,11 @@ export const ZBMDashboardPage: React.FC = () => {
       {/* ── 6 METRIC CHIPS ── */}
       {!loading && data && (() => {
         const aTgt = data.zone.targets.agents || 1;
-        const mTgt = data.zone.targets.merchants || 1;
         const vTgt = data.zone.targets.visits || 1;
         const aPct = Math.min(Math.round(data.zone.totals.agents / aTgt * 100), 100);
-        const mPct = Math.min(Math.round(data.zone.totals.merchants / mTgt * 100), 100);
         const vPct = Math.min(Math.round(data.zone.totals.visits / vTgt * 100), 100);
         const chips = [
           { label: 'Agents',    val: data.zone.totals.agents,    pct: aPct, color: '#00843D', bg: '#f0fdf4' },
-          { label: 'Merchants', val: data.zone.totals.merchants, pct: mPct, color: '#E4007C', bg: '#fdf2f8' },
           { label: 'Visits',    val: data.zone.totals.visits,    pct: vPct, color: '#2563EB', bg: '#eff6ff' },
           { label: 'Reactiv.',  val: data.zone.totals.reactivations ?? 0, pct: 0, color: '#8B5CF6', bg: '#f5f3ff' },
           { label: 'SSO MTD',   val: ssoSummary?.mtdSso ?? 0,   pct: ssoSummary?.targetSso ? Math.min(100, Math.round((ssoSummary.mtdSso / ssoSummary.targetSso) * 100)) : 0, color: '#8B5CF6', bg: '#f5f3ff' },
@@ -586,10 +582,8 @@ export const ZBMDashboardPage: React.FC = () => {
             }).map((row: TDRStat) => {
               const sc    = tdrScore(row);
               const aTgt  = Math.max(prorateMtdTarget(96), 1);
-              const mTgt  = Math.max(prorateMtdTarget(96), 1);
               const vTgt  = Math.max(visitMtdTarget(), 1);
               const agentPct    = Math.min(Math.round(row.agents    / aTgt * 100), 100);
-              const merchantPct = Math.min(Math.round(row.merchants / mTgt * 100), 100);
               const visitPct    = Math.min(Math.round(row.visits    / vTgt * 100), 100);
               const flag  = data?.tdrFlags?.find((f: any) => f.tdrId === row.tdr.id);
               const scColor = sc >= 70 ? '#00843D' : sc >= 40 ? '#f59e0b' : '#ef4444';
@@ -606,7 +600,7 @@ export const ZBMDashboardPage: React.FC = () => {
                       </p>
                       <p className="text-xs text-gray-400">{row.tdr.zone}</p>
                       <div className="mt-1.5 space-y-1">
-                        {([['Agents', agentPct, '#00843D'], ['Merch', merchantPct, '#E4007C'], ['Visits', visitPct, '#2563EB']] as const).map(([l,p,c]) => (
+                        {([['Agents', agentPct, '#00843D'], ['Visits', visitPct, '#2563EB']] as const).map(([l,p,c]) => (
                           <div key={l} className="flex items-center gap-1.5">
                             <span className="text-[9px] text-gray-400 w-8 shrink-0">{l}</span>
                             <div className="flex-1 h-1.5 bg-gray-100 rounded-full">
@@ -880,12 +874,6 @@ export const ZBMDashboardPage: React.FC = () => {
                           {f.mtd.agents}<span className="text-gray-400 font-normal text-xs">/{f.mtd.agentTarget}</span>
                         </p>
                         <p className="text-[10px] text-gray-400">Agents MTD</p>
-                      </div>
-                      <div className="px-2">
-                        <p className={`font-bold text-sm ${f.mtd.merchants < f.mtd.merchantTarget * 0.5 ? 'text-red-600' : 'text-gray-800'}`}>
-                          {f.mtd.merchants}<span className="text-gray-400 font-normal text-xs">/{f.mtd.merchantTarget}</span>
-                        </p>
-                        <p className="text-[10px] text-gray-400">Merchants MTD</p>
                       </div>
                       <div className="px-2">
                         <p className={`font-bold text-sm ${f.mtd.visits < f.mtd.visitTarget * 0.5 ? 'text-red-600' : 'text-gray-800'}`}>

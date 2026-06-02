@@ -325,14 +325,10 @@ export const HSDDashboardPage: React.FC = () => {
                               <AlertTriangle className={`w-3 h-3 ${f.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
                             </p>
                             {f.flags.map((fl, i) => <p key={i} className="text-xs text-gray-700 mt-0.5">{fl}</p>)}
-                            <div className="grid grid-cols-3 gap-1 mt-2 text-center text-xs">
+                            <div className="grid grid-cols-2 gap-1 mt-2 text-center text-xs">
                               <div className="bg-white/80 rounded-lg py-1">
                                 <span className="font-bold text-gray-700">{f.mtd.agents}/{f.mtd.agentTarget}</span>
                                 <p className="text-gray-500">Agents MTD</p>
-                              </div>
-                              <div className="bg-white/80 rounded-lg py-1">
-                                <span className="font-bold text-gray-700">{f.mtd.merchants}/{f.mtd.merchantTarget}</span>
-                                <p className="text-gray-500">Merchants MTD</p>
                               </div>
                               <div className="bg-white/80 rounded-lg py-1">
                                 <span className="font-bold text-gray-700">{f.mtd.visits}/{f.mtd.visitTarget}</span>
@@ -383,17 +379,17 @@ export const HSDDashboardPage: React.FC = () => {
           {(() => {
             const kpis = dashboard.kpis as any;
             const aPct = kpis.agentPct    ?? 0;
-            const mPct = kpis.merchantPct ?? 0;
             const vPct = kpis.visitPct    ?? 0;
-            const overall = Math.round(aPct * 0.4 + mPct * 0.2 + vPct * 0.1);
+            // Merchant KPI removed — folded into Agent Recruitment (60%), Visits 10%, Float 30%
+            const fPct = floatResolutionPct(0, kpis.openFloatIssues ?? 0);
+            const overall = Math.round(aPct * 0.6 + vPct * 0.1 + fPct * 0.3);
             const band = getBand(overall);
             return (
               <>
                 {/* Ring charts row */}
-                <div className="grid grid-cols-4 gap-2 mb-4">
+                <div className="grid grid-cols-3 gap-2 mb-4">
                   <RingChart pct={overall}  color={band.ring || '#00843D'} label="Overall" sublabel="weighted"/>
-                  <RingChart pct={Math.min(aPct,100)} color="#00843D" label="Agents" sublabel="40% wt"/>
-                  <RingChart pct={Math.min(mPct,100)} color="#E4007C" label="Merchants" sublabel="20% wt"/>
+                  <RingChart pct={Math.min(aPct,100)} color="#00843D" label="Agents" sublabel="60% wt"/>
                   <RingChart pct={Math.min(vPct,100)} color="#7c3aed" label="Visits" sublabel="10% wt"/>
                 </div>
                 {/* Overall score banner */}
@@ -401,7 +397,7 @@ export const HSDDashboardPage: React.FC = () => {
                   <div>
                     <p className={`text-2xl font-black ${band.color}`}>{overall}%</p>
                     <p className={`text-xs font-bold ${band.color}`}>{band.label} — National Weighted Score</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{kpis.totalAgents} agents · {kpis.totalMerchants} merchants · {kpis.totalVisits} visits</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{kpis.totalAgents} agents · {kpis.totalVisits} visits</p>
                   </div>
                   <div className="text-right text-xs text-gray-500 space-y-1">
                     <p>Open Float: <span className={`font-bold ${(kpis.openFloatIssues||0) > 0 ? 'text-red-600' : 'text-green-600'}`}>{kpis.openFloatIssues || 0}</span></p>
@@ -410,10 +406,8 @@ export const HSDDashboardPage: React.FC = () => {
                 </div>
                 {/* Per-KPI bars */}
                 <div className="space-y-3">
-                  <PerformanceBar label="Agent Recruitment (40% weight)" icon="👤"
+                  <PerformanceBar label="Agent Recruitment (60% weight)" icon="👤"
                     count={kpis.totalAgents || 0} target={kpis.nationalTargets?.agents || 1}/>
-                  <PerformanceBar label="Merchant Enrollment (20% weight)" icon="🏪"
-                    count={kpis.totalMerchants || 0} target={kpis.nationalTargets?.merchants || 1}/>
                   <PerformanceBar label="Outlet Visits (10% weight)" icon="📍"
                     count={kpis.totalVisits || 0} target={kpis.nationalTargets?.visits || 1}/>
                 </div>
@@ -486,10 +480,8 @@ export const HSDDashboardPage: React.FC = () => {
               const sc   = zoneScore(z);
               const band = getBand(sc);
               const aTgt = z.targets?.agents    ?? prorateMtdTarget(96);
-              const mTgt = z.targets?.merchants ?? prorateMtdTarget(96);
               const vTgt = z.targets?.visits    ?? visitMtdTarget();
               const aPct = Math.min(Math.round(z.agents    / Math.max(aTgt,1) * 100), 100);
-              const mPct = Math.min(Math.round(z.merchants / Math.max(mTgt,1) * 100), 100);
               const vPct = Math.min(Math.round(z.visits    / Math.max(vTgt,1) * 100), 100);
               return (
                 <div key={z.zone} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -522,7 +514,6 @@ export const HSDDashboardPage: React.FC = () => {
                         <div className="mt-2 space-y-1">
                           {([
                             ['👤', z.agents,    aTgt, aPct, '#00843D'],
-                            ['🏪', z.merchants, mTgt, mPct, '#E4007C'],
                             ['📍', z.visits,    vTgt, vPct, '#7c3aed'],
                           ] as [string,number,number,number,string][]).map(([icon,val,tgt,pct,col]) => (
                             <div key={icon} className="flex items-center gap-1.5">
