@@ -16,6 +16,7 @@ import { useAppSelector } from '../hooks/useAppDispatch';
 import { getUserTitle } from '../utils/userTitle';
 import { getBand, calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
 import { PerformanceBar } from '../components/PerformanceBar';
+import { SiteFocusPanel } from '../components/SiteFocusPanel';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -96,7 +97,7 @@ export const HSDDashboardPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [mapData,   setMapData]   = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
   const [showMap,   setShowMap]   = useState(true);
-  const [mainTab,   setMainTab]   = useState<'dashboard' | 'ase' | 'flags'>('dashboard');
+  const [mainTab,   setMainTab]   = useState<'dashboard' | 'ase' | 'site-focus' | 'flags'>('dashboard');
   const [tdrFlags,  setTdrFlags]  = useState<TDRFlag[]>([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
@@ -259,6 +260,7 @@ export const HSDDashboardPage: React.FC = () => {
         {([
           ['dashboard', '📊 Overview'],
           ['ase',       '📱 ASE & Devices'],
+          ['site-focus','📍 Site Focus'],
           ['flags',     `🚩 Flags${tdrFlags.length > 0 ? ` (${tdrFlags.length})` : ''}`],
         ] as const).map(([t, label]) => (
           <button key={t} onClick={() => setMainTab(t as any)}
@@ -855,6 +857,18 @@ export const HSDDashboardPage: React.FC = () => {
               </div>
             )}
           </>)}
+        </div>
+      )}
+
+      {/* SITE FOCUS Tab */}
+      {mainTab === 'site-focus' && (
+        <div className="px-4 py-3 pb-24">
+          <SiteFocusPanel
+            showZone
+            fetchSites={async () => { const r = await hsdApi.getSiteFocus(); return { data: r.data.data }; }}
+            exportXlsx={() => hsdApi.export()}
+            exportName={`zamtel-hsd-export-${new Date().toISOString().slice(0,7)}.xlsx`}
+          />
         </div>
       )}
     </Layout>

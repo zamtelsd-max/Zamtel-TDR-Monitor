@@ -240,6 +240,9 @@ export const zbmApi = {
   getASEs: (zone?: string) =>
     client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; tdrCount: number }> }>('/zbm/ases', { params: zone ? { zone } : {} }),
 
+  getSiteFocus: (period?: string, zone?: string) =>
+    client.get<{ success: boolean; period: string; data: any[] }>('/zbm/site-focus', { params: { ...(period ? { period } : {}), ...(zone ? { zone } : {}) } }),
+
   addASE: (data: { id: string; name: string; pin: string }) =>
     client.post('/zbm/ases', data),
 
@@ -279,6 +282,9 @@ export const hsdApi = {
 
   export: (period?: string) =>
     client.get('/hsd/export', { params: period ? { period } : {}, responseType: 'blob' }),
+
+  getSiteFocus: (period?: string) =>
+    client.get<{ success: boolean; period: string; data: any[] }>('/hsd/site-focus', { params: period ? { period } : {} }),
 
   getMap: (zone?: string) =>
     client.get('/hsd/map', { params: zone && zone !== 'all' ? { zone } : {} }),

@@ -8,6 +8,7 @@ import { zbmApi, flagsApi, ssoOdrApi } from '../services/api';
 import type { ZBMDashboard, TDRStat, FloatIssue, Prospect, TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button } from '../components/UI';
+import { SiteFocusPanel } from '../components/SiteFocusPanel';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
@@ -67,7 +68,7 @@ function tdrScore(row: TDRStat): number {
 
 export const ZBMDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs' | 'ase-performance' | 'flags'>('dashboard');
+  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs' | 'ase-performance' | 'site-focus' | 'flags'>('dashboard');
   const [data,       setData]       = useState<ZBMDashboard | null>(null);
   const [issues,     setIssues]     = useState<FloatIssue[]>([]);
   const [prospects,  setProspects]  = useState<Prospect[]>([]);
@@ -238,11 +239,12 @@ export const ZBMDashboardPage: React.FC = () => {
 
       {/* Main Tab Bar */}
       <div className="flex gap-2 px-4 pb-3">
-        {(['dashboard', 'ases-tdrs', 'ase-performance', 'flags'] as const).map(t => {
+        {(['dashboard', 'ases-tdrs', 'ase-performance', 'site-focus', 'flags'] as const).map(t => {
           const critCount = tdrFlags.filter(f => f.severity === 'critical').length;
           const label = t === 'dashboard' ? '📊 Dashboard'
             : t === 'ases-tdrs' ? '👥 ASEs & TDRs'
             : t === 'ase-performance' ? '📱 ASE KYC'
+            : t === 'site-focus' ? '📍 Site Focus'
             : critCount > 0 ? `🔴 Flags (${tdrFlags.length})` : tdrFlags.length > 0 ? `⚠️ Flags (${tdrFlags.length})` : '🚩 Flags';
           return (
             <button key={t} onClick={() => setMainTab(t)}
@@ -819,6 +821,17 @@ export const ZBMDashboardPage: React.FC = () => {
         </div>
       )}
 
+
+      {/* SITE FOCUS Tab */}
+      {mainTab === 'site-focus' && (
+        <div className="px-4 py-3 pb-24">
+          <SiteFocusPanel
+            fetchSites={async () => { const r = await zbmApi.getSiteFocus(); return { data: r.data.data }; }}
+            exportXlsx={() => zbmApi.export()}
+            exportName={`zamtel-zone-export-${new Date().toISOString().slice(0,7)}.xlsx`}
+          />
+        </div>
+      )}
       {/* FLAGS Tab */}
       {mainTab === 'flags' && (
         <div className="px-4 py-3 pb-24">

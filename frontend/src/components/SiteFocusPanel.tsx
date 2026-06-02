@@ -1,0 +1,114 @@
+import React, { useState, useEffect } from 'react';
+import { MapPin, Download, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Card } from './UI';
+
+interface SiteFocusPanelProps {
+  fetchSites: () => Promise<{ data: any[] }>;
+  exportXlsx?: () => Promise<{ data: Blob }>;
+  exportName?: string;
+  showZone?: boolean;
+}
+
+export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, exportXlsx, exportName = 'ase-site-focus.xlsx', showZone }) => {
+  const [sites, setSites] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    fetchSites().then(r => setSites(r.data || [])).catch(() => toast.error('Failed to load site focus')).finally(() => setLoading(false));
+  };
+  useEffect(() => { load(); }, []); // eslint-disable-line
+
+  const doExport = async () => {
+    if (!exportXlsx) return;
+    setExporting(true);
+    try {
+      const r = await exportXlsx();
+      const url = window.URL.createObjectURL(new Blob([r.data]));
+      const a = document.createElement('a'); a.href = url; a.download = exportName; a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Excel exported');
+    } catch { toast.error('Export failed'); } finally { setExporting(false); }
+  };
+
+  const scColor = (s: number) => s >= 70 ? '#00843D' : s >= 40 ? '#f59e0b' : '#ef4444';
+  const totalSites = sites.length;
+  const aseCount = new Set(sites.map(s => s.aseId)).size;
+  const avgScore = totalSites > 0 ? Math.round(sites.reduce((a, s) => a + (s.siteScore || 0), 0) / totalSites) : 0;
+
+  return (
+    <div className="space-y-3">
+      {/* Header + summary */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-sm text-gray-800">📍 ASE Site Focus — Visited Sites</h3>
+          <p className="text-[11px] text-gray-400">{totalSites} sites · {aseCount} ASEs · avg score {avgScore}%</p>
+        </div>
+        <div className="flex gap-1.5">
+          <button onClick={load} className="p-2 rounded-xl hover:bg-gray-100"><RefreshCw className="w-4 h-4 text-gray-500" /></button>
+          {exportXlsx && (
+            <button onClick={doExport} disabled={exporting} className="flex items-center gap-1.5 text-white text-xs font-bold px-3 py-2 rounded-xl disabled:opacity-50" style={{ background: '#00843D' }}>
+              <Download className="w-3.5 h-3.5" /> {exporting ? 'Exporting…' : 'Excel'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+      ) : sites.length === 0 ? (
+        <Card className="text-center py-8 text-gray-400"><p className="text-sm">No site focus logged this period.</p></Card>
+      ) : (
+        <div className="space-y-2">
+          {sites.map((s: any) => {
+            const kpis = [
+              { l: 'Agents', v: s.agentsRec, t: 3, c: '#00843D' },
+              { l: 'SSOs', v: s.ssosRec, t: 2, c: '#2563EB' },
+              { l: 'ODRs', v: s.odrsRec, t: 1, c: '#7C3AED' },
+              { l: 'Data', v: s.dataActs, t: 15, c: '#F97316' },
+              { l: 'DTU K', v: s.dtuSold, t: 500, c: '#E4007C' },
+            ];
+            const open = expanded === s.id;
+            return (
+              <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <button onClick={() => setExpanded(open ? null : s.id)} className="w-full px-4 py-3 flex items-center justify-between">
+                  <div className="text-left min-w-0">
+                    <p className="font-bold text-sm text-gray-800 truncate">{s.siteName} <span className="text-[10px] text-gray-400">#{s.siteId}</span></p>
+                    <p className="text-[10px] text-gray-400">{s.aseName}{showZone && s.aseZone ? ` · ${s.aseZone}` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-lg font-black" style={{ color: scColor(s.siteScore || 0) }}>{s.siteScore || 0}%</span>
+                    {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  </div>
+                </button>
+                {open && (
+                  <div className="px-4 pb-3 border-t border-gray-50 pt-2 space-y-1">
+                    {kpis.map(k => {
+                      const pct = Math.min(Math.round(k.v / k.t * 100), 100);
+                      return (
+                        <div key={k.l} className="flex items-center gap-1.5">
+                          <span className="text-[9px] text-gray-400 w-10 shrink-0">{k.l}</span>
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: k.c }} /></div>
+                          <span className="text-[9px] font-bold text-gray-500 w-12 text-right">{k.v}/{k.t}</span>
+                        </div>
+                      );
+                    })}
+                    {(s.latitude != null && s.longitude != null) && (
+                      <a href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`} target="_blank" rel="noreferrer" className="text-[10px] mt-1 inline-flex items-center gap-1 font-semibold" style={{ color: '#00843D' }}>
+                        <MapPin className="w-3 h-3" /> {Number(s.latitude).toFixed(5)}, {Number(s.longitude).toFixed(5)}
+                      </a>
+                    )}
+                    {s.notes && <p className="text-[10px] text-gray-400 italic mt-1">{s.notes}</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};

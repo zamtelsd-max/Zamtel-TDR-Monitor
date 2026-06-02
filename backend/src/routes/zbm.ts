@@ -458,6 +458,37 @@ zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
       XLSX.utils.json_to_sheet(userRows.length > 0 ? userRows : [{}]),
       'System Users');
 
+    // Sheet 7: ASE Weekly Site Focus (visited sites + deliverables)
+    const zoneAses = await prisma.user.findMany({ where: { role: 'ASE', ...(zone ? { zone } : {}) }, select: { id: true, name: true } });
+    const aseNameMap = Object.fromEntries(zoneAses.map(a => [a.id, a.name]));
+    const siteFocusRows = (await prisma.siteFocus.findMany({
+      where: { aseId: { in: zoneAses.map(a => a.id) }, weekStart: { gte: start, lte: end } },
+      orderBy: [{ weekStart: 'desc' }, { siteName: 'asc' }],
+    })).map((s: any) => {
+      const parts = [
+        Math.min(s.agentsRec / 3 * 100, 100),
+        Math.min(s.ssosRec   / 2 * 100, 100),
+        Math.min(s.odrsRec   / 1 * 100, 100),
+        Math.min(s.dataActs  / 15 * 100, 100),
+        Math.min(s.dtuSold   / 500 * 100, 100),
+      ];
+      const siteScore = Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
+      return {
+        'ASE': aseNameMap[s.aseId] || s.aseId,
+        'Week Starting': s.weekStart.toISOString().split('T')[0],
+        'Site Name': s.siteName, 'Site ID': s.siteId,
+        'Agents (tgt 3)': s.agentsRec, 'SSOs (tgt 2)': s.ssosRec, 'ODRs (tgt 1)': s.odrsRec,
+        'Data Acts (tgt 15)': s.dataActs, 'DTU K (tgt 500)': s.dtuSold,
+        'Site Score %': siteScore,
+        'Latitude': s.latitude ?? '', 'Longitude': s.longitude ?? '',
+        'GPS Link': (s.latitude != null && s.longitude != null) ? `https://www.google.com/maps?q=${s.latitude},${s.longitude}` : '',
+        'Notes': s.notes || '', 'Logged': s.createdAt.toISOString().split('T')[0],
+      };
+    });
+    XLSX.utils.book_append_sheet(wb,
+      XLSX.utils.json_to_sheet(siteFocusRows.length > 0 ? siteFocusRows : [{ 'Status': 'No site focus logged this period' }]),
+      'ASE Site Focus');
+
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const scope = zone || 'ALL-ZONES';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -583,6 +614,40 @@ zbmRouter.get('/leaderboard', responseCache(60), async (req: Request, res: Respo
     targets: { agents: at, merchants: mt, visits: vt },
     mtd: isCurrentMonth ? { workingDaysElapsed: workingDaysElapsed(), workingDaysTotal: workingDaysThisMonth() } : null,
   });
+});
+
+// ─── GET /zbm/site-focus — ASE visited sites + deliverables (this zone) ───────
+zbmRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = resolveZone(req);
+    const period = (req.query.period as string) ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const [y, m] = period.split('-').map(Number);
+    const start = new Date(y, m - 1, 1);
+    const end   = new Date(y, m, 0, 23, 59, 59, 999);
+    const ases = await prisma.user.findMany({ where: { role: 'ASE', ...(zone ? { zone } : {}) }, select: { id: true, name: true, zone: true } });
+    const aseMap = Object.fromEntries(ases.map(a => [a.id, a]));
+    const sites = await prisma.siteFocus.findMany({
+      where: { aseId: { in: ases.map(a => a.id) }, weekStart: { gte: start, lte: end } },
+      orderBy: [{ weekStart: 'desc' }, { siteName: 'asc' }],
+    });
+    const data = sites.map((s: any) => {
+      const parts = [
+        Math.min(s.agentsRec / 3 * 100, 100), Math.min(s.ssosRec / 2 * 100, 100),
+        Math.min(s.odrsRec / 1 * 100, 100), Math.min(s.dataActs / 15 * 100, 100),
+        Math.min(s.dtuSold / 500 * 100, 100),
+      ];
+      return {
+        ...s,
+        aseName: aseMap[s.aseId]?.name || s.aseId,
+        aseZone: aseMap[s.aseId]?.zone || '',
+        siteScore: Math.round(parts.reduce((a, b) => a + b, 0) / parts.length),
+      };
+    });
+    res.json({ success: true, period, data });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load site focus' });
+  }
 });
 
 // ─── GET /zbm/ases — list ASEs in this zone ───────────────────────────────────
