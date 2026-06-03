@@ -69,7 +69,7 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
               { l: 'SSOs', v: s.ssosRec, t: 2, c: '#2563EB' },
               { l: 'ODRs', v: s.odrsRec, t: 1, c: '#7C3AED' },
               { l: 'Data', v: s.dataActs, t: 15, c: '#F97316' },
-              { l: 'DTU K', v: s.dtuSold, t: 500, c: '#E4007C' },
+              { l: 'DTU ZMW', v: s.dtuSold, t: 500, c: '#E4007C' },
             ];
             const open = expanded === s.id;
             return (
@@ -101,11 +101,12 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
                         <MapPin className="w-3 h-3" /> {Number(s.latitude).toFixed(5)}, {Number(s.longitude).toFixed(5)}
                       </a>
                     )}
-                    {(s.agentCodes || s.ssoCodes || s.odrCodes) && (
+                    {(s.agentCodes || s.ssoCodes || s.odrCodes || s.dtuAgentCode) && (
                       <div className="mt-1 space-y-0.5">
                         {s.agentCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">Agents:</span> {s.agentCodes}</p>}
                         {s.ssoCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-blue-700">SSOs:</span> {s.ssoCodes}</p>}
                         {s.odrCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-purple-700">ODRs:</span> {s.odrCodes}</p>}
+                        {s.dtuAgentCode && <p className="text-[10px] text-gray-500"><span className="font-bold text-pink-700">DTU from:</span> {s.dtuAgentCode} (K{s.dtuSold})</p>}
                       </div>
                     )}
                     {s.notes && <p className="text-[10px] text-gray-400 italic mt-1">{s.notes}</p>}

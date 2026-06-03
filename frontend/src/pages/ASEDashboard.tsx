@@ -124,7 +124,7 @@ export const ASEDashboardPage: React.FC = () => {
   // Site Focus state
   const [siteFocusData, setSiteFocusData] = useState<any[]>([]);
   const [siteFocusLoading, setSiteFocusLoading] = useState(false);
-  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
+  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', dtuAgentCode: '', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
   const [sfFormOpen, setSfFormOpen]     = useState(false);
   const [sfMode, setSfMode]             = useState<'plan' | 'record'>('plan'); // plan = schedule visit; record = enter actuals
   const [sfEditingId, setSfEditingId]   = useState<string | null>(null);       // editing an existing site
@@ -218,7 +218,7 @@ export const ASEDashboardPage: React.FC = () => {
   useEffect(() => { if (tab === 'site-focus') loadSiteFocus(); }, [tab, loadSiteFocus]);
 
   const resetSfForm = () => {
-    setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
+    setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', dtuAgentCode: '', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
     setSfEditingId(null);
     setSfMode('plan');
   };
@@ -234,7 +234,7 @@ export const ASEDashboardPage: React.FC = () => {
       siteName: s.siteName || '', siteId: s.siteId || '',
       agentsRec: String(s.agentsRec ?? ''), ssosRec: String(s.ssosRec ?? ''),
       odrsRec: String(s.odrsRec ?? ''), dataActs: String(s.dataActs ?? ''),
-      dtuSold: String(s.dtuSold ?? ''), notes: s.notes || '',
+      dtuSold: String(s.dtuSold ?? ''), dtuAgentCode: s.dtuAgentCode || '', notes: s.notes || '',
       latitude: s.latitude != null ? String(s.latitude) : '',
       longitude: s.longitude != null ? String(s.longitude) : '',
       plannedDate: s.plannedDate ? String(s.plannedDate).slice(0, 10) : '',
@@ -261,6 +261,7 @@ export const ASEDashboardPage: React.FC = () => {
         payload.odrsRec   = Number(sfForm.odrsRec)   || 0;
         payload.dataActs  = Number(sfForm.dataActs)  || 0;
         payload.dtuSold   = Number(sfForm.dtuSold)   || 0;
+        payload.dtuAgentCode = sfForm.dtuAgentCode || '';
         payload.agentCodes = sfForm.agentCodes || '';
         payload.ssoCodes   = sfForm.ssoCodes   || '';
         payload.odrCodes   = sfForm.odrCodes   || '';
@@ -890,7 +891,11 @@ export const ASEDashboardPage: React.FC = () => {
                   <input type="number" value={sfForm.ssosRec} onChange={e => setSfForm({...sfForm, ssosRec: e.target.value})} placeholder="SSOs (2)" className="border rounded-xl px-3 py-2 text-sm" />
                   <input type="number" value={sfForm.odrsRec} onChange={e => setSfForm({...sfForm, odrsRec: e.target.value})} placeholder="ODRs (1)" className="border rounded-xl px-3 py-2 text-sm" />
                   <input type="number" value={sfForm.dataActs} onChange={e => setSfForm({...sfForm, dataActs: e.target.value})} placeholder="Data Acts (15)" className="border rounded-xl px-3 py-2 text-sm" />
-                  <input type="number" value={sfForm.dtuSold} onChange={e => setSfForm({...sfForm, dtuSold: e.target.value})} placeholder="DTU K (500)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                  <div className="col-span-2 mt-1 pt-2 border-t border-gray-100">
+                    <p className="text-[10px] font-semibold text-gray-500 mb-1">💰 Direct Top Up (one-off total)</p>
+                  </div>
+                  <input type="number" value={sfForm.dtuSold} onChange={e => setSfForm({...sfForm, dtuSold: e.target.value})} placeholder="Amount sold (ZMW)" className="border rounded-xl px-3 py-2 text-sm" />
+                  <input value={sfForm.dtuAgentCode} onChange={e => setSfForm({...sfForm, dtuAgentCode: e.target.value})} placeholder="Agent code sold from" className="border rounded-xl px-3 py-2 text-sm" />
                   <div className="col-span-2 mt-1 pt-2 border-t border-gray-100">
                     <p className="text-[10px] font-semibold text-gray-500 mb-1">Enter actual codes created (comma-separated)</p>
                   </div>
@@ -925,7 +930,7 @@ export const ASEDashboardPage: React.FC = () => {
                   { l: 'SSOs',   v: s.ssosRec,   t: 2,   c: '#2563EB' },
                   { l: 'ODRs',   v: s.odrsRec,   t: 1,   c: '#7C3AED' },
                   { l: 'Data',   v: s.dataActs,  t: 15,  c: '#F97316' },
-                  { l: 'DTU K',  v: s.dtuSold,   t: 500, c: '#E4007C' },
+                  { l: 'DTU ZMW', v: s.dtuSold,  t: 500, c: '#E4007C' },
                 ];
                 const siteScore = Math.round(kpis.reduce((a, k) => a + Math.min(k.v / k.t * 100, 100), 0) / kpis.length);
                 const scColor = siteScore >= 70 ? '#00843D' : siteScore >= 40 ? '#f59e0b' : '#ef4444';
@@ -968,11 +973,12 @@ export const ASEDashboardPage: React.FC = () => {
                         <MapPin className="w-3 h-3" /> {Number(s.latitude).toFixed(5)}, {Number(s.longitude).toFixed(5)}
                       </a>
                     )}
-                    {(s.agentCodes || s.ssoCodes || s.odrCodes) && (
+                    {(s.agentCodes || s.ssoCodes || s.odrCodes || s.dtuAgentCode) && (
                       <div className="mt-2 pt-2 border-t border-gray-50 space-y-0.5">
                         {s.agentCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">Agents:</span> {s.agentCodes}</p>}
                         {s.ssoCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-blue-700">SSOs:</span> {s.ssoCodes}</p>}
                         {s.odrCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-purple-700">ODRs:</span> {s.odrCodes}</p>}
+                        {s.dtuAgentCode && <p className="text-[10px] text-gray-500"><span className="font-bold text-pink-700">DTU from:</span> {s.dtuAgentCode} (K{s.dtuSold})</p>}
                       </div>
                     )}
                     {s.notes && <p className="text-[10px] text-gray-400 mt-1 italic">{s.notes}</p>}

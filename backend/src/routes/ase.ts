@@ -403,7 +403,7 @@ aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
 aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void> => {
   try {
     const aseId = req.user!.userId;
-    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, notes, latitude, longitude, mode, plannedDate, agentCodes, ssoCodes, odrCodes } = req.body;
+    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, dtuAgentCode, notes, latitude, longitude, mode, plannedDate, agentCodes, ssoCodes, odrCodes } = req.body;
     // Normalize code lists → trimmed comma-separated strings
     const normCodes = (v: any): string | null => {
       if (v === undefined || v === null || v === '') return null;
@@ -445,6 +445,7 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
           ...(agentCodes !== undefined ? { agentCodes: normCodes(agentCodes) } : {}),
           ...(ssoCodes   !== undefined ? { ssoCodes:   normCodes(ssoCodes) } : {}),
           ...(odrCodes   !== undefined ? { odrCodes:   normCodes(odrCodes) } : {}),
+          ...(dtuAgentCode !== undefined ? { dtuAgentCode: dtuAgentCode ? String(dtuAgentCode).trim() : null } : {}),
           notes:     notes || null,
         },
       });
@@ -466,6 +467,7 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
           agentCodes: isPlan ? null : normCodes(agentCodes),
           ssoCodes:   isPlan ? null : normCodes(ssoCodes),
           odrCodes:   isPlan ? null : normCodes(odrCodes),
+          dtuAgentCode: isPlan ? null : (dtuAgentCode ? String(dtuAgentCode).trim() : null),
           latitude:  lat,
           longitude: lng,
           notes:     notes || null,
@@ -507,6 +509,7 @@ aseRouter.patch('/site-focus/:id', async (req: Request, res: Response): Promise<
     if (b.agentCodes !== undefined) data.agentCodes = normCodes(b.agentCodes);
     if (b.ssoCodes   !== undefined) data.ssoCodes   = normCodes(b.ssoCodes);
     if (b.odrCodes   !== undefined) data.odrCodes   = normCodes(b.odrCodes);
+    if (b.dtuAgentCode !== undefined) data.dtuAgentCode = b.dtuAgentCode ? String(b.dtuAgentCode).trim() : null;
     if (b.notes     !== undefined) data.notes     = b.notes || null;
     if (b.plannedDate !== undefined) data.plannedDate = b.plannedDate ? new Date(b.plannedDate) : null;
     if (b.latitude  !== undefined && b.latitude  !== '' && b.latitude  !== null) data.latitude  = Number(b.latitude);
