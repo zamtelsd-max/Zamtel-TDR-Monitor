@@ -248,11 +248,17 @@ export const zbmApi = {
   addASE: (data: { id: string; name: string; pin: string }) =>
     client.post('/zbm/ases', data),
 
-  getTDRs: (zone?: string) =>
-    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; aseId: string | null }> }>('/zbm/tdrs', { params: zone ? { zone } : {} }),
+  getTDRs: (zone?: string, includeInactive?: boolean) =>
+    client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; aseId: string | null; active?: boolean }> }>('/zbm/tdrs', { params: { ...(zone ? { zone } : {}), ...(includeInactive ? { includeInactive: 'true' } : {}) } }),
 
   assignTDR: (tdrId: string, aseId: string | null) =>
     client.post('/zbm/assign-tdr', { tdrId, aseId }),
+
+  updateTDR: (id: string, data: { name?: string; zone?: string; active?: boolean }) =>
+    client.patch(`/zbm/tdrs/${id}`, data),
+
+  setTDRActive: (id: string, active: boolean) =>
+    client.patch(`/zbm/tdrs/${id}/deactivate`, { active }),
 
   // ── Device management ──────────────────────────────────────────────────
   addDevice: (data: Record<string, any>) =>
@@ -292,6 +298,16 @@ export const hsdApi = {
 
   getMap: (zone?: string) =>
     client.get('/hsd/map', { params: zone && zone !== 'all' ? { zone } : {} }),
+
+  // ── User management (HSD admin) ────────────────────────────────────────
+  getUsers: (role?: string) =>
+    client.get<{ success: boolean; data: Array<{ id: string; name: string; role: string; zone: string | null; active: boolean }> }>('/hsd/users', { params: role ? { role } : {} }),
+
+  createUser: (data: { id: string; name: string; pin: string; role: string; zone?: string }) =>
+    client.post('/hsd/users', data),
+
+  updateUser: (id: string, data: { name?: string; zone?: string; active?: boolean; pin?: string }) =>
+    client.patch(`/hsd/users/${id}`, data),
 
   getLeaderboard: (period?: string) =>
     client.get<{

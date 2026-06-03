@@ -102,7 +102,7 @@ export const ZBMDashboardPage: React.FC = () => {
     try {
       const [asesRes, tdrsRes, flagsRes] = await Promise.all([
         zbmApi.getASEs(),
-        zbmApi.getTDRs(),
+        zbmApi.getTDRs(undefined, true),
         flagsApi.get().catch(() => ({ data: { data: [] } })),
       ]);
       setAses(asesRes.data.data ?? []);
@@ -145,6 +145,30 @@ export const ZBMDashboardPage: React.FC = () => {
       toast.error(e.response?.data?.error || 'Failed to assign');
     } finally {
       setAssigningTDR(null);
+    }
+  };
+
+  const handleToggleTDRActive = async (tdr: any) => {
+    const next = !(tdr.active !== false);
+    if (!next && !confirm(`Deactivate TDR "${tdr.name}"? They will no longer be able to log in.`)) return;
+    try {
+      await zbmApi.setTDRActive(tdr.id, next);
+      toast.success(next ? 'TDR reactivated' : 'TDR deactivated');
+      loadAseTdrs();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to change status');
+    }
+  };
+
+  const handleEditTDR = async (tdr: any) => {
+    const newName = prompt('Edit TDR name:', tdr.name);
+    if (newName === null || !newName.trim() || newName.trim() === tdr.name) return;
+    try {
+      await zbmApi.updateTDR(tdr.id, { name: newName.trim() });
+      toast.success('TDR updated');
+      loadAseTdrs();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to update TDR');
     }
   };
 
@@ -347,19 +371,27 @@ export const ZBMDashboardPage: React.FC = () => {
               {tdrs.map(tdr => {
                 const flag = tdrFlags.find(f => f.tdrId === tdr.id);
                 const assignedASE = ases.find(a => a.id === tdr.aseId);
+                const isInactive = tdr.active === false;
                 return (
-                  <div key={tdr.id} className={`bg-white rounded-2xl border px-4 py-3 shadow-sm ${flag?.severity === 'critical' ? 'border-red-200' : flag ? 'border-amber-200' : 'border-gray-100'}`}>
+                  <div key={tdr.id} className={`bg-white rounded-2xl border px-4 py-3 shadow-sm ${isInactive ? 'border-gray-200 opacity-60' : flag?.severity === 'critical' ? 'border-red-200' : flag ? 'border-amber-200' : 'border-gray-100'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div>
-                        <p className="font-semibold text-gray-800 text-sm flex items-center gap-1">
+                        <p className="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
                           {tdr.name}
                           {flag && <AlertTriangle className={`w-3 h-3 ${flag.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />}
+                          {isInactive && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-500">INACTIVE</span>}
                         </p>
                         <p className="text-xs text-gray-500">
                           {assignedASE ? `ASE: ${assignedASE.name}` : 'No ASE assigned'}
                         </p>
                       </div>
-                      {assigningTDR === tdr.id && <span className="text-xs text-gray-400">...</span>}
+                      <div className="flex items-center gap-1.5">
+                        {assigningTDR === tdr.id && <span className="text-xs text-gray-400">...</span>}
+                        <button onClick={() => handleEditTDR(tdr)} title="Edit TDR" className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">✏️</button>
+                        <button onClick={() => handleToggleTDRActive(tdr)} title={isInactive ? 'Reactivate' : 'Deactivate'} className={`text-xs px-2 py-1 rounded-lg font-medium ${isInactive ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
+                          {isInactive ? 'Activate' : 'Deactivate'}
+                        </button>
+                      </div>
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       {ases.map(ase => (

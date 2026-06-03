@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { responseCache } from '../middleware/responseCache';
 import { z } from 'zod';
 import { prisma }      from '../prisma';
@@ -859,5 +860,74 @@ hsdRouter.delete('/devices/:id', async (req: Request, res: Response): Promise<vo
     res.json({ success: true, message: 'Device removed' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete device' });
+  }
+});
+
+// ─── GET /hsd/users — list all system users (HSD admin) ───────────────────────
+hsdRouter.get('/users', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const role = req.query.role as string | undefined;
+    const users = await prisma.user.findMany({
+      where: role ? { role: role as any } : {},
+      select: { id: true, name: true, role: true, zone: true, active: true, createdAt: true },
+      orderBy: [{ role: 'asc' }, { name: 'asc' }],
+    });
+    res.json({ success: true, data: users });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load users' });
+  }
+});
+
+// ─── POST /hsd/users — create a user with ANY access level (incl. HSD) ────────
+hsdRouter.post('/users', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id, name, pin, role, zone } = req.body as { id: string; name: string; pin: string; role: string; zone?: string };
+    if (!id || !name || !pin || !role) {
+      res.status(400).json({ error: 'id, name, pin and role are required' });
+      return;
+    }
+    const VALID_ROLES = ['TDR', 'ZBM', 'HSD', 'ASE', 'DM'];
+    if (!VALID_ROLES.includes(role)) {
+      res.status(400).json({ error: `role must be one of ${VALID_ROLES.join(', ')}` });
+      return;
+    }
+    if (!/^\d{4}$/.test(String(pin))) {
+      res.status(400).json({ error: 'PIN must be 4 digits' });
+      return;
+    }
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (existing) { res.status(409).json({ error: 'User ID already exists' }); return; }
+    const hashedPin = await bcrypt.hash(String(pin), 10);
+    // HSD users are national (zone null); others may carry a zone
+    const finalZone = role === 'HSD' ? null : (zone || null);
+    const user = await prisma.user.create({
+      data: { id, name, pin: hashedPin, role: role as any, zone: finalZone, active: true },
+    });
+    res.status(201).json({ success: true, data: { id: user.id, name: user.name, role: user.role, zone: user.zone, active: user.active } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+// ─── PATCH /hsd/users/:id — edit / deactivate any user (HSD admin) ────────────
+hsdRouter.patch('/users/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+    const { name, zone, active, pin } = req.body as { name?: string; zone?: string; active?: boolean; pin?: string };
+    const data: any = {};
+    if (name !== undefined && name.trim()) data.name = name.trim();
+    if (zone !== undefined) data.zone = user.role === 'HSD' ? null : (zone || null);
+    if (active !== undefined) data.active = !!active;
+    if (pin !== undefined) {
+      if (!/^\d{4}$/.test(String(pin))) { res.status(400).json({ error: 'PIN must be 4 digits' }); return; }
+      data.pin = await bcrypt.hash(String(pin), 10);
+    }
+    if (Object.keys(data).length === 0) { res.status(400).json({ error: 'Nothing to update' }); return; }
+    const updated = await prisma.user.update({ where: { id: user.id }, data });
+    res.json({ success: true, data: { id: updated.id, name: updated.name, role: updated.role, zone: updated.zone, active: updated.active } });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update user' });
   }
 });

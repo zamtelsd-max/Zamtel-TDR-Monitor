@@ -725,14 +725,54 @@ zbmRouter.post('/ases', async (req: Request, res: Response): Promise<void> => {
 zbmRouter.get('/tdrs', async (req: Request, res: Response): Promise<void> => {
   try {
     const zone = resolveZone(req);
+    const includeInactive = req.query.includeInactive === 'true';
     const tdrs = await prisma.user.findMany({
-      where: { role: 'TDR', active: true, ...(zone ? { zone } : {}) },
-      select: { id: true, name: true, zone: true, aseId: true },
+      where: { role: 'TDR', ...(includeInactive ? {} : { active: true }), ...(zone ? { zone } : {}) },
+      select: { id: true, name: true, zone: true, aseId: true, active: true },
       orderBy: { name: 'asc' },
     });
     res.json({ success: true, data: tdrs });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load TDRs' });
+  }
+});
+
+// ─── PATCH /zbm/tdrs/:id — ZBM edits a TDR in their zone (name / zone / active) ─
+zbmRouter.patch('/tdrs/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = resolveZone(req);
+    const tdr = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!tdr || tdr.role !== 'TDR') { res.status(404).json({ error: 'TDR not found' }); return; }
+    // Zone-scoped ZBMs may only manage TDRs in their own zone
+    if (zone && tdr.zone !== zone) { res.status(403).json({ error: 'TDR is not in your zone' }); return; }
+
+    const { name, zone: newZone, active } = req.body as { name?: string; zone?: string; active?: boolean };
+    const data: any = {};
+    if (name !== undefined && name.trim()) data.name = name.trim();
+    if (newZone !== undefined) data.zone = newZone || null;
+    if (active !== undefined) data.active = !!active;
+    if (Object.keys(data).length === 0) { res.status(400).json({ error: 'Nothing to update' }); return; }
+
+    const updated = await prisma.user.update({ where: { id: tdr.id }, data });
+    res.json({ success: true, data: { id: updated.id, name: updated.name, zone: updated.zone, active: updated.active } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update TDR' });
+  }
+});
+
+// ─── PATCH /zbm/tdrs/:id/deactivate — ZBM deactivates (or reactivates) a TDR ──
+zbmRouter.patch('/tdrs/:id/deactivate', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = resolveZone(req);
+    const tdr = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!tdr || tdr.role !== 'TDR') { res.status(404).json({ error: 'TDR not found' }); return; }
+    if (zone && tdr.zone !== zone) { res.status(403).json({ error: 'TDR is not in your zone' }); return; }
+    const active = req.body?.active === undefined ? false : !!req.body.active;
+    const updated = await prisma.user.update({ where: { id: tdr.id }, data: { active } });
+    res.json({ success: true, data: { id: updated.id, name: updated.name, active: updated.active } });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to change TDR status' });
   }
 });
 
