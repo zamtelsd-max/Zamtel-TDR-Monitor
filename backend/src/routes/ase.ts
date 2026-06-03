@@ -41,8 +41,8 @@ function calcSiteFocusScore(sites: Array<{
     const dtu = Math.min(s.dtuSold  / DTU_TGT,    1) * 100;
     return (a + sso + odr + d + dtu) / 5;
   });
-  // Achievement across 10 required sites
-  const SITES_REQUIRED = 10;
+  // Achievement across 5 required sites per week
+  const SITES_REQUIRED = 5;
   const siteCountPct = Math.min(sites.length / SITES_REQUIRED, 1) * 100;
   const avgSiteScore  = siteScores.reduce((a, b) => a + b, 0) / siteScores.length;
   return Math.round((siteCountPct + avgSiteScore) / 2);
@@ -436,10 +436,10 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
         },
       });
     } else {
-      // Check 10-site cap
+      // Check 5-site cap
       const existingCount = await prisma.siteFocus.count({ where: { aseId, weekStart } });
-      if (existingCount >= 10) {
-        res.status(400).json({ error: 'Maximum 10 focus sites per week reached' });
+      if (existingCount >= 5) {
+        res.status(400).json({ error: 'Maximum 5 focus sites per week reached' });
         return;
       }
       record = await prisma.siteFocus.create({

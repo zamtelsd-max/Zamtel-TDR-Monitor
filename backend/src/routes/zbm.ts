@@ -147,7 +147,7 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       ];
       return parts.reduce((a, b) => a + b, 0) / parts.length;
     });
-    const coverage = Math.min(sites.length / 10, 1);
+    const coverage = Math.min(sites.length / 5, 1);
     return Math.round((perSite.reduce((a, b) => a + b, 0) / perSite.length) * coverage);
   };
 

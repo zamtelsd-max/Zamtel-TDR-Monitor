@@ -803,7 +803,7 @@ export const ZBMDashboardPage: React.FC = () => {
                           {/* Weekly Site Focus */}
                           <div className="mt-3 pt-3 border-t border-gray-50">
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-xs text-gray-500">📍 Weekly Site Focus <span className="text-[10px] text-gray-400">({ase.siteFocusSites ?? 0}/10 sites)</span></span>
+                              <span className="text-xs text-gray-500">📍 Weekly Site Focus <span className="text-[10px] text-gray-400">({ase.siteFocusSites ?? 0}/5 sites)</span></span>
                               <span className={`text-xs font-bold ${scoreColor(ase.siteFocusScore ?? 0)}`}>{ase.siteFocusScore ?? 0}%</span>
                             </div>
                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">

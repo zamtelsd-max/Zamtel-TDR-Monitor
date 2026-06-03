@@ -753,7 +753,7 @@ export const ASEDashboardPage: React.FC = () => {
                     { label: 'Device Activation (KYC)', score: kpiScore.kycDeviceScore,   weight: '32.73%', icon: '📱' },
                     { label: 'Agent Recruitment',        score: kpiScore.simOutletScore,   weight: '20.45%', icon: '👤' },
                     { label: 'TDR Supervision',          score: kpiScore.supervisionScore, weight: '28.64%', icon: '👥' },
-                    { label: 'Weekly Site Focus',         score: (kpiScore as any).siteFocusScore ?? 0, weight: '10.00%', icon: '📍', sub: `${(kpiScore as any).siteFocusSites ?? 0}/10 sites` },
+                    { label: 'Weekly Site Focus',         score: (kpiScore as any).siteFocusScore ?? 0, weight: '10.00%', icon: '📍', sub: `${(kpiScore as any).siteFocusSites ?? 0}/5 sites` },
                     { label: 'Own Device (KYC)',          score: kpiScore.ownDeviceScore,   weight: '8.18%',  icon: '🏪' },
                   ].map(row => (
                     <div key={row.label} className="px-4 py-3">
@@ -814,7 +814,7 @@ export const ASEDashboardPage: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="font-bold text-sm text-gray-800">📍 Weekly Site Focus</h3>
-              <p className="text-xs text-gray-400">{siteFocusData.length}/10 sites logged this week</p>
+              <p className="text-xs text-gray-400">{siteFocusData.length}/5 sites logged this week</p>
             </div>
             <button onClick={() => setSfFormOpen(!sfFormOpen)} className="text-white text-xs font-bold px-3 py-2 rounded-xl" style={{ background: '#00843D' }}>
               {sfFormOpen ? 'Close' : '+ Log Site'}
@@ -823,7 +823,7 @@ export const ASEDashboardPage: React.FC = () => {
           {/* Progress summary */}
           <div className="mb-3">
             <div className="h-2 bg-gray-100 rounded-full">
-              <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min(siteFocusData.length/10*100,100)}%`, background: '#00843D' }} />
+              <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min(siteFocusData.length/5*100,100)}%`, background: '#00843D' }} />
             </div>
           </div>
           {/* Add-site form */}
@@ -854,7 +854,7 @@ export const ASEDashboardPage: React.FC = () => {
           ) : siteFocusData.length === 0 ? (
             <Card className="text-center py-8 text-gray-400">
               <p className="text-sm">No sites logged this week yet.</p>
-              <p className="text-xs mt-1">Target: 10 focus sites per week.</p>
+              <p className="text-xs mt-1">Target: 5 focus sites per week.</p>
             </Card>
           ) : (
             <div className="space-y-2">

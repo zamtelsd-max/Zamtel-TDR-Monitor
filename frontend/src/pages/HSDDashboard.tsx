@@ -850,7 +850,7 @@ export const HSDDashboardPage: React.FC = () => {
                         </div>
                       </div>
                       {(ase.siteFocusSites ?? 0) > 0 && (
-                        <p className="text-[9px] text-gray-400 mt-1">📍 {ase.siteFocusSites}/10 focus sites logged this week</p>
+                        <p className="text-[9px] text-gray-400 mt-1">📍 {ase.siteFocusSites}/5 focus sites logged this week</p>
                       )}
                       {/* Mini device activity bar */}
                       {ase.devices.total > 0 && (

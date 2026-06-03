@@ -673,7 +673,7 @@ hsdRouter.get('/ase-performance', responseCache(60), async (req: Request, res: R
           ];
           return parts.reduce((a, b) => a + b, 0) / parts.length;
         });
-        const siteCoverage = Math.min(sf.length / 10, 1); // 10 sites/week target
+        const siteCoverage = Math.min(sf.length / 5, 1); // 5 sites/week target
         sfScore = Math.round((perSite.reduce((a, b) => a + b, 0) / perSite.length) * siteCoverage);
       }
       // ASE KPI weights: KYC 32.73%, Supervision 28.64%, Agent Recruitment 20.45%, Site Focus 10%, Own Device 8.18%
