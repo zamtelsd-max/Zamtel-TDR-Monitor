@@ -163,7 +163,7 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       const pr = prospectMap[tid]    || 0;
       const aT = agentTarget; const vT = visitTarget;
       const rT = 6 * workingDaysElapsed();
-      const pT = prospectStretchTarget(pr); // always 40% above actual
+      const pT = prospectStretchTarget(aT); // 30% above agent MTD target
       // Agents 50%, Prospects 10%, Visits 10%, Reactivation 15%
       return Math.round(
         Math.min(a/Math.max(aT,1),1)*100*0.50 +

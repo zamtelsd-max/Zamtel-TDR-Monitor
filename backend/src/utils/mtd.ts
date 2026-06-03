@@ -38,12 +38,14 @@ export function prorateMtdTarget(fullMonthTarget: number): number {
 }
 
 /**
- * Dynamic prospects target — ALWAYS 40% higher than current MTD performance.
- * target = ceil(actual × 1.4); floored at PROSPECT_MIN_TARGET so 0-actual still has a goal.
+ * Prospects target — 30% HIGHER than the Agent MTD target.
+ * target = ceil(agentMtdTarget × 1.30); floored at PROSPECT_MIN_TARGET.
+ * (Pass the prorated agent MTD target as the argument.)
  */
 export const PROSPECT_MIN_TARGET = 5;
-export function prospectStretchTarget(actual: number, minFloor = PROSPECT_MIN_TARGET): number {
-  return Math.max(Math.ceil((actual || 0) * 1.4), minFloor);
+export const PROSPECT_TARGET_MULTIPLIER = 1.30;
+export function prospectStretchTarget(agentMtdTarget: number, minFloor = PROSPECT_MIN_TARGET): number {
+  return Math.max(Math.ceil((agentMtdTarget || 0) * PROSPECT_TARGET_MULTIPLIER), minFloor);
 }
 
 /** Full-month visit target (used for export filenames / labels) */

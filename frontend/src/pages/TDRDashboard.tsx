@@ -307,7 +307,7 @@ export const TDRDashboardPage: React.FC = () => {
   const floatPct        = data ? floatResolutionPct(data.floatIssues.resolved, data.floatIssues.total) : 100;
   const reactivationPct = data ? Math.min(Math.round((data.stats.reactivations?.count ?? 0) / Math.max(data.stats.reactivations?.target ?? 1, 1) * 100), 100) : 0;
   const prospectActual  = data?.prospects?.total ?? 0;
-  const prospectTgt     = prospectStretchTarget(prospectActual);
+  const prospectTgt     = prospectStretchTarget(data?.stats.agents.target ?? 0); // 30% above agent MTD target
   const prospectPct     = data ? Math.min(Math.round(prospectActual / Math.max(prospectTgt, 1) * 100), 100) : 0;
   const score           = data ? calcWeightedScore({ agentPct, merchantPct, prospectPct, floatPct, reactivationPct, visitPct }) : 0;
 

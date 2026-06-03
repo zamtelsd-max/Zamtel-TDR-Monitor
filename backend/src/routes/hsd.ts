@@ -91,7 +91,7 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
     nationalVisitTarget    += isCurrentMonth ? visitMtdTarget() * tdrs : (t?.targetOutlets || visitMonthlyTarget() * tdrs);
   }
   const nationalTdrCount   = Object.values(tdrCountMap).reduce((s: number, n: any) => s + (n || 0), 0);
-  const nationalProspectTarget     = prospectStretchTarget(totalProspects); // always 40% above national MTD actual
+  const nationalProspectTarget     = prospectStretchTarget(nationalAgentTarget); // 30% above national agent MTD target
   const nationalReactivationTarget = 6 * workingDaysElapsed() * Math.max(nationalTdrCount, 1);
 
   res.json({
@@ -158,7 +158,7 @@ hsdRouter.get('/zones', responseCache(30), async (req: Request, res: Response): 
     const visitTarget    = isCurrentMonth ? visitMtdTarget() * tdrs : (target?.targetOutlets || visitMonthlyTarget() * tdrs);
     const prospects   = prospZMap[zone] || 0;
     const reactivations = reactZMap[zone] || 0;
-    const prospectTarget     = prospectStretchTarget(prospects); // always 40% above zone MTD actual
+    const prospectTarget     = prospectStretchTarget(agentTarget); // 30% above zone agent MTD target
     const reactivationTarget = 6 * workingDaysElapsed() * Math.max(tdrs, 1);
     const pct = tdrs > 0
       ? Math.round(((agents / Math.max(agentTarget,1)) + (merchants / Math.max(merchantTarget,1)) + (visits / Math.max(visitTarget,1))) / 3 * 100)
@@ -655,7 +655,7 @@ hsdRouter.get('/ase-performance', responseCache(60), async (req: Request, res: R
         const ag = agMap[tid]  || 0;
         const vi = visMap[tid] || 0;
         const pr = prMap[tid]  || 0;
-        const pT = prospectStretchTarget(pr); // always 40% above actual
+        const pT = prospectStretchTarget(96); // 30% above agent MTD (full-month) target
         // Agents 50%, Prospects 10%, Visits 10% (float/reactivation handled at TDR level)
         tdrScoreSum += Math.round((ag/96)*50 + Math.min(pr/Math.max(pT,1),1)*100*0.10 + (vi/20)*10);
       }

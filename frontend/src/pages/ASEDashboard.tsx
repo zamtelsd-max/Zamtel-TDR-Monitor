@@ -540,7 +540,7 @@ export const ASEDashboardPage: React.FC = () => {
                 </div>
                 <div className="space-y-2.5 mb-3">
                   <PerformanceBar icon="👤" label={`Agent Recruitment`} count={team.totals.agents} target={aTgt} />
-                  <PerformanceBar icon="🎯" label={`Prospects`} count={(team.totals as any).prospects ?? 0} target={prospectStretchTarget((team.totals as any).prospects ?? 0)} />
+                  <PerformanceBar icon="🎯" label={`Prospects`} count={(team.totals as any).prospects ?? 0} target={prospectStretchTarget(aTgt)} />
                   <PerformanceBar icon="📍" label={`Outlet Visits`} count={team.totals.visits} target={vTgt} />
                   <PerformanceBar icon="🔄" label={`Reactivations`} count={team.totals.reactivations} target={rTgt} />
                 </div>
@@ -570,7 +570,7 @@ export const ASEDashboardPage: React.FC = () => {
                 const aTgt = prorateMtdTarget(96);
                 const vTgt = visitMtdTarget();
                 const rTgt = Math.max(6 * workingDaysElapsed(), 1);
-                const pTgt = prospectStretchTarget(prospects ?? 0);
+                const pTgt = prospectStretchTarget(aTgt); // 30% above agent MTD target
                 const agentPct = Math.min(Math.round(agents / Math.max(aTgt, 1) * 100), 100);
                 const visitPct = Math.min(Math.round(visits / Math.max(vTgt, 1) * 100), 100);
                 const reactPct = Math.min(Math.round(reactivations / rTgt * 100), 100);

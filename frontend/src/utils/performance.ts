@@ -104,16 +104,19 @@ export const WEIGHT_PCT = {
 /** Daily reactivation target */
 export const REACTIVATION_DAILY_TARGET = 6;
 
-/** Minimum prospects target floor (per scope) so a 0-actual scope still has a goal */
+/** Minimum prospects target floor (per scope) so a small/zero agent target still has a goal */
 export const PROSPECT_MIN_TARGET = 5;
 
+/** Prospects target multiplier — 30% higher than the Agent MTD target */
+export const PROSPECT_TARGET_MULTIPLIER = 1.30;
+
 /**
- * Dynamic prospects target — ALWAYS 40% higher than current MTD performance.
- * target = ceil(actual × 1.4). A floor keeps a meaningful goal when actual is low/zero.
- * This makes prospects a perpetual stretch KPI (achievement caps ~71%).
+ * Prospects target = 30% HIGHER than the Agent MTD target.
+ * target = ceil(agentMtdTarget × 1.30), floored at PROSPECT_MIN_TARGET.
+ * (Pass the prorated agent MTD target as the argument.)
  */
-export function prospectStretchTarget(actual: number, minFloor = PROSPECT_MIN_TARGET): number {
-  return Math.max(Math.ceil((actual || 0) * 1.4), minFloor);
+export function prospectStretchTarget(agentMtdTarget: number, minFloor = PROSPECT_MIN_TARGET): number {
+  return Math.max(Math.ceil((agentMtdTarget || 0) * PROSPECT_TARGET_MULTIPLIER), minFloor);
 }
 
 // ─── Performance Band ──────────────────────────────────────────────────────────

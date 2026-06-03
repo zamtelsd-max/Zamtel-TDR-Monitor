@@ -456,7 +456,7 @@ export const ZBMDashboardPage: React.FC = () => {
         const vPct = Math.min(Math.round(data.zone.totals.visits    / vTgt * 100), 100);
         const fPct = floatResolutionPct(0, data.zone.totals.floatIssuesPending);
         const rPct = Math.min(Math.round(((data.zone.totals.reactivations ?? 0) / Math.max(6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), 1)) * 100), 100);
-        const pTgtZone = prospectStretchTarget(data.zone.totals.prospects ?? 0);
+        const pTgtZone = prospectStretchTarget(aTgt); // 30% above zone agent MTD target
         const pPct = Math.min(Math.round(((data.zone.totals.prospects ?? 0) / pTgtZone) * 100), 100);
         const sc   = calcWeightedScore({ agentPct: aPct, merchantPct: mPct, prospectPct: pPct, floatPct: fPct, reactivationPct: rPct, visitPct: vPct });
         const band = getBand(sc);

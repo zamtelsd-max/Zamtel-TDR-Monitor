@@ -16,7 +16,7 @@ function calcTdrScore(agents: number, _merchants: number, visits: number, reacti
   const agentTarget        = prorateMtdTarget(96);
   const visitTarget        = visitMtdTarget();
   const reactivationTarget = 6 * workingDaysElapsed();
-  const prospectTarget     = prospectStretchTarget(prospects); // always 40% above actual
+  const prospectTarget     = prospectStretchTarget(agentTarget); // 30% above agent MTD target
   const agentPct    = Math.min(agents        / Math.max(agentTarget,        1), 1) * 100;
   const visitPct    = Math.min(visits        / Math.max(visitTarget,        1), 1) * 100;
   const reactivPct  = Math.min(reactivations / Math.max(reactivationTarget, 1), 1) * 100;
