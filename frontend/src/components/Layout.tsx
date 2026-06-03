@@ -98,7 +98,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, backT
 export const PageHeader: React.FC<{
   title: string; subtitle?: string; children?: React.ReactNode;
 }> = ({ title, subtitle, children }) => (
-  <div className="mb-6 flex items-start justify-between gap-3">
+  <div className="mb-3 flex items-start justify-between gap-3">
     <div>
       <h2 className="text-xl font-bold text-gray-900">{title}</h2>
       {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}

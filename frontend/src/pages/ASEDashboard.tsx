@@ -4,6 +4,7 @@ import { GeoMap } from '../components/GeoMap';
 import toast from 'react-hot-toast';
 import { aseApi, flagsApi, ssoOdrApi } from '../services/api';
 import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
+import { TabBar } from '../components/TabBar';
 import { calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, workingDaysElapsed, workingDaysThisMonth, getBand } from '../utils/performance';
 import type { TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
@@ -454,17 +455,7 @@ export const ASEDashboardPage: React.FC = () => {
       )}
 
       {/* Tab bar */}
-      <div className="flex gap-1.5 px-4 pb-2 overflow-x-auto">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
-              tab === t.id ? 'text-white shadow' : 'bg-white text-gray-500 border border-gray-200'
-            }`}
-            style={tab === t.id ? { background: '#00843D' } : {}}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabBar active={tab} onChange={(id) => setTab(id as any)} tabs={TABS as any} />
 
       {/* ── MY TDRs TAB ── */}
       {tab === 'my-tdrs' && (

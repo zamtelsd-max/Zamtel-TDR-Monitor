@@ -19,6 +19,7 @@ import { PerformanceBar } from '../components/PerformanceBar';
 import { SiteFocusPanel } from '../components/SiteFocusPanel';
 import { SiteFocusAnalytics } from '../components/SiteFocusAnalytics';
 import { UserManagement } from '../components/UserManagement';
+import { TabBar } from '../components/TabBar';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -261,24 +262,23 @@ export const HSDDashboardPage: React.FC = () => {
       )}
 
       {/* Main Tab Bar */}
-      <div className="flex gap-1.5 px-4 pb-3 flex-wrap">
-        {([
-          ['dashboard', '📊 Overview'],
-          ['ase',       '📱 ASE & Devices'],
-          ['site-focus','📍 Site Focus'],
-          ['users',     '👤 Users'],
-          ['flags',     `🚩 Flags${tdrFlags.length > 0 ? ` (${tdrFlags.length})` : ''}`],
-        ] as const).map(([t, label]) => (
-          <button key={t} onClick={() => setMainTab(t as any)}
-            className={`flex-1 min-w-[80px] py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
-              mainTab === t ? 'bg-zamtel-green text-white shadow' : 'bg-white text-gray-500 border border-gray-200'
-            }`}>
-            {label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <TabBar
+            active={mainTab}
+            onChange={(id) => setMainTab(id as any)}
+            tabs={[
+              { id: 'dashboard',  label: '📊 Overview' },
+              { id: 'ase',        label: '📱 ASE & Devices' },
+              { id: 'site-focus', label: '📍 Site Focus' },
+              { id: 'users',      label: '👤 Users' },
+              { id: 'flags',      label: '🚩 Flags', badge: tdrFlags.length, badgeColor: 'amber' },
+            ]}
+          />
+        </div>
         <button
           onClick={() => setShowAddDevice(true)}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-green-700 to-green-600 text-white px-3 py-2 rounded-xl text-xs font-bold shadow hover:from-green-800 transition-all whitespace-nowrap"
+          className="flex-shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-green-700 to-green-600 text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:from-green-800 transition-all whitespace-nowrap"
         >
           <Plus size={12}/> Device
         </button>

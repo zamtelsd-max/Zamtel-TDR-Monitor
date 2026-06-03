@@ -10,6 +10,7 @@ import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button } from '../components/UI';
 import { SiteFocusPanel } from '../components/SiteFocusPanel';
 import { SiteFocusAnalytics } from '../components/SiteFocusAnalytics';
+import { TabBar } from '../components/TabBar';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
@@ -263,24 +264,17 @@ export const ZBMDashboardPage: React.FC = () => {
       />
 
       {/* Main Tab Bar */}
-      <div className="flex gap-2 px-4 pb-3">
-        {(['dashboard', 'ases-tdrs', 'ase-performance', 'site-focus', 'flags'] as const).map(t => {
-          const critCount = tdrFlags.filter(f => f.severity === 'critical').length;
-          const label = t === 'dashboard' ? '📊 Dashboard'
-            : t === 'ases-tdrs' ? '👥 ASEs & TDRs'
-            : t === 'ase-performance' ? '📱 ASE KYC'
-            : t === 'site-focus' ? '📍 Site Focus'
-            : critCount > 0 ? `🔴 Flags (${tdrFlags.length})` : tdrFlags.length > 0 ? `⚠️ Flags (${tdrFlags.length})` : '🚩 Flags';
-          return (
-            <button key={t} onClick={() => setMainTab(t)}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
-                mainTab === t ? 'bg-zamtel-green text-white shadow' : 'bg-white text-gray-500 border border-gray-200'
-              }`}>
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      <TabBar
+        active={mainTab}
+        onChange={(id) => setMainTab(id as any)}
+        tabs={[
+          { id: 'dashboard',       label: '📊 Dashboard' },
+          { id: 'ases-tdrs',       label: '👥 ASEs & TDRs' },
+          { id: 'ase-performance', label: '📱 ASE KYC' },
+          { id: 'site-focus',      label: '📍 Site Focus' },
+          { id: 'flags',           label: '🚩 Flags', badge: tdrFlags.length, badgeColor: tdrFlags.some(f => f.severity === 'critical') ? 'red' : 'amber' },
+        ]}
+      />
 
       {/* ASEs & TDRs Tab */}
       {mainTab === 'ases-tdrs' && (

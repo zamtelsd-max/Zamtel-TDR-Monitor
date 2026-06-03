@@ -89,3 +89,7 @@
     border-radius: 9999px;
   }
 }
+
+/* Clean horizontal scroll for tab bars */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
