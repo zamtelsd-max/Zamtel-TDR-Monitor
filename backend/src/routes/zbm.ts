@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
 import { mtdRange, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, visitMonthlyTarget,
          workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
+import { buildSiteFocusAnalytics } from '../utils/siteFocusAnalytics';
 
 export const zbmRouter = Router();
 zbmRouter.use(requireAuth('ZBM', 'HSD'));
@@ -657,6 +658,26 @@ zbmRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
     res.json({ success: true, period, data });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load site focus' });
+  }
+});
+
+// ─── GET /zbm/site-focus-analytics — Site Focus analytics (this zone) ─────────
+zbmRouter.get('/site-focus-analytics', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = resolveZone(req);
+    const period = (req.query.period as string) ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const [y, m] = period.split('-').map(Number);
+    const start = new Date(y, m - 1, 1);
+    const end   = new Date(y, m, 0, 23, 59, 59, 999);
+    const ases = await prisma.user.findMany({ where: { role: 'ASE', ...(zone ? { zone } : {}) }, select: { id: true, name: true, zone: true } });
+    const sites = await prisma.siteFocus.findMany({
+      where: { aseId: { in: ases.map(a => a.id) }, weekStart: { gte: start, lte: end } },
+    });
+    res.json({ success: true, period, scope: zone || 'All Zones', ...buildSiteFocusAnalytics(sites, ases) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load site focus analytics' });
   }
 });
 

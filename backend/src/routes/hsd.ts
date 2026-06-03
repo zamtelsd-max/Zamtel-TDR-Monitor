@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
 import { mtdRange, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, visitMonthlyTarget,
          workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
+import { buildSiteFocusAnalytics } from '../utils/siteFocusAnalytics';
 
 export const hsdRouter = Router();
 hsdRouter.use(requireAuth('HSD'));
@@ -757,6 +758,21 @@ hsdRouter.get('/site-focus', responseCache(60), async (req: Request, res: Respon
     res.json({ success: true, period, data });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load national site focus' });
+  }
+});
+
+// ─── GET /hsd/site-focus-analytics — national Site Focus analytics ────────────
+hsdRouter.get('/site-focus-analytics', responseCache(60), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const period = (req.query.period as string) ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end } = monthRange(period);
+    const ases = await prisma.user.findMany({ where: { role: 'ASE' }, select: { id: true, name: true, zone: true } });
+    const sites = await prisma.siteFocus.findMany({ where: { weekStart: { gte: start, lte: end } } });
+    res.json({ success: true, period, scope: 'National', ...buildSiteFocusAnalytics(sites, ases) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load site focus analytics' });
   }
 });
 

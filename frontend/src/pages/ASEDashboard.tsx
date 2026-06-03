@@ -902,12 +902,13 @@ export const ASEDashboardPage: React.FC = () => {
                   <textarea value={sfForm.agentCodes} onChange={e => setSfForm({...sfForm, agentCodes: e.target.value})} placeholder="Agent codes e.g. ZM-COP-0023, ZM-COP-0024" rows={2} className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                   <textarea value={sfForm.ssoCodes} onChange={e => setSfForm({...sfForm, ssoCodes: e.target.value})} placeholder="SSO codes created" rows={2} className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                   <textarea value={sfForm.odrCodes} onChange={e => setSfForm({...sfForm, odrCodes: e.target.value})} placeholder="ODR codes created (optional)" rows={2} className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                  {/* GPS captured at the site during the actual visit */}
+                  <button type="button" onClick={captureGps} disabled={sfGpsLoading} className="col-span-2 flex items-center justify-center gap-2 border-2 border-dashed rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ borderColor: '#00843D', color: '#00843D' }}>
+                    <MapPin className="w-4 h-4" />
+                    {sfGpsLoading ? 'Getting location…' : (sfForm.latitude ? `📍 ${sfForm.latitude}, ${sfForm.longitude}` : 'Capture GPS Coordinates')}
+                  </button>
                 </>)}
                 <input value={sfForm.notes} onChange={e => setSfForm({...sfForm, notes: e.target.value})} placeholder="Notes (optional)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
-                <button type="button" onClick={captureGps} disabled={sfGpsLoading} className="col-span-2 flex items-center justify-center gap-2 border-2 border-dashed rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ borderColor: '#00843D', color: '#00843D' }}>
-                  <MapPin className="w-4 h-4" />
-                  {sfGpsLoading ? 'Getting location…' : (sfForm.latitude ? `📍 ${sfForm.latitude}, ${sfForm.longitude}` : 'Capture GPS Coordinates')}
-                </button>
               </div>
               <button onClick={saveSiteFocus} disabled={sfSaving} className="w-full text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50" style={{ background: sfMode === 'plan' ? '#0EA5E9' : '#00843D' }}>
                 {sfSaving ? 'Saving...' : (sfMode === 'plan' ? (sfEditingId ? 'Update Plan' : 'Save Planned Visit') : 'Save Results')}

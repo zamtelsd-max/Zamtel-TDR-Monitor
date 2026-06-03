@@ -9,6 +9,7 @@ import type { ZBMDashboard, TDRStat, FloatIssue, Prospect, TDRFlag } from '../ty
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge, Button } from '../components/UI';
 import { SiteFocusPanel } from '../components/SiteFocusPanel';
+import { SiteFocusAnalytics } from '../components/SiteFocusAnalytics';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
@@ -828,7 +829,8 @@ export const ZBMDashboardPage: React.FC = () => {
 
       {/* SITE FOCUS Tab */}
       {mainTab === 'site-focus' && (
-        <div className="px-4 py-3 pb-24">
+        <div className="px-4 py-3 pb-24 space-y-4">
+          <SiteFocusAnalytics fetchAnalytics={async () => { const r = await zbmApi.getSiteFocusAnalytics(); return { data: r.data }; }} />
           <SiteFocusPanel
             fetchSites={async () => { const r = await zbmApi.getSiteFocus(); return { data: r.data.data }; }}
             exportXlsx={() => zbmApi.export()}

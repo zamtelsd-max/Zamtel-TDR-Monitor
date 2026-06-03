@@ -1,0 +1,71 @@
+import React, { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Card } from './UI';
+
+interface Props { fetchAnalytics: () => Promise<{ data: any }>; }
+
+export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
+  const [a, setA] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const load = () => { setLoading(true); fetchAnalytics().then(r => setA(r.data)).catch(() => toast.error('Failed to load analytics')).finally(() => setLoading(false)); };
+  useEffect(() => { load(); }, []); // eslint-disable-line
+
+  if (loading && !a) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}</div>;
+  if (!a) return <Card className="text-center py-6 text-gray-400 text-sm">No analytics available.</Card>;
+  const s = a.summary || {}; const t = a.totals || {}; const at = a.attainment || {};
+  const scColor = (v: number) => v >= 70 ? '#00843D' : v >= 40 ? '#f59e0b' : '#ef4444';
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-sm text-gray-800">📊 Site Focus Analytics <span className="text-[10px] text-gray-400">· {a.scope}</span></h3>
+        <button onClick={load} className="p-2 rounded-xl hover:bg-gray-100"><RefreshCw className="w-4 h-4 text-gray-500" /></button>
+      </div>
+      {/* Summary tiles */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: '#00843D' }}>{s.visitedSites ?? 0}</p><p className="text-[10px] text-gray-400">Visited</p></div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: '#0EA5E9' }}>{s.plannedSites ?? 0}</p><p className="text-[10px] text-gray-400">Planned</p></div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: scColor(s.completionRate ?? 0) }}>{s.completionRate ?? 0}%</p><p className="text-[10px] text-gray-400">Completion</p></div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-xl font-black" style={{ color: scColor(s.avgSiteScore ?? 0) }}>{s.avgSiteScore ?? 0}%</p><p className="text-[10px] text-gray-400">Avg Site Score</p></div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-xl font-black text-gray-700">{s.activeAses ?? 0}</p><p className="text-[10px] text-gray-400">Active ASEs</p></div>
+      </div>
+      {/* Deliverable totals + attainment */}
+      <Card className="p-4">
+        <p className="text-xs font-bold text-gray-700 mb-2">Deliverables (visited sites)</p>
+        {([
+          ['Agents', t.agents, at.agents, '#00843D'],
+          ['SSOs', t.ssos, at.ssos, '#2563EB'],
+          ['ODRs', t.odrs, at.odrs, '#7C3AED'],
+          ['Data Acts', t.dataActs, at.dataActs, '#F97316'],
+          ['DTU (ZMW)', t.dtu, at.dtu, '#E4007C'],
+        ] as [string, number, number, string][]).map(([l, val, pct, c]) => (
+          <div key={l} className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] text-gray-500 w-20 shrink-0">{l}</span>
+            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct || 0}%`, background: c }} /></div>
+            <span className="text-[10px] font-bold text-gray-700 w-16 text-right">{val ?? 0}</span>
+            <span className="text-[10px] font-bold w-10 text-right" style={{ color: c }}>{pct || 0}%</span>
+          </div>
+        ))}
+      </Card>
+      {/* Per-ASE ranking */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-4 py-2 border-b border-gray-50"><p className="text-xs font-bold text-gray-700">ASE Ranking ({(a.byAse || []).length})</p></div>
+        <div className="divide-y divide-gray-50">
+          {(a.byAse || []).map((r: any, i: number) => (
+            <div key={r.aseId} className="px-4 py-2.5 flex items-center gap-2">
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${i===0?'bg-yellow-100 text-yellow-700':i===1?'bg-gray-200 text-gray-600':i===2?'bg-orange-100 text-orange-600':'bg-gray-100 text-gray-500'}`}>{i+1}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-800 truncate">{r.aseName}</p>
+                <p className="text-[10px] text-gray-400">{r.zone || '—'} · {r.visited}/{r.totalSites} visited · {r.agents}A {r.ssos}S {r.odrs}O</p>
+              </div>
+              <span className="text-base font-black" style={{ color: scColor(r.avgScore) }}>{r.avgScore}%</span>
+            </div>
+          ))}
+          {(a.byAse || []).length === 0 && <p className="px-4 py-6 text-center text-gray-400 text-sm">No ASE site data this period.</p>}
+        </div>
+      </Card>
+    </div>
+  );
+};

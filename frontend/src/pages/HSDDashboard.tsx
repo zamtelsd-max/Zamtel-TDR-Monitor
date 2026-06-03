@@ -17,6 +17,7 @@ import { getUserTitle } from '../utils/userTitle';
 import { getBand, calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/performance';
 import { PerformanceBar } from '../components/PerformanceBar';
 import { SiteFocusPanel } from '../components/SiteFocusPanel';
+import { SiteFocusAnalytics } from '../components/SiteFocusAnalytics';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -873,7 +874,8 @@ export const HSDDashboardPage: React.FC = () => {
 
       {/* SITE FOCUS Tab */}
       {mainTab === 'site-focus' && (
-        <div className="px-4 py-3 pb-24">
+        <div className="px-4 py-3 pb-24 space-y-4">
+          <SiteFocusAnalytics fetchAnalytics={async () => { const r = await hsdApi.getSiteFocusAnalytics(); return { data: r.data }; }} />
           <SiteFocusPanel
             showZone
             fetchSites={async () => { const r = await hsdApi.getSiteFocus(); return { data: r.data.data }; }}
