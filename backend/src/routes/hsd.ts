@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
-import { mtdRange, visitMtdTarget, prorateMtdTarget, visitMonthlyTarget,
+import { mtdRange, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, visitMonthlyTarget,
          workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
 
 export const hsdRouter = Router();
@@ -89,7 +89,7 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
     nationalVisitTarget    += isCurrentMonth ? visitMtdTarget() * tdrs : (t?.targetOutlets || visitMonthlyTarget() * tdrs);
   }
   const nationalTdrCount   = Object.values(tdrCountMap).reduce((s: number, n: any) => s + (n || 0), 0);
-  const nationalProspectTarget     = (isCurrentMonth ? prorateMtdTarget(20) : 20) * Math.max(nationalTdrCount, 1);
+  const nationalProspectTarget     = prospectStretchTarget(totalProspects); // always 40% above national MTD actual
   const nationalReactivationTarget = 6 * workingDaysElapsed() * Math.max(nationalTdrCount, 1);
 
   res.json({
@@ -156,7 +156,7 @@ hsdRouter.get('/zones', responseCache(30), async (req: Request, res: Response): 
     const visitTarget    = isCurrentMonth ? visitMtdTarget() * tdrs : (target?.targetOutlets || visitMonthlyTarget() * tdrs);
     const prospects   = prospZMap[zone] || 0;
     const reactivations = reactZMap[zone] || 0;
-    const prospectTarget     = (isCurrentMonth ? prorateMtdTarget(20) : 20) * Math.max(tdrs, 1);
+    const prospectTarget     = prospectStretchTarget(prospects); // always 40% above zone MTD actual
     const reactivationTarget = 6 * workingDaysElapsed() * Math.max(tdrs, 1);
     const pct = tdrs > 0
       ? Math.round(((agents / Math.max(agentTarget,1)) + (merchants / Math.max(merchantTarget,1)) + (visits / Math.max(visitTarget,1))) / 3 * 100)
@@ -618,9 +618,14 @@ hsdRouter.get('/ase-performance', responseCache(60), async (req: Request, res: R
       by: ['tdrId'], _count: true,
       where: { createdAt: { gte: start, lte: end } }
     });
+    const prospectsByTdrAse = await prisma.prospect.groupBy({
+      by: ['tdrId'], _count: true,
+      where: { createdAt: { gte: start, lte: end } }
+    }).catch(() => [] as any[]);
     const agMap  = Object.fromEntries(agentsByTdr.map((r: any)    => [r.tdrId, r._count]));
     const mchMap = Object.fromEntries(merchantsByTdr.map((r: any) => [r.tdrId, r._count]));
     const visMap = Object.fromEntries(visitsByTdr.map((r: any)    => [r.tdrId, r._count]));
+    const prMap  = Object.fromEntries(prospectsByTdrAse.map((r: any) => [r.tdrId, r._count]));
 
     // Weekly Site Focus — current week (Mon–Sun), grouped by ASE
     const sfWeekStart = (() => {
@@ -646,8 +651,10 @@ hsdRouter.get('/ase-performance', responseCache(60), async (req: Request, res: R
       for (const tid of aseTdrIds) {
         const ag = agMap[tid]  || 0;
         const vi = visMap[tid] || 0;
-        // Merchant KPI removed — agents 60%, visits 10% (float handled at TDR level)
-        tdrScoreSum += Math.round((ag/96)*60 + (vi/20)*10);
+        const pr = prMap[tid]  || 0;
+        const pT = prospectStretchTarget(pr); // always 40% above actual
+        // Agents 50%, Prospects 10%, Visits 10% (float/reactivation handled at TDR level)
+        tdrScoreSum += Math.round((ag/96)*50 + Math.min(pr/Math.max(pT,1),1)*100*0.10 + (vi/20)*10);
       }
       const supervisionScore = tdrCount > 0 ? Math.round(tdrScoreSum / tdrCount) : 0;
       const devData = devMap[ase.name.toLowerCase()] || { total: 0, active: 0, kyc_reg: 0, gross_adds: 0, activity_pct: 0 };

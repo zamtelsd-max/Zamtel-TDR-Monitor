@@ -11,7 +11,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import {
   getBand, calcWeightedScore, floatResolutionPct,
-  WEIGHT_PCT, WEIGHT_LABELS, visitMtdTarget, prorateMtdTarget, prospectMtdTarget,
+  WEIGHT_PCT, WEIGHT_LABELS, visitMtdTarget, prorateMtdTarget, prospectStretchTarget,
   workingDaysElapsed, workingDaysThisMonth, REACTIVATION_DAILY_TARGET,
 } from '../utils/performance';
 
@@ -306,8 +306,9 @@ export const TDRDashboardPage: React.FC = () => {
   const visitPct        = data ? Math.min(Math.round(data.stats.visits.count        / data.stats.visits.target        * 100), 100) : 0;
   const floatPct        = data ? floatResolutionPct(data.floatIssues.resolved, data.floatIssues.total) : 100;
   const reactivationPct = data ? Math.min(Math.round((data.stats.reactivations?.count ?? 0) / Math.max(data.stats.reactivations?.target ?? 1, 1) * 100), 100) : 0;
-  const prospectTgt     = prospectMtdTarget();
-  const prospectPct     = data ? Math.min(Math.round((data.prospects?.total ?? 0) / Math.max(prospectTgt, 1) * 100), 100) : 0;
+  const prospectActual  = data?.prospects?.total ?? 0;
+  const prospectTgt     = prospectStretchTarget(prospectActual);
+  const prospectPct     = data ? Math.min(Math.round(prospectActual / Math.max(prospectTgt, 1) * 100), 100) : 0;
   const score           = data ? calcWeightedScore({ agentPct, merchantPct, prospectPct, floatPct, reactivationPct, visitPct }) : 0;
 
   const elapsed = workingDaysElapsed();

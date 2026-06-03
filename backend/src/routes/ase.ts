@@ -3,7 +3,7 @@ import { prisma }       from '../prisma';
 import { requireAuth }  from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
 import { responseCache } from '../middleware/responseCache';
-import { mtdRange, visitMtdTarget, prorateMtdTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
+import { mtdRange, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
 
 export const aseRouter = Router();
 aseRouter.use(requireAuth('ASE', 'ZBM', 'HSD'));
@@ -16,7 +16,7 @@ function calcTdrScore(agents: number, _merchants: number, visits: number, reacti
   const agentTarget        = prorateMtdTarget(96);
   const visitTarget        = visitMtdTarget();
   const reactivationTarget = 6 * workingDaysElapsed();
-  const prospectTarget     = prorateMtdTarget(20);
+  const prospectTarget     = prospectStretchTarget(prospects); // always 40% above actual
   const agentPct    = Math.min(agents        / Math.max(agentTarget,        1), 1) * 100;
   const visitPct    = Math.min(visits        / Math.max(visitTarget,        1), 1) * 100;
   const reactivPct  = Math.min(reactivations / Math.max(reactivationTarget, 1), 1) * 100;

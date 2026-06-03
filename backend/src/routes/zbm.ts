@@ -4,7 +4,7 @@ import bcrypt          from 'bcryptjs';
 import { prisma }      from '../prisma';
 import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
-import { mtdRange, visitMtdTarget, prorateMtdTarget, visitMonthlyTarget,
+import { mtdRange, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, visitMonthlyTarget,
          workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
 
 export const zbmRouter = Router();
@@ -56,12 +56,17 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } },
     }),
   ]);
+  const prospectsByTdr = await prisma.prospect.groupBy({
+    by: ['tdrId'], _count: true,
+    where: { tdrId: { in: tdrIds }, createdAt: { gte: start, lte: end } },
+  }).catch(() => [] as any[]);
 
   const agentMap        = Object.fromEntries(agentsByTdr.map((r: any)        => [r.tdrId, r._count]));
   const merchantMap     = Object.fromEntries(merchantsByTdr.map((r: any)     => [r.tdrId, r._count]));
   const visitMap        = Object.fromEntries(visitsByTdr.map((r: any)        => [r.tdrId, r._count]));
   const floatMap        = Object.fromEntries(floatsByTdr.map((r: any)        => [r.tdrId, r._count]));
   const reactivationMap = Object.fromEntries(reactivationsByTdr.map((r: any) => [r.tdrId, r._count]));
+  const prospectMap     = Object.fromEntries(prospectsByTdr.map((r: any)     => [r.tdrId, r._count]));
 
   const agentTarget    = prorateMtdTarget(96);
   const merchantTarget = prorateMtdTarget(96);
@@ -154,11 +159,14 @@ zbmRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       const a = agentMap[tid]        || 0;
       const v = visitMap[tid]        || 0;
       const r = reactivationMap[tid] || 0;
+      const pr = prospectMap[tid]    || 0;
       const aT = agentTarget; const vT = visitTarget;
       const rT = 6 * workingDaysElapsed();
-      // Merchant KPI removed — agents 60%, visits 10%, reactivation 15%
+      const pT = prospectStretchTarget(pr); // always 40% above actual
+      // Agents 50%, Prospects 10%, Visits 10%, Reactivation 15%
       return Math.round(
-        Math.min(a/Math.max(aT,1),1)*100*0.60 +
+        Math.min(a/Math.max(aT,1),1)*100*0.50 +
+        Math.min(pr/Math.max(pT,1),1)*100*0.10 +
         Math.min(v/Math.max(vT,1),1)*100*0.10 +
         Math.min(r/Math.max(rT,1),1)*100*0.15
       );
