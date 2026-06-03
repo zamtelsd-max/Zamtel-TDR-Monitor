@@ -27,8 +27,9 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
         <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: '#0EA5E9' }}>{s.plannedSites ?? 0}</p><p className="text-[10px] text-gray-400">Planned</p></div>
         <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: scColor(s.completionRate ?? 0) }}>{s.completionRate ?? 0}%</p><p className="text-[10px] text-gray-400">Completion</p></div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-xl font-black" style={{ color: scColor(s.avgSiteScore ?? 0) }}>{s.avgSiteScore ?? 0}%</p><p className="text-[10px] text-gray-400">Avg Site Score</p></div>
+        <div className={`rounded-2xl border p-3 text-center ${(s.overdueSites ?? 0) > 0 ? 'border-red-300 bg-red-50' : 'border-gray-100 bg-white'}`}><p className="text-xl font-black text-red-600">{s.overdueSites ?? 0}</p><p className="text-[10px] text-gray-400">🔴 Overdue</p></div>
         <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-xl font-black text-gray-700">{s.activeAses ?? 0}</p><p className="text-[10px] text-gray-400">Active ASEs</p></div>
       </div>
       {/* Deliverable totals + attainment */}

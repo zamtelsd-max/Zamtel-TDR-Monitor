@@ -936,15 +936,19 @@ export const ASEDashboardPage: React.FC = () => {
                 const siteScore = Math.round(kpis.reduce((a, k) => a + Math.min(k.v / k.t * 100, 100), 0) / kpis.length);
                 const scColor = siteScore >= 70 ? '#00843D' : siteScore >= 40 ? '#f59e0b' : '#ef4444';
                 const isPlanned = s.status === 'planned';
+                const isOverdue = s.overdue;
                 return (
-                  <div key={s.id} className={`rounded-2xl border bg-white shadow-sm p-3 ${isPlanned ? 'border-sky-200 border-dashed' : 'border-gray-100'}`}>
+                  <div key={s.id} className={`rounded-2xl border bg-white shadow-sm p-3 ${isOverdue ? 'border-red-300 border-2' : isPlanned ? 'border-sky-200 border-dashed' : 'border-gray-100'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="min-w-0">
                         <p className="font-bold text-sm text-gray-800 truncate flex items-center gap-1.5">
                           {s.siteName}
-                          {isPlanned
+                          {isOverdue
+                            ? <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">🔴 OVERDUE</span>
+                            : isPlanned
                             ? <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700">PLANNED</span>
                             : <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">VISITED</span>}
+                          {s.carriedOver && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">↻ carried ×{s.carryCount}</span>}
                         </p>
                         <p className="text-[10px] text-gray-400">ID: {s.siteId}{s.plannedDate ? ` · 📅 ${new Date(s.plannedDate).toLocaleDateString()}` : ''}</p>
                       </div>

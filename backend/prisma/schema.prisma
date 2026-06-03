@@ -344,6 +344,8 @@ model SiteFocus {
   status      String   @default("planned")  // 'planned' | 'visited'
   plannedDate DateTime?                      // date the ASE plans to visit
   visitedAt   DateTime?                      // when actual results were recorded
+  carryCount  Int      @default(0)           // times this planned site rolled over (unvisited)
+  originWeek  DateTime?                       // first week this site was planned
   notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

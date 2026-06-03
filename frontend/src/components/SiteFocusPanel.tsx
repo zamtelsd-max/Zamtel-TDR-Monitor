@@ -76,7 +76,10 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
               <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <button onClick={() => setExpanded(open ? null : s.id)} className="w-full px-4 py-3 flex items-center justify-between">
                   <div className="text-left min-w-0">
-                    <p className="font-bold text-sm text-gray-800 truncate">{s.siteName} <span className="text-[10px] text-gray-400">#{s.siteId}</span></p>
+                    <p className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{s.siteName} <span className="text-[10px] text-gray-400">#{s.siteId}</span>
+                      {s.overdue && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">🔴 OVERDUE</span>}
+                      {s.carriedOver && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">↻×{s.carryCount}</span>}
+                    </p>
                     <p className="text-[10px] text-gray-400">{s.aseName}{showZone && s.aseZone ? ` · ${s.aseZone}` : ''}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

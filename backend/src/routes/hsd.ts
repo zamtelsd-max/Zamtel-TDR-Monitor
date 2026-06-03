@@ -753,6 +753,8 @@ hsdRouter.get('/site-focus', responseCache(60), async (req: Request, res: Respon
         aseName: aseMap[s.aseId]?.name || s.aseId,
         aseZone: aseMap[s.aseId]?.zone || '',
         siteScore: Math.round(parts.reduce((a, b) => a + b, 0) / parts.length),
+        overdue: s.status === 'planned' && ((s.carryCount || 0) > 0 || (s.plannedDate ? new Date(s.plannedDate) < new Date() : false)),
+        carriedOver: (s.carryCount || 0) > 0,
       };
     });
     res.json({ success: true, period, data });

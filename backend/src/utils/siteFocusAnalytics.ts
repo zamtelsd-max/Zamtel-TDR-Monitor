@@ -10,6 +10,8 @@ interface SiteRow {
   odrsRec: number;
   dataActs: number;
   dtuSold: number;
+  carryCount?: number | null;
+  plannedDate?: Date | string | null;
 }
 
 interface AseRef { id: string; name: string; zone?: string | null }
@@ -29,6 +31,8 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
   const aseMap = Object.fromEntries(ases.map(a => [a.id, a]));
   const visited = sites.filter(s => s.status === 'visited');
   const planned = sites.filter(s => s.status === 'planned');
+  const now = new Date();
+  const overdue = planned.filter(s => (s.carryCount || 0) > 0 || (s.plannedDate ? new Date(s.plannedDate) < now : false));
 
   // Totals across visited sites (actual deliverables)
   const totals = visited.reduce((acc, s) => {
@@ -83,6 +87,7 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
       totalSites:   sites.length,
       plannedSites: planned.length,
       visitedSites: visited.length,
+      overdueSites: overdue.length,
       completionRate,
       avgSiteScore,
       activeAses:   byAse.filter((a: any) => a.totalSites > 0).length,

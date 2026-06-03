@@ -368,30 +368,72 @@ aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
         })();
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6); weekEnd.setHours(23,59,59,999);
 
+    // ── Carry-forward: when viewing the CURRENT week, roll any unvisited planned
+    //    sites from PAST weeks into this week (red-flagged as carried over). ──
+    const todayMon = (() => {
+      const d = new Date(); const day = d.getDay();
+      const diff = (day === 0 ? -6 : 1 - day);
+      const mon = new Date(d); mon.setDate(d.getDate() + diff); mon.setHours(0,0,0,0);
+      return mon;
+    })();
+    const isCurrentWeek = weekStart.getTime() === todayMon.getTime();
+    if (isCurrentWeek) {
+      const stale = await prisma.siteFocus.findMany({
+        where: { aseId, status: 'planned', weekStart: { lt: weekStart } },
+      });
+      for (const s of stale) {
+        // Does an entry for this site already exist in the current week? avoid dupes
+        const dup = await prisma.siteFocus.findFirst({
+          where: { aseId, siteId: s.siteId, weekStart: { gte: weekStart, lte: weekEnd } },
+        });
+        if (dup) {
+          // already carried (or re-planned) — remove the stale original
+          await prisma.siteFocus.delete({ where: { id: s.id } }).catch(() => {});
+          continue;
+        }
+        await prisma.siteFocus.update({
+          where: { id: s.id },
+          data: {
+            weekStart,
+            carryCount: (s.carryCount || 0) + 1,
+            originWeek: s.originWeek || s.weekStart,
+          },
+        });
+      }
+    }
+
     const sites = await prisma.siteFocus.findMany({
       where: { aseId, weekStart: { gte: weekStart, lte: weekEnd } },
       orderBy: { createdAt: 'asc' },
     });
 
-    // Per-site score
+    // Per-site score + overdue flag (planned + carried over OR planned date in the past)
     const AGENT_TGT = 3; const SSO_TGT = 2; const ODR_TGT = 1;
     const DATA_TGT = 15; const DTU_TGT = 500;
-    const scored = sites.map(s => ({
-      ...s,
-      score: Math.round(
-        (Math.min(s.agentsRec / AGENT_TGT, 1) +
-         Math.min(s.ssosRec   / SSO_TGT,   1) +
-         Math.min(s.odrsRec   / ODR_TGT,   1) +
-         Math.min(s.dataActs  / DATA_TGT,   1) +
-         Math.min(s.dtuSold   / DTU_TGT,    1)) / 5 * 100
-      ),
-    }));
+    const now = new Date();
+    const scored = sites.map(s => {
+      const overdue = s.status === 'planned' &&
+        ((s.carryCount || 0) > 0 || (s.plannedDate ? new Date(s.plannedDate) < now : false));
+      return {
+        ...s,
+        overdue,
+        carriedOver: (s.carryCount || 0) > 0,
+        score: Math.round(
+          (Math.min(s.agentsRec / AGENT_TGT, 1) +
+           Math.min(s.ssosRec   / SSO_TGT,   1) +
+           Math.min(s.odrsRec   / ODR_TGT,   1) +
+           Math.min(s.dataActs  / DATA_TGT,   1) +
+           Math.min(s.dtuSold   / DTU_TGT,    1)) / 5 * 100
+        ),
+      };
+    });
 
     res.json({
       success: true,
       weekStart,
       sitesCount: sites.length,
       targetSites: 5,
+      overdueCount: scored.filter(s => s.overdue).length,
       data: scored,
     });
   } catch (err) {
