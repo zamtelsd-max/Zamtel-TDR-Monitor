@@ -15,6 +15,7 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [openAse, setOpenAse] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -39,6 +40,16 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
   const aseCount = new Set(sites.map(s => s.aseId)).size;
   const avgScore = totalSites > 0 ? Math.round(sites.reduce((a, s) => a + (s.siteScore || 0), 0) / totalSites) : 0;
 
+  // Group sites by ASE
+  const groups: { aseId: string; aseName: string; aseZone: string; sites: any[] }[] = [];
+  const gmap: Record<string, any> = {};
+  for (const s of sites) {
+    const k = s.aseId || s.aseName || 'unknown';
+    if (!gmap[k]) { gmap[k] = { aseId: k, aseName: s.aseName || '—', aseZone: s.aseZone || '', sites: [] }; groups.push(gmap[k]); }
+    gmap[k].sites.push(s);
+  }
+  groups.sort((a, b) => a.aseName.localeCompare(b.aseName));
+
   return (
     <div className="space-y-3">
       {/* Header + summary */}
@@ -62,8 +73,31 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
       ) : sites.length === 0 ? (
         <Card className="text-center py-8 text-gray-400"><p className="text-sm">No site focus logged this period.</p></Card>
       ) : (
-        <div className="space-y-2">
-          {sites.map((s: any) => {
+        <div className="space-y-3">
+          {groups.map((g) => {
+            const gOpen = openAse === g.aseId;
+            const gVisited = g.sites.filter((s: any) => s.status !== 'planned').length;
+            const gScore = gVisited > 0 ? Math.round(g.sites.filter((s: any) => s.status !== 'planned').reduce((a: number, s: any) => a + (s.siteScore || 0), 0) / gVisited) : 0;
+            const gOverdue = g.sites.filter((s: any) => s.overdue).length;
+            return (
+            <div key={g.aseId} className="rounded-2xl border border-gray-200 bg-gray-50/50 overflow-hidden">
+              {/* ASE group header */}
+              <button onClick={() => setOpenAse(gOpen ? null : g.aseId)} className="w-full px-4 py-3 flex items-center justify-between bg-white">
+                <div className="text-left min-w-0">
+                  <p className="font-bold text-sm text-gray-800 truncate flex items-center gap-1.5">
+                    👤 {g.aseName}
+                    {gOverdue > 0 && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">🔴 {gOverdue}</span>}
+                  </p>
+                  <p className="text-[10px] text-gray-400">{showZone && g.aseZone ? `${g.aseZone} · ` : ''}{g.sites.length} sites · {gVisited} visited · avg {gScore}%</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-base font-black" style={{ color: scColor(gScore) }}>{gScore}%</span>
+                  {gOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                </div>
+              </button>
+              {gOpen && (
+              <div className="px-2 pb-2 pt-1 space-y-2">
+          {g.sites.map((s: any) => {
             const kpis = [
               { l: 'Agents', v: s.agentsRec, t: 3, c: '#00843D' },
               { l: 'SSOs', v: s.ssosRec, t: 2, c: '#2563EB' },
@@ -116,6 +150,11 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
                   </div>
                 )}
               </div>
+            );
+          })}
+              </div>
+              )}
+            </div>
             );
           })}
         </div>
