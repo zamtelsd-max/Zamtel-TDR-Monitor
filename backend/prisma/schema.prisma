@@ -335,6 +335,9 @@ model SiteFocus {
   odrsRec     Int      @default(0)   // ODRs recruited
   dataActs    Int      @default(0)   // customers activated on Data offers
   dtuSold     Float    @default(0)   // K500 DTU threshold
+  agentCodes  String?  // comma-separated actual agent codes created at this site
+  ssoCodes    String?  // comma-separated actual SSO codes created at this site
+  odrCodes    String?  // comma-separated actual ODR codes created at this site
   latitude    Float?   // GPS latitude captured by ASE at site
   longitude   Float?   // GPS longitude captured by ASE at site
   status      String   @default("planned")  // 'planned' | 'visited'

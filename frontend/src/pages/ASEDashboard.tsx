@@ -124,7 +124,7 @@ export const ASEDashboardPage: React.FC = () => {
   // Site Focus state
   const [siteFocusData, setSiteFocusData] = useState<any[]>([]);
   const [siteFocusLoading, setSiteFocusLoading] = useState(false);
-  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '', plannedDate: '' });
+  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
   const [sfFormOpen, setSfFormOpen]     = useState(false);
   const [sfMode, setSfMode]             = useState<'plan' | 'record'>('plan'); // plan = schedule visit; record = enter actuals
   const [sfEditingId, setSfEditingId]   = useState<string | null>(null);       // editing an existing site
@@ -218,7 +218,7 @@ export const ASEDashboardPage: React.FC = () => {
   useEffect(() => { if (tab === 'site-focus') loadSiteFocus(); }, [tab, loadSiteFocus]);
 
   const resetSfForm = () => {
-    setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '', plannedDate: '' });
+    setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
     setSfEditingId(null);
     setSfMode('plan');
   };
@@ -238,6 +238,7 @@ export const ASEDashboardPage: React.FC = () => {
       latitude: s.latitude != null ? String(s.latitude) : '',
       longitude: s.longitude != null ? String(s.longitude) : '',
       plannedDate: s.plannedDate ? String(s.plannedDate).slice(0, 10) : '',
+      agentCodes: s.agentCodes || '', ssoCodes: s.ssoCodes || '', odrCodes: s.odrCodes || '',
     });
     setSfFormOpen(true);
   };
@@ -260,6 +261,9 @@ export const ASEDashboardPage: React.FC = () => {
         payload.odrsRec   = Number(sfForm.odrsRec)   || 0;
         payload.dataActs  = Number(sfForm.dataActs)  || 0;
         payload.dtuSold   = Number(sfForm.dtuSold)   || 0;
+        payload.agentCodes = sfForm.agentCodes || '';
+        payload.ssoCodes   = sfForm.ssoCodes   || '';
+        payload.odrCodes   = sfForm.odrCodes   || '';
       } else {
         payload.mode = 'plan';
       }
@@ -887,6 +891,12 @@ export const ASEDashboardPage: React.FC = () => {
                   <input type="number" value={sfForm.odrsRec} onChange={e => setSfForm({...sfForm, odrsRec: e.target.value})} placeholder="ODRs (1)" className="border rounded-xl px-3 py-2 text-sm" />
                   <input type="number" value={sfForm.dataActs} onChange={e => setSfForm({...sfForm, dataActs: e.target.value})} placeholder="Data Acts (15)" className="border rounded-xl px-3 py-2 text-sm" />
                   <input type="number" value={sfForm.dtuSold} onChange={e => setSfForm({...sfForm, dtuSold: e.target.value})} placeholder="DTU K (500)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                  <div className="col-span-2 mt-1 pt-2 border-t border-gray-100">
+                    <p className="text-[10px] font-semibold text-gray-500 mb-1">Enter actual codes created (comma-separated)</p>
+                  </div>
+                  <textarea value={sfForm.agentCodes} onChange={e => setSfForm({...sfForm, agentCodes: e.target.value})} placeholder="Agent codes e.g. ZM-COP-0023, ZM-COP-0024" rows={2} className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                  <textarea value={sfForm.ssoCodes} onChange={e => setSfForm({...sfForm, ssoCodes: e.target.value})} placeholder="SSO codes created" rows={2} className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                  <textarea value={sfForm.odrCodes} onChange={e => setSfForm({...sfForm, odrCodes: e.target.value})} placeholder="ODR codes created (optional)" rows={2} className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                 </>)}
                 <input value={sfForm.notes} onChange={e => setSfForm({...sfForm, notes: e.target.value})} placeholder="Notes (optional)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                 <button type="button" onClick={captureGps} disabled={sfGpsLoading} className="col-span-2 flex items-center justify-center gap-2 border-2 border-dashed rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ borderColor: '#00843D', color: '#00843D' }}>
@@ -957,6 +967,13 @@ export const ASEDashboardPage: React.FC = () => {
                       <a href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`} target="_blank" rel="noreferrer" className="text-[10px] mt-2 inline-flex items-center gap-1 font-semibold" style={{ color: '#00843D' }}>
                         <MapPin className="w-3 h-3" /> {Number(s.latitude).toFixed(5)}, {Number(s.longitude).toFixed(5)}
                       </a>
+                    )}
+                    {(s.agentCodes || s.ssoCodes || s.odrCodes) && (
+                      <div className="mt-2 pt-2 border-t border-gray-50 space-y-0.5">
+                        {s.agentCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">Agents:</span> {s.agentCodes}</p>}
+                        {s.ssoCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-blue-700">SSOs:</span> {s.ssoCodes}</p>}
+                        {s.odrCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-purple-700">ODRs:</span> {s.odrCodes}</p>}
+                      </div>
                     )}
                     {s.notes && <p className="text-[10px] text-gray-400 mt-1 italic">{s.notes}</p>}
                     <button onClick={() => openRecordForm(s)} className="mt-2 w-full text-xs font-bold py-2 rounded-xl" style={isPlanned ? { background: '#00843D', color: '#fff' } : { background: '#f3f4f6', color: '#374151' }}>

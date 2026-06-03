@@ -101,6 +101,13 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
                         <MapPin className="w-3 h-3" /> {Number(s.latitude).toFixed(5)}, {Number(s.longitude).toFixed(5)}
                       </a>
                     )}
+                    {(s.agentCodes || s.ssoCodes || s.odrCodes) && (
+                      <div className="mt-1 space-y-0.5">
+                        {s.agentCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">Agents:</span> {s.agentCodes}</p>}
+                        {s.ssoCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-blue-700">SSOs:</span> {s.ssoCodes}</p>}
+                        {s.odrCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-purple-700">ODRs:</span> {s.odrCodes}</p>}
+                      </div>
+                    )}
                     {s.notes && <p className="text-[10px] text-gray-400 italic mt-1">{s.notes}</p>}
                   </div>
                 )}

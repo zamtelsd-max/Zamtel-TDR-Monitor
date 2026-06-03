@@ -403,7 +403,14 @@ aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
 aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void> => {
   try {
     const aseId = req.user!.userId;
-    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, notes, latitude, longitude, mode, plannedDate } = req.body;
+    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, notes, latitude, longitude, mode, plannedDate, agentCodes, ssoCodes, odrCodes } = req.body;
+    // Normalize code lists → trimmed comma-separated strings
+    const normCodes = (v: any): string | null => {
+      if (v === undefined || v === null || v === '') return null;
+      const arr = Array.isArray(v) ? v : String(v).split(',');
+      const clean = arr.map((x: any) => String(x).trim()).filter(Boolean);
+      return clean.length ? clean.join(', ') : null;
+    };
     const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? Number(latitude) : null;
     const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? Number(longitude) : null;
     // mode: 'plan' creates a planned site (no results yet); 'record'/'visited' = actuals captured
@@ -435,6 +442,9 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
           dtuSold:   Number(dtuSold)   || 0,
           ...(lat !== null ? { latitude: lat } : {}),
           ...(lng !== null ? { longitude: lng } : {}),
+          ...(agentCodes !== undefined ? { agentCodes: normCodes(agentCodes) } : {}),
+          ...(ssoCodes   !== undefined ? { ssoCodes:   normCodes(ssoCodes) } : {}),
+          ...(odrCodes   !== undefined ? { odrCodes:   normCodes(odrCodes) } : {}),
           notes:     notes || null,
         },
       });
@@ -453,6 +463,9 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
           odrsRec:   isPlan ? 0 : (Number(odrsRec)   || 0),
           dataActs:  isPlan ? 0 : (Number(dataActs)  || 0),
           dtuSold:   isPlan ? 0 : (Number(dtuSold)   || 0),
+          agentCodes: isPlan ? null : normCodes(agentCodes),
+          ssoCodes:   isPlan ? null : normCodes(ssoCodes),
+          odrCodes:   isPlan ? null : normCodes(odrCodes),
           latitude:  lat,
           longitude: lng,
           notes:     notes || null,
@@ -477,6 +490,12 @@ aseRouter.patch('/site-focus/:id', async (req: Request, res: Response): Promise<
     if (!site) { res.status(404).json({ error: 'Site not found' }); return; }
 
     const b = req.body;
+    const normCodes = (v: any): string | null => {
+      if (v === undefined || v === null || v === '') return null;
+      const arr = Array.isArray(v) ? v : String(v).split(',');
+      const clean = arr.map((x: any) => String(x).trim()).filter(Boolean);
+      return clean.length ? clean.join(', ') : null;
+    };
     const data: any = {};
     if (b.siteName !== undefined) data.siteName = b.siteName;
     if (b.siteId   !== undefined) data.siteId   = b.siteId;
@@ -485,6 +504,9 @@ aseRouter.patch('/site-focus/:id', async (req: Request, res: Response): Promise<
     if (b.odrsRec   !== undefined) data.odrsRec   = Number(b.odrsRec)   || 0;
     if (b.dataActs  !== undefined) data.dataActs  = Number(b.dataActs)  || 0;
     if (b.dtuSold   !== undefined) data.dtuSold   = Number(b.dtuSold)   || 0;
+    if (b.agentCodes !== undefined) data.agentCodes = normCodes(b.agentCodes);
+    if (b.ssoCodes   !== undefined) data.ssoCodes   = normCodes(b.ssoCodes);
+    if (b.odrCodes   !== undefined) data.odrCodes   = normCodes(b.odrCodes);
     if (b.notes     !== undefined) data.notes     = b.notes || null;
     if (b.plannedDate !== undefined) data.plannedDate = b.plannedDate ? new Date(b.plannedDate) : null;
     if (b.latitude  !== undefined && b.latitude  !== '' && b.latitude  !== null) data.latitude  = Number(b.latitude);
@@ -492,7 +514,7 @@ aseRouter.patch('/site-focus/:id', async (req: Request, res: Response): Promise<
 
     // Recording actuals → mark as visited (explicit mode='record' OR any result field provided)
     const recordingActuals = b.mode === 'record' ||
-      ['agentsRec','ssosRec','odrsRec','dataActs','dtuSold'].some(k => b[k] !== undefined);
+      ['agentsRec','ssosRec','odrsRec','dataActs','dtuSold','agentCodes','ssoCodes','odrCodes'].some(k => b[k] !== undefined);
     if (b.status) {
       data.status = b.status;
       if (b.status === 'visited' && !site.visitedAt) data.visitedAt = new Date();

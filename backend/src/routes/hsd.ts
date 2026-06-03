@@ -393,6 +393,7 @@ hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
         'Site Name': s.siteName, 'Site ID': s.siteId,
         'Agents (tgt 3)': s.agentsRec, 'SSOs (tgt 2)': s.ssosRec, 'ODRs (tgt 1)': s.odrsRec,
         'Data Acts (tgt 15)': s.dataActs, 'DTU K (tgt 500)': s.dtuSold,
+        'Agent Codes': s.agentCodes || '', 'SSO Codes': s.ssoCodes || '', 'ODR Codes': s.odrCodes || '',
         'Site Score %': Math.round(parts.reduce((a, b) => a + b, 0) / parts.length),
         'Latitude': s.latitude ?? '', 'Longitude': s.longitude ?? '',
         'GPS Link': (s.latitude != null && s.longitude != null) ? `https://www.google.com/maps?q=${s.latitude},${s.longitude}` : '',
