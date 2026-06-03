@@ -336,6 +336,8 @@ model SiteFocus {
   dataActs    Int      @default(0)   // customers activated on Data offers
   dtuSold     Float    @default(0)   // Direct Top Up — total amount sold in ZMW (one-off; target K500)
   dtuAgentCode String?                // agent code the Direct Top Up was sold from
+  zmGrossAdds Int      @default(0)   // Zamtel Money Gross Adds (target 30 rural / 50 urban)
+  siteType    String   @default("urban")  // 'urban' | 'rural' — drives ZM GA target
   agentCodes  String?  // comma-separated actual agent codes created at this site
   ssoCodes    String?  // comma-separated actual SSO codes created at this site
   odrCodes    String?  // comma-separated actual ODR codes created at this site

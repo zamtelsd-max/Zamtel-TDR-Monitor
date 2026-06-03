@@ -104,6 +104,7 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
               { l: 'ODRs', v: s.odrsRec, t: 1, c: '#7C3AED' },
               { l: 'Data', v: s.dataActs, t: 15, c: '#F97316' },
               { l: 'DTU ZMW', v: s.dtuSold, t: 500, c: '#E4007C' },
+              { l: 'ZM GA', v: s.zmGrossAdds ?? 0, t: (s.siteType === 'rural' ? 30 : 50), c: '#0891B2' },
             ];
             const open = expanded === s.id;
             return (

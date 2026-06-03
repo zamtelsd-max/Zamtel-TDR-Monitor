@@ -29,17 +29,20 @@ function calcTdrScore(agents: number, _merchants: number, visits: number, reacti
 // Score = average achievement across all 5 sub-KPIs per site, then averaged.
 function calcSiteFocusScore(sites: Array<{
   agentsRec: number; ssosRec: number; odrsRec: number; dataActs: number; dtuSold: number;
+  zmGrossAdds?: number; siteType?: string | null;
 }>): number {
   if (sites.length === 0) return 0;
   const AGENT_TGT = 3; const SSO_TGT = 2; const ODR_TGT = 1;
   const DATA_TGT  = 15; const DTU_TGT = 500;
   const siteScores = sites.map(s => {
+    const zmTgt = (s.siteType === 'rural') ? 30 : 50; // Zamtel Money GA target: 30 rural / 50 urban
     const a = Math.min(s.agentsRec / AGENT_TGT, 1) * 100;
     const sso = Math.min(s.ssosRec  / SSO_TGT,   1) * 100;
     const odr = Math.min(s.odrsRec  / ODR_TGT,   1) * 100;
     const d   = Math.min(s.dataActs / DATA_TGT,   1) * 100;
     const dtu = Math.min(s.dtuSold  / DTU_TGT,    1) * 100;
-    return (a + sso + odr + d + dtu) / 5;
+    const zm  = Math.min((s.zmGrossAdds || 0) / zmTgt, 1) * 100;
+    return (a + sso + odr + d + dtu + zm) / 6;
   });
   // Achievement across 5 required sites per week
   const SITES_REQUIRED = 5;
@@ -136,7 +139,7 @@ aseRouter.get('/dashboard', async (req: Request, res: Response): Promise<void> =
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6); weekEnd.setHours(23,59,59,999);
     const weekSites = await prisma.siteFocus.findMany({
       where: { aseId, weekStart: { gte: weekStart, lte: weekEnd } },
-      select: { agentsRec: true, ssosRec: true, odrsRec: true, dataActs: true, dtuSold: true },
+      select: { agentsRec: true, ssosRec: true, odrsRec: true, dataActs: true, dtuSold: true, zmGrossAdds: true, siteType: true },
     });
     const siteFocusScore = calcSiteFocusScore(weekSites);
 
@@ -418,12 +421,14 @@ aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
         ...s,
         overdue,
         carriedOver: (s.carryCount || 0) > 0,
+        zmTarget: (s.siteType === 'rural') ? 30 : 50,
         score: Math.round(
           (Math.min(s.agentsRec / AGENT_TGT, 1) +
            Math.min(s.ssosRec   / SSO_TGT,   1) +
            Math.min(s.odrsRec   / ODR_TGT,   1) +
            Math.min(s.dataActs  / DATA_TGT,   1) +
-           Math.min(s.dtuSold   / DTU_TGT,    1)) / 5 * 100
+           Math.min(s.dtuSold   / DTU_TGT,    1) +
+           Math.min((s.zmGrossAdds || 0) / ((s.siteType === 'rural') ? 30 : 50), 1)) / 6 * 100
         ),
       };
     });
@@ -445,7 +450,8 @@ aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
 aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void> => {
   try {
     const aseId = req.user!.userId;
-    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, dtuAgentCode, notes, latitude, longitude, mode, plannedDate, agentCodes, ssoCodes, odrCodes } = req.body;
+    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, dtuAgentCode, zmGrossAdds, siteType, notes, latitude, longitude, mode, plannedDate, agentCodes, ssoCodes, odrCodes } = req.body;
+    const normSiteType = (siteType === 'rural') ? 'rural' : 'urban';
     // Normalize code lists → trimmed comma-separated strings
     const normCodes = (v: any): string | null => {
       if (v === undefined || v === null || v === '') return null;
@@ -488,6 +494,8 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
           ...(ssoCodes   !== undefined ? { ssoCodes:   normCodes(ssoCodes) } : {}),
           ...(odrCodes   !== undefined ? { odrCodes:   normCodes(odrCodes) } : {}),
           ...(dtuAgentCode !== undefined ? { dtuAgentCode: dtuAgentCode ? String(dtuAgentCode).trim() : null } : {}),
+          ...(zmGrossAdds !== undefined ? { zmGrossAdds: Number(zmGrossAdds) || 0 } : {}),
+          ...(siteType !== undefined ? { siteType: normSiteType } : {}),
           notes:     notes || null,
         },
       });
@@ -510,6 +518,8 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
           ssoCodes:   isPlan ? null : normCodes(ssoCodes),
           odrCodes:   isPlan ? null : normCodes(odrCodes),
           dtuAgentCode: isPlan ? null : (dtuAgentCode ? String(dtuAgentCode).trim() : null),
+          zmGrossAdds: isPlan ? 0 : (Number(zmGrossAdds) || 0),
+          siteType:    normSiteType,
           latitude:  lat,
           longitude: lng,
           notes:     notes || null,
@@ -552,6 +562,8 @@ aseRouter.patch('/site-focus/:id', async (req: Request, res: Response): Promise<
     if (b.ssoCodes   !== undefined) data.ssoCodes   = normCodes(b.ssoCodes);
     if (b.odrCodes   !== undefined) data.odrCodes   = normCodes(b.odrCodes);
     if (b.dtuAgentCode !== undefined) data.dtuAgentCode = b.dtuAgentCode ? String(b.dtuAgentCode).trim() : null;
+    if (b.zmGrossAdds !== undefined) data.zmGrossAdds = Number(b.zmGrossAdds) || 0;
+    if (b.siteType    !== undefined) data.siteType = (b.siteType === 'rural') ? 'rural' : 'urban';
     if (b.notes     !== undefined) data.notes     = b.notes || null;
     if (b.plannedDate !== undefined) data.plannedDate = b.plannedDate ? new Date(b.plannedDate) : null;
     if (b.latitude  !== undefined && b.latitude  !== '' && b.latitude  !== null) data.latitude  = Number(b.latitude);
@@ -559,7 +571,7 @@ aseRouter.patch('/site-focus/:id', async (req: Request, res: Response): Promise<
 
     // Recording actuals → mark as visited (explicit mode='record' OR any result field provided)
     const recordingActuals = b.mode === 'record' ||
-      ['agentsRec','ssosRec','odrsRec','dataActs','dtuSold','agentCodes','ssoCodes','odrCodes'].some(k => b[k] !== undefined);
+      ['agentsRec','ssosRec','odrsRec','dataActs','dtuSold','zmGrossAdds','agentCodes','ssoCodes','odrCodes'].some(k => b[k] !== undefined);
     if (b.status) {
       data.status = b.status;
       if (b.status === 'visited' && !site.visitedAt) data.visitedAt = new Date();

@@ -125,7 +125,7 @@ export const ASEDashboardPage: React.FC = () => {
   // Site Focus state
   const [siteFocusData, setSiteFocusData] = useState<any[]>([]);
   const [siteFocusLoading, setSiteFocusLoading] = useState(false);
-  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', dtuAgentCode: '', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
+  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', dtuAgentCode: '', zmGrossAdds: '', siteType: 'urban', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
   const [sfFormOpen, setSfFormOpen]     = useState(false);
   const [sfMode, setSfMode]             = useState<'plan' | 'record'>('plan'); // plan = schedule visit; record = enter actuals
   const [sfEditingId, setSfEditingId]   = useState<string | null>(null);       // editing an existing site
@@ -219,7 +219,7 @@ export const ASEDashboardPage: React.FC = () => {
   useEffect(() => { if (tab === 'site-focus') loadSiteFocus(); }, [tab, loadSiteFocus]);
 
   const resetSfForm = () => {
-    setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', dtuAgentCode: '', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
+    setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', dtuAgentCode: '', zmGrossAdds: '', siteType: 'urban', notes: '', latitude: '', longitude: '', plannedDate: '', agentCodes: '', ssoCodes: '', odrCodes: '' });
     setSfEditingId(null);
     setSfMode('plan');
   };
@@ -235,7 +235,7 @@ export const ASEDashboardPage: React.FC = () => {
       siteName: s.siteName || '', siteId: s.siteId || '',
       agentsRec: String(s.agentsRec ?? ''), ssosRec: String(s.ssosRec ?? ''),
       odrsRec: String(s.odrsRec ?? ''), dataActs: String(s.dataActs ?? ''),
-      dtuSold: String(s.dtuSold ?? ''), dtuAgentCode: s.dtuAgentCode || '', notes: s.notes || '',
+      dtuSold: String(s.dtuSold ?? ''), dtuAgentCode: s.dtuAgentCode || '', zmGrossAdds: String(s.zmGrossAdds ?? ''), siteType: s.siteType || 'urban', notes: s.notes || '',
       latitude: s.latitude != null ? String(s.latitude) : '',
       longitude: s.longitude != null ? String(s.longitude) : '',
       plannedDate: s.plannedDate ? String(s.plannedDate).slice(0, 10) : '',
@@ -254,6 +254,7 @@ export const ASEDashboardPage: React.FC = () => {
         longitude: sfForm.longitude !== '' ? Number(sfForm.longitude) : undefined,
         notes:     sfForm.notes || undefined,
         plannedDate: sfForm.plannedDate || undefined,
+        siteType:  sfForm.siteType || 'urban',
       };
       if (sfMode === 'record') {
         payload.mode = 'record';
@@ -263,6 +264,7 @@ export const ASEDashboardPage: React.FC = () => {
         payload.dataActs  = Number(sfForm.dataActs)  || 0;
         payload.dtuSold   = Number(sfForm.dtuSold)   || 0;
         payload.dtuAgentCode = sfForm.dtuAgentCode || '';
+        payload.zmGrossAdds  = Number(sfForm.zmGrossAdds) || 0;
         payload.agentCodes = sfForm.agentCodes || '';
         payload.ssoCodes   = sfForm.ssoCodes   || '';
         payload.odrCodes   = sfForm.odrCodes   || '';
@@ -874,6 +876,13 @@ export const ASEDashboardPage: React.FC = () => {
                 <input value={sfForm.siteName} onChange={e => setSfForm({...sfForm, siteName: e.target.value})} placeholder="Site Name" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                 <input value={sfForm.siteId} onChange={e => setSfForm({...sfForm, siteId: e.target.value})} placeholder="Site ID" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                 <div className="col-span-2">
+                  <label className="text-[10px] text-gray-400">Site Type (sets Zamtel Money GA target)</label>
+                  <div className="flex gap-2 mt-0.5">
+                    <button type="button" onClick={() => setSfForm({...sfForm, siteType: 'urban'})} className={`flex-1 text-xs font-bold py-2 rounded-xl ${sfForm.siteType === 'urban' ? 'text-white' : 'bg-gray-100 text-gray-500'}`} style={sfForm.siteType === 'urban' ? { background: '#00843D' } : {}}>🏙️ Urban (50)</button>
+                    <button type="button" onClick={() => setSfForm({...sfForm, siteType: 'rural'})} className={`flex-1 text-xs font-bold py-2 rounded-xl ${sfForm.siteType === 'rural' ? 'text-white' : 'bg-gray-100 text-gray-500'}`} style={sfForm.siteType === 'rural' ? { background: '#00843D' } : {}}>🌾 Rural (30)</button>
+                  </div>
+                </div>
+                <div className="col-span-2">
                   <label className="text-[10px] text-gray-400">Planned Visit Date</label>
                   <input type="date" value={sfForm.plannedDate} onChange={e => setSfForm({...sfForm, plannedDate: e.target.value})} className="w-full border rounded-xl px-3 py-2 text-sm" />
                 </div>
@@ -887,6 +896,7 @@ export const ASEDashboardPage: React.FC = () => {
                   </div>
                   <input type="number" value={sfForm.dtuSold} onChange={e => setSfForm({...sfForm, dtuSold: e.target.value})} placeholder="Amount sold (ZMW)" className="border rounded-xl px-3 py-2 text-sm" />
                   <input value={sfForm.dtuAgentCode} onChange={e => setSfForm({...sfForm, dtuAgentCode: e.target.value})} placeholder="Agent code sold from" className="border rounded-xl px-3 py-2 text-sm" />
+                  <input type="number" value={sfForm.zmGrossAdds} onChange={e => setSfForm({...sfForm, zmGrossAdds: e.target.value})} placeholder={`ZM Gross Adds (${sfForm.siteType === 'rural' ? 30 : 50})`} className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                   <div className="col-span-2 mt-1 pt-2 border-t border-gray-100">
                     <p className="text-[10px] font-semibold text-gray-500 mb-1">Enter actual codes created (comma-separated)</p>
                   </div>
@@ -923,6 +933,7 @@ export const ASEDashboardPage: React.FC = () => {
                   { l: 'ODRs',   v: s.odrsRec,   t: 1,   c: '#7C3AED' },
                   { l: 'Data',   v: s.dataActs,  t: 15,  c: '#F97316' },
                   { l: 'DTU ZMW', v: s.dtuSold,  t: 500, c: '#E4007C' },
+                  { l: 'ZM GA',   v: s.zmGrossAdds ?? 0, t: (s.siteType === 'rural' ? 30 : 50), c: '#0891B2' },
                 ];
                 const siteScore = Math.round(kpis.reduce((a, k) => a + Math.min(k.v / k.t * 100, 100), 0) / kpis.length);
                 const scColor = siteScore >= 70 ? '#00843D' : siteScore >= 40 ? '#f59e0b' : '#ef4444';
@@ -941,7 +952,7 @@ export const ASEDashboardPage: React.FC = () => {
                             : <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">VISITED</span>}
                           {s.carriedOver && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">↻ carried ×{s.carryCount}</span>}
                         </p>
-                        <p className="text-[10px] text-gray-400">ID: {s.siteId}{s.plannedDate ? ` · 📅 ${new Date(s.plannedDate).toLocaleDateString()}` : ''}</p>
+                        <p className="text-[10px] text-gray-400">ID: {s.siteId} · {s.siteType === 'rural' ? '🌾 Rural' : '🏙️ Urban'}{s.plannedDate ? ` · 📅 ${new Date(s.plannedDate).toLocaleDateString()}` : ''}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {!isPlanned && <span className="text-lg font-black" style={{ color: scColor }}>{siteScore}%</span>}

@@ -395,6 +395,7 @@ hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
         'Site Name': s.siteName, 'Site ID': s.siteId,
         'Agents (tgt 3)': s.agentsRec, 'SSOs (tgt 2)': s.ssosRec, 'ODRs (tgt 1)': s.odrsRec,
         'Data Acts (tgt 15)': s.dataActs, 'DTU Sold (ZMW)': s.dtuSold, 'DTU Agent Code': s.dtuAgentCode || '',
+        'Site Type': s.siteType || 'urban', 'ZM Gross Adds': s.zmGrossAdds || 0, 'ZM GA Target': (s.siteType === 'rural') ? 30 : 50,
         'Agent Codes': s.agentCodes || '', 'SSO Codes': s.ssoCodes || '', 'ODR Codes': s.odrCodes || '',
         'Site Score %': Math.round(parts.reduce((a, b) => a + b, 0) / parts.length),
         'Latitude': s.latitude ?? '', 'Longitude': s.longitude ?? '',
@@ -744,15 +745,17 @@ hsdRouter.get('/site-focus', responseCache(60), async (req: Request, res: Respon
       orderBy: [{ weekStart: 'desc' }, { siteName: 'asc' }],
     });
     const data = sites.map((s: any) => {
+      const zmTgt = (s.siteType === 'rural') ? 30 : 50;
       const parts = [
         Math.min(s.agentsRec / 3 * 100, 100), Math.min(s.ssosRec / 2 * 100, 100),
         Math.min(s.odrsRec / 1 * 100, 100), Math.min(s.dataActs / 15 * 100, 100),
-        Math.min(s.dtuSold / 500 * 100, 100),
+        Math.min(s.dtuSold / 500 * 100, 100), Math.min((s.zmGrossAdds || 0) / zmTgt * 100, 100),
       ];
       return {
         ...s,
         aseName: aseMap[s.aseId]?.name || s.aseId,
         aseZone: aseMap[s.aseId]?.zone || '',
+        zmTarget: zmTgt,
         siteScore: Math.round(parts.reduce((a, b) => a + b, 0) / parts.length),
         overdue: s.status === 'planned' && ((s.carryCount || 0) > 0 || (s.plannedDate ? new Date(s.plannedDate) < new Date() : false)),
         carriedOver: (s.carryCount || 0) > 0,

@@ -10,11 +10,15 @@ interface SiteRow {
   odrsRec: number;
   dataActs: number;
   dtuSold: number;
+  zmGrossAdds?: number | null;
+  siteType?: string | null;
   carryCount?: number | null;
   plannedDate?: Date | string | null;
 }
 
 interface AseRef { id: string; name: string; zone?: string | null }
+
+const zmTargetFor = (s: SiteRow): number => (s.siteType === 'rural') ? 30 : 50;
 
 const PER_SITE = (s: SiteRow): number => {
   const parts = [
@@ -23,6 +27,7 @@ const PER_SITE = (s: SiteRow): number => {
     Math.min(s.odrsRec   / 1 * 100, 100),
     Math.min(s.dataActs  / 15 * 100, 100),
     Math.min(s.dtuSold   / 500 * 100, 100),
+    Math.min((s.zmGrossAdds || 0) / zmTargetFor(s) * 100, 100),
   ];
   return Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
 };
@@ -37,9 +42,11 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
   // Totals across visited sites (actual deliverables)
   const totals = visited.reduce((acc, s) => {
     acc.agents += s.agentsRec; acc.ssos += s.ssosRec; acc.odrs += s.odrsRec;
-    acc.dataActs += s.dataActs; acc.dtu += s.dtuSold;
+    acc.dataActs += s.dataActs; acc.dtu += s.dtuSold; acc.zmGa += (s.zmGrossAdds || 0);
     return acc;
-  }, { agents: 0, ssos: 0, odrs: 0, dataActs: 0, dtu: 0 });
+  }, { agents: 0, ssos: 0, odrs: 0, dataActs: 0, dtu: 0, zmGa: 0 });
+  // Sum of per-site ZM GA targets (30 rural / 50 urban) across visited sites
+  const zmTargetTotal = visited.reduce((a, s) => a + zmTargetFor(s), 0);
 
   const avgSiteScore = visited.length
     ? Math.round(visited.reduce((a, s) => a + PER_SITE(s), 0) / visited.length)
@@ -80,6 +87,7 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
     odrs:     tgt ? Math.min(Math.round(totals.odrs     / (1 * tgt)  * 100), 100) : 0,
     dataActs: tgt ? Math.min(Math.round(totals.dataActs / (15 * tgt) * 100), 100) : 0,
     dtu:      tgt ? Math.min(Math.round(totals.dtu      / (500 * tgt)* 100), 100) : 0,
+    zmGa:     zmTargetTotal ? Math.min(Math.round(totals.zmGa / zmTargetTotal * 100), 100) : 0,
   };
 
   return {

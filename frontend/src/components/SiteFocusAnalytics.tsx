@@ -41,6 +41,7 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
           ['ODRs', t.odrs, at.odrs, '#7C3AED'],
           ['Data Acts', t.dataActs, at.dataActs, '#F97316'],
           ['DTU (ZMW)', t.dtu, at.dtu, '#E4007C'],
+          ['ZM Gross Adds', t.zmGa, at.zmGa, '#0891B2'],
         ] as [string, number, number, string][]).map(([l, val, pct, c]) => (
           <div key={l} className="flex items-center gap-2 mb-1.5">
             <span className="text-[10px] text-gray-500 w-20 shrink-0">{l}</span>
