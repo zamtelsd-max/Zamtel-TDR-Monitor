@@ -124,8 +124,10 @@ export const ASEDashboardPage: React.FC = () => {
   // Site Focus state
   const [siteFocusData, setSiteFocusData] = useState<any[]>([]);
   const [siteFocusLoading, setSiteFocusLoading] = useState(false);
-  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '' });
+  const [sfForm, setSfForm]             = useState({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '', plannedDate: '' });
   const [sfFormOpen, setSfFormOpen]     = useState(false);
+  const [sfMode, setSfMode]             = useState<'plan' | 'record'>('plan'); // plan = schedule visit; record = enter actuals
+  const [sfEditingId, setSfEditingId]   = useState<string | null>(null);       // editing an existing site
   const [sfGpsLoading, setSfGpsLoading] = useState(false);
   const [sfSaving, setSfSaving]         = useState(false);
 
@@ -215,24 +217,62 @@ export const ASEDashboardPage: React.FC = () => {
   }, []);
   useEffect(() => { if (tab === 'site-focus') loadSiteFocus(); }, [tab, loadSiteFocus]);
 
+  const resetSfForm = () => {
+    setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '', plannedDate: '' });
+    setSfEditingId(null);
+    setSfMode('plan');
+  };
+
+  // Open form to plan a NEW site visit
+  const openPlanForm = () => { resetSfForm(); setSfMode('plan'); setSfFormOpen(true); };
+
+  // Open form to record/edit an EXISTING site (enter actuals after visit)
+  const openRecordForm = (s: any) => {
+    setSfEditingId(s.id);
+    setSfMode('record');
+    setSfForm({
+      siteName: s.siteName || '', siteId: s.siteId || '',
+      agentsRec: String(s.agentsRec ?? ''), ssosRec: String(s.ssosRec ?? ''),
+      odrsRec: String(s.odrsRec ?? ''), dataActs: String(s.dataActs ?? ''),
+      dtuSold: String(s.dtuSold ?? ''), notes: s.notes || '',
+      latitude: s.latitude != null ? String(s.latitude) : '',
+      longitude: s.longitude != null ? String(s.longitude) : '',
+      plannedDate: s.plannedDate ? String(s.plannedDate).slice(0, 10) : '',
+    });
+    setSfFormOpen(true);
+  };
+
   const saveSiteFocus = async () => {
     if (!sfForm.siteName || !sfForm.siteId) { toast.error('Site name and ID are required'); return; }
     setSfSaving(true);
     try {
-      await aseApi.saveSiteFocus({
+      const payload: any = {
         siteName: sfForm.siteName, siteId: sfForm.siteId,
-        agentsRec: Number(sfForm.agentsRec) || 0,
-        ssosRec:   Number(sfForm.ssosRec)   || 0,
-        odrsRec:   Number(sfForm.odrsRec)   || 0,
-        dataActs:  Number(sfForm.dataActs)  || 0,
-        dtuSold:   Number(sfForm.dtuSold)   || 0,
         latitude:  sfForm.latitude  !== '' ? Number(sfForm.latitude)  : undefined,
         longitude: sfForm.longitude !== '' ? Number(sfForm.longitude) : undefined,
         notes:     sfForm.notes || undefined,
-      });
-      toast.success('Site saved!');
+        plannedDate: sfForm.plannedDate || undefined,
+      };
+      if (sfMode === 'record') {
+        payload.mode = 'record';
+        payload.agentsRec = Number(sfForm.agentsRec) || 0;
+        payload.ssosRec   = Number(sfForm.ssosRec)   || 0;
+        payload.odrsRec   = Number(sfForm.odrsRec)   || 0;
+        payload.dataActs  = Number(sfForm.dataActs)  || 0;
+        payload.dtuSold   = Number(sfForm.dtuSold)   || 0;
+      } else {
+        payload.mode = 'plan';
+      }
+
+      if (sfEditingId) {
+        await aseApi.updateSiteFocus(sfEditingId, payload);
+        toast.success(sfMode === 'record' ? 'Results recorded!' : 'Site updated!');
+      } else {
+        await aseApi.saveSiteFocus(payload);
+        toast.success(sfMode === 'plan' ? 'Visit planned!' : 'Site saved!');
+      }
       setSfFormOpen(false);
-      setSfForm({ siteName: '', siteId: '', agentsRec: '', ssosRec: '', odrsRec: '', dataActs: '', dtuSold: '', notes: '', latitude: '', longitude: '' });
+      resetSfForm();
       loadSiteFocus();
       loadDashboard();
     } catch (e: any) {
@@ -816,8 +856,8 @@ export const ASEDashboardPage: React.FC = () => {
               <h3 className="font-bold text-sm text-gray-800">📍 Weekly Site Focus</h3>
               <p className="text-xs text-gray-400">{siteFocusData.length}/5 sites logged this week</p>
             </div>
-            <button onClick={() => setSfFormOpen(!sfFormOpen)} className="text-white text-xs font-bold px-3 py-2 rounded-xl" style={{ background: '#00843D' }}>
-              {sfFormOpen ? 'Close' : '+ Log Site'}
+            <button onClick={() => { if (sfFormOpen) { setSfFormOpen(false); resetSfForm(); } else { openPlanForm(); } }} className="text-white text-xs font-bold px-3 py-2 rounded-xl" style={{ background: '#00843D' }}>
+              {sfFormOpen ? 'Close' : '+ Plan Visit'}
             </button>
           </div>
           {/* Progress summary */}
@@ -826,25 +866,36 @@ export const ASEDashboardPage: React.FC = () => {
               <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min(siteFocusData.length/5*100,100)}%`, background: '#00843D' }} />
             </div>
           </div>
-          {/* Add-site form */}
+          {/* Add-site / record form */}
           {sfFormOpen && (
             <Card className="mb-4 p-4">
+              {/* Mode toggle */}
+              <div className="flex gap-2 mb-3">
+                <button type="button" onClick={() => setSfMode('plan')} className={`flex-1 text-xs font-bold py-2 rounded-xl ${sfMode === 'plan' ? 'text-white' : 'bg-gray-100 text-gray-500'}`} style={sfMode === 'plan' ? { background: '#0EA5E9' } : {}}>📅 Plan Visit</button>
+                <button type="button" onClick={() => setSfMode('record')} className={`flex-1 text-xs font-bold py-2 rounded-xl ${sfMode === 'record' ? 'text-white' : 'bg-gray-100 text-gray-500'}`} style={sfMode === 'record' ? { background: '#00843D' } : {}}>✅ Record Results</button>
+              </div>
               <div className="grid grid-cols-2 gap-2 mb-3">
                 <input value={sfForm.siteName} onChange={e => setSfForm({...sfForm, siteName: e.target.value})} placeholder="Site Name" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                 <input value={sfForm.siteId} onChange={e => setSfForm({...sfForm, siteId: e.target.value})} placeholder="Site ID" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
-                <input type="number" value={sfForm.agentsRec} onChange={e => setSfForm({...sfForm, agentsRec: e.target.value})} placeholder="Agents (3)" className="border rounded-xl px-3 py-2 text-sm" />
-                <input type="number" value={sfForm.ssosRec} onChange={e => setSfForm({...sfForm, ssosRec: e.target.value})} placeholder="SSOs (2)" className="border rounded-xl px-3 py-2 text-sm" />
-                <input type="number" value={sfForm.odrsRec} onChange={e => setSfForm({...sfForm, odrsRec: e.target.value})} placeholder="ODRs (1)" className="border rounded-xl px-3 py-2 text-sm" />
-                <input type="number" value={sfForm.dataActs} onChange={e => setSfForm({...sfForm, dataActs: e.target.value})} placeholder="Data Acts (15)" className="border rounded-xl px-3 py-2 text-sm" />
-                <input type="number" value={sfForm.dtuSold} onChange={e => setSfForm({...sfForm, dtuSold: e.target.value})} placeholder="DTU K (500)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                <div className="col-span-2">
+                  <label className="text-[10px] text-gray-400">Planned Visit Date</label>
+                  <input type="date" value={sfForm.plannedDate} onChange={e => setSfForm({...sfForm, plannedDate: e.target.value})} className="w-full border rounded-xl px-3 py-2 text-sm" />
+                </div>
+                {sfMode === 'record' && (<>
+                  <input type="number" value={sfForm.agentsRec} onChange={e => setSfForm({...sfForm, agentsRec: e.target.value})} placeholder="Agents (3)" className="border rounded-xl px-3 py-2 text-sm" />
+                  <input type="number" value={sfForm.ssosRec} onChange={e => setSfForm({...sfForm, ssosRec: e.target.value})} placeholder="SSOs (2)" className="border rounded-xl px-3 py-2 text-sm" />
+                  <input type="number" value={sfForm.odrsRec} onChange={e => setSfForm({...sfForm, odrsRec: e.target.value})} placeholder="ODRs (1)" className="border rounded-xl px-3 py-2 text-sm" />
+                  <input type="number" value={sfForm.dataActs} onChange={e => setSfForm({...sfForm, dataActs: e.target.value})} placeholder="Data Acts (15)" className="border rounded-xl px-3 py-2 text-sm" />
+                  <input type="number" value={sfForm.dtuSold} onChange={e => setSfForm({...sfForm, dtuSold: e.target.value})} placeholder="DTU K (500)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
+                </>)}
                 <input value={sfForm.notes} onChange={e => setSfForm({...sfForm, notes: e.target.value})} placeholder="Notes (optional)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
                 <button type="button" onClick={captureGps} disabled={sfGpsLoading} className="col-span-2 flex items-center justify-center gap-2 border-2 border-dashed rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50" style={{ borderColor: '#00843D', color: '#00843D' }}>
                   <MapPin className="w-4 h-4" />
                   {sfGpsLoading ? 'Getting location…' : (sfForm.latitude ? `📍 ${sfForm.latitude}, ${sfForm.longitude}` : 'Capture GPS Coordinates')}
                 </button>
               </div>
-              <button onClick={saveSiteFocus} disabled={sfSaving} className="w-full text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50" style={{ background: '#00843D' }}>
-                {sfSaving ? 'Saving...' : 'Save Site'}
+              <button onClick={saveSiteFocus} disabled={sfSaving} className="w-full text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50" style={{ background: sfMode === 'plan' ? '#0EA5E9' : '#00843D' }}>
+                {sfSaving ? 'Saving...' : (sfMode === 'plan' ? (sfEditingId ? 'Update Plan' : 'Save Planned Visit') : 'Save Results')}
               </button>
             </Card>
           )}
@@ -868,18 +919,25 @@ export const ASEDashboardPage: React.FC = () => {
                 ];
                 const siteScore = Math.round(kpis.reduce((a, k) => a + Math.min(k.v / k.t * 100, 100), 0) / kpis.length);
                 const scColor = siteScore >= 70 ? '#00843D' : siteScore >= 40 ? '#f59e0b' : '#ef4444';
+                const isPlanned = s.status === 'planned';
                 return (
-                  <div key={s.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-3">
+                  <div key={s.id} className={`rounded-2xl border bg-white shadow-sm p-3 ${isPlanned ? 'border-sky-200 border-dashed' : 'border-gray-100'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="min-w-0">
-                        <p className="font-bold text-sm text-gray-800 truncate">{s.siteName}</p>
-                        <p className="text-[10px] text-gray-400">ID: {s.siteId}</p>
+                        <p className="font-bold text-sm text-gray-800 truncate flex items-center gap-1.5">
+                          {s.siteName}
+                          {isPlanned
+                            ? <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700">PLANNED</span>
+                            : <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">VISITED</span>}
+                        </p>
+                        <p className="text-[10px] text-gray-400">ID: {s.siteId}{s.plannedDate ? ` · 📅 ${new Date(s.plannedDate).toLocaleDateString()}` : ''}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-black" style={{ color: scColor }}>{siteScore}%</span>
+                        {!isPlanned && <span className="text-lg font-black" style={{ color: scColor }}>{siteScore}%</span>}
                         <button onClick={() => deleteSiteFocus(s.id)} className="text-gray-300 hover:text-red-500 text-xs">✕</button>
                       </div>
                     </div>
+                    {!isPlanned && (
                     <div className="space-y-1">
                       {kpis.map(k => {
                         const pct = Math.min(Math.round(k.v / k.t * 100), 100);
@@ -894,12 +952,16 @@ export const ASEDashboardPage: React.FC = () => {
                         );
                       })}
                     </div>
+                    )}
                     {(s.latitude != null && s.longitude != null) && (
                       <a href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`} target="_blank" rel="noreferrer" className="text-[10px] mt-2 inline-flex items-center gap-1 font-semibold" style={{ color: '#00843D' }}>
                         <MapPin className="w-3 h-3" /> {Number(s.latitude).toFixed(5)}, {Number(s.longitude).toFixed(5)}
                       </a>
                     )}
                     {s.notes && <p className="text-[10px] text-gray-400 mt-1 italic">{s.notes}</p>}
+                    <button onClick={() => openRecordForm(s)} className="mt-2 w-full text-xs font-bold py-2 rounded-xl" style={isPlanned ? { background: '#00843D', color: '#fff' } : { background: '#f3f4f6', color: '#374151' }}>
+                      {isPlanned ? '✅ Record Results' : '✏️ Edit Results'}
+                    </button>
                   </div>
                 );
               })}

@@ -367,8 +367,10 @@ export const aseApi = {
   // Site Focus
   getSiteFocus: (week?: string) =>
     client.get('/ase/site-focus', { params: week ? { week } : {} }),
-  saveSiteFocus: (data: { siteName: string; siteId: string; agentsRec: number; ssosRec: number; odrsRec: number; dataActs: number; dtuSold: number; notes?: string }) =>
+  saveSiteFocus: (data: Record<string, any>) =>
     client.post('/ase/site-focus', data),
+  updateSiteFocus: (id: string, data: Record<string, any>) =>
+    client.patch(`/ase/site-focus/${id}`, data),
   deleteSiteFocus: (id: string) =>
     client.delete(`/ase/site-focus/${id}`),
 };

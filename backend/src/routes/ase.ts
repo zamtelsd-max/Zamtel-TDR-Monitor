@@ -391,7 +391,7 @@ aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
       success: true,
       weekStart,
       sitesCount: sites.length,
-      targetSites: 10,
+      targetSites: 5,
       data: scored,
     });
   } catch (err) {
@@ -403,9 +403,12 @@ aseRouter.get('/site-focus', async (req: Request, res: Response): Promise<void> 
 aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void> => {
   try {
     const aseId = req.user!.userId;
-    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, notes, latitude, longitude } = req.body;
+    const { siteName, siteId: siteRef, agentsRec, ssosRec, odrsRec, dataActs, dtuSold, notes, latitude, longitude, mode, plannedDate } = req.body;
     const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? Number(latitude) : null;
     const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? Number(longitude) : null;
+    // mode: 'plan' creates a planned site (no results yet); 'record'/'visited' = actuals captured
+    const isPlan = mode === 'plan';
+    const planDate = plannedDate ? new Date(plannedDate) : null;
     if (!siteName || !siteRef) {
       res.status(400).json({ error: 'siteName and siteId are required' });
       return;
@@ -445,14 +448,17 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
       record = await prisma.siteFocus.create({
         data: {
           aseId, weekStart, siteName, siteId: siteRef,
-          agentsRec: Number(agentsRec) || 0,
-          ssosRec:   Number(ssosRec)   || 0,
-          odrsRec:   Number(odrsRec)   || 0,
-          dataActs:  Number(dataActs)  || 0,
-          dtuSold:   Number(dtuSold)   || 0,
+          agentsRec: isPlan ? 0 : (Number(agentsRec) || 0),
+          ssosRec:   isPlan ? 0 : (Number(ssosRec)   || 0),
+          odrsRec:   isPlan ? 0 : (Number(odrsRec)   || 0),
+          dataActs:  isPlan ? 0 : (Number(dataActs)  || 0),
+          dtuSold:   isPlan ? 0 : (Number(dtuSold)   || 0),
           latitude:  lat,
           longitude: lng,
           notes:     notes || null,
+          status:      isPlan ? 'planned' : 'visited',
+          plannedDate: planDate,
+          visitedAt:   isPlan ? null : new Date(),
         },
       });
     }
@@ -460,6 +466,46 @@ aseRouter.post('/site-focus', async (req: Request, res: Response): Promise<void>
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save site focus' });
+  }
+});
+
+// PATCH /ase/site-focus/:id — edit a site / record actual results after the visit
+aseRouter.patch('/site-focus/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseId = req.user!.userId;
+    const site = await prisma.siteFocus.findFirst({ where: { id: req.params.id, aseId } });
+    if (!site) { res.status(404).json({ error: 'Site not found' }); return; }
+
+    const b = req.body;
+    const data: any = {};
+    if (b.siteName !== undefined) data.siteName = b.siteName;
+    if (b.siteId   !== undefined) data.siteId   = b.siteId;
+    if (b.agentsRec !== undefined) data.agentsRec = Number(b.agentsRec) || 0;
+    if (b.ssosRec   !== undefined) data.ssosRec   = Number(b.ssosRec)   || 0;
+    if (b.odrsRec   !== undefined) data.odrsRec   = Number(b.odrsRec)   || 0;
+    if (b.dataActs  !== undefined) data.dataActs  = Number(b.dataActs)  || 0;
+    if (b.dtuSold   !== undefined) data.dtuSold   = Number(b.dtuSold)   || 0;
+    if (b.notes     !== undefined) data.notes     = b.notes || null;
+    if (b.plannedDate !== undefined) data.plannedDate = b.plannedDate ? new Date(b.plannedDate) : null;
+    if (b.latitude  !== undefined && b.latitude  !== '' && b.latitude  !== null) data.latitude  = Number(b.latitude);
+    if (b.longitude !== undefined && b.longitude !== '' && b.longitude !== null) data.longitude = Number(b.longitude);
+
+    // Recording actuals → mark as visited (explicit mode='record' OR any result field provided)
+    const recordingActuals = b.mode === 'record' ||
+      ['agentsRec','ssosRec','odrsRec','dataActs','dtuSold'].some(k => b[k] !== undefined);
+    if (b.status) {
+      data.status = b.status;
+      if (b.status === 'visited' && !site.visitedAt) data.visitedAt = new Date();
+    } else if (recordingActuals && site.status !== 'visited') {
+      data.status = 'visited';
+      data.visitedAt = new Date();
+    }
+
+    const updated = await prisma.siteFocus.update({ where: { id: site.id }, data });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update site' });
   }
 });
 
