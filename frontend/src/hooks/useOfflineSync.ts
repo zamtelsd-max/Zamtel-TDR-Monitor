@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
-import { tdrApi } from '../services/api';
+import { tdrApi, aseApi } from '../services/api';
 import { getPendingQueue, removeFromPending, getPendingCount } from '../utils/offlineQueue';
 
 export function useOfflineSync() {
@@ -25,6 +25,16 @@ export function useOfflineSync() {
         else if (item.type === 'prospect')    await tdrApi.createProspect(item.data as any);
         else if (item.type === 'float_issue')  await tdrApi.createFloatIssue(item.data as any);
         else if (item.type === 'reactivation') await tdrApi.createReactivation(item.data as any);
+        else if (item.type === 'site_focus') {
+          const d = item.data as any;
+          if (d._op === 'update' && d._id) {
+            const { _op, _id, ...payload } = d;
+            await aseApi.updateSiteFocus(_id, payload);
+          } else {
+            const { _op, _id, ...payload } = d;
+            await aseApi.saveSiteFocus(payload);
+          }
+        }
         await removeFromPending(item.id);
         synced++;
       } catch { failed++; }

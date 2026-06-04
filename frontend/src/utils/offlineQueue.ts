@@ -1,7 +1,7 @@
 // Offline queue — IndexedDB with localStorage fallback
 export interface OfflineRecord {
   id: string;
-  type: 'agent' | 'visit' | 'prospect' | 'float_issue';
+  type: 'agent' | 'visit' | 'prospect' | 'float_issue' | 'reactivation' | 'site_focus';
   data: Record<string, unknown>;
   queuedAt: string;
   synced: boolean;
@@ -26,7 +26,7 @@ async function getDB(): Promise<IDBDatabase | null> {
   } catch { return null; }
 }
 
-export async function enqueueOffline(type: 'agent' | 'visit' | 'prospect' | 'float_issue' | 'reactivation', data: Record<string, unknown>): Promise<string> {
+export async function enqueueOffline(type: 'agent' | 'visit' | 'prospect' | 'float_issue' | 'reactivation' | 'site_focus', data: Record<string, unknown>): Promise<string> {
   const id = crypto.randomUUID();
   const record: OfflineRecord = { id, type, data, queuedAt: new Date().toISOString(), synced: false };
   const db = await getDB();

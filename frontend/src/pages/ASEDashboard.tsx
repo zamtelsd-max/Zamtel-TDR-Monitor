@@ -5,6 +5,8 @@ import toast from 'react-hot-toast';
 import { aseApi, flagsApi, ssoOdrApi } from '../services/api';
 import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
 import { TabBar } from '../components/TabBar';
+import { enqueueOffline } from '../utils/offlineQueue';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 import { calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, workingDaysElapsed, workingDaysThisMonth, getBand } from '../utils/performance';
 import type { TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
@@ -95,6 +97,7 @@ interface DashboardData {
 
 export const ASEDashboardPage: React.FC = () => {
   const user = useAppSelector(s => s.auth.user);
+  const { isOnline, pendingCount } = useOfflineSync();
 
   // ── ALL hooks must be declared before any early returns ──
   const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'sso-odr' | 'pick-tdrs' | 'map' | 'site-focus'>('my-tdrs');
@@ -272,6 +275,15 @@ export const ASEDashboardPage: React.FC = () => {
         payload.mode = 'plan';
       }
 
+      // Offline-first: if no connection, queue locally and sync later
+      if (!navigator.onLine) {
+        await enqueueOffline('site_focus', sfEditingId ? { ...payload, _op: 'update', _id: sfEditingId } : { ...payload, _op: 'create' });
+        toast.success('📴 Saved offline — will sync when connectivity returns', { duration: 5000 });
+        setSfFormOpen(false);
+        resetSfForm();
+        return;
+      }
+
       if (sfEditingId) {
         await aseApi.updateSiteFocus(sfEditingId, payload);
         toast.success(sfMode === 'record' ? 'Results recorded!' : 'Site updated!');
@@ -284,7 +296,37 @@ export const ASEDashboardPage: React.FC = () => {
       loadSiteFocus();
       loadDashboard();
     } catch (e: any) {
-      toast.error(e.response?.data?.error || 'Failed to save site');
+      // Network error (poor connectivity) → queue offline instead of losing data
+      const isNetworkError = !e?.response;
+      if (isNetworkError) {
+        const payload: any = {
+          siteName: sfForm.siteName, siteId: sfForm.siteId,
+          latitude:  sfForm.latitude  !== '' ? Number(sfForm.latitude)  : undefined,
+          longitude: sfForm.longitude !== '' ? Number(sfForm.longitude) : undefined,
+          notes:     sfForm.notes || undefined,
+          plannedDate: sfForm.plannedDate || undefined,
+          siteType:  sfForm.siteType || 'urban',
+        };
+        if (sfMode === 'record') {
+          payload.mode = 'record';
+          payload.agentsRec = Number(sfForm.agentsRec) || 0;
+          payload.ssosRec   = Number(sfForm.ssosRec)   || 0;
+          payload.odrsRec   = Number(sfForm.odrsRec)   || 0;
+          payload.dataActs  = Number(sfForm.dataActs)  || 0;
+          payload.dtuSold   = Number(sfForm.dtuSold)   || 0;
+          payload.dtuAgentCode = sfForm.dtuAgentCode || '';
+          payload.zmGrossAdds  = Number(sfForm.zmGrossAdds) || 0;
+          payload.agentCodes = sfForm.agentCodes || '';
+          payload.ssoCodes   = sfForm.ssoCodes   || '';
+          payload.odrCodes   = sfForm.odrCodes   || '';
+        } else { payload.mode = 'plan'; }
+        await enqueueOffline('site_focus', sfEditingId ? { ...payload, _op: 'update', _id: sfEditingId } : { ...payload, _op: 'create' });
+        toast.success('📴 Connection poor — saved offline, will sync automatically', { duration: 5000 });
+        setSfFormOpen(false);
+        resetSfForm();
+      } else {
+        toast.error(e.response?.data?.error || 'Failed to save site');
+      }
     } finally {
       setSfSaving(false);
     }
@@ -849,6 +891,22 @@ export const ASEDashboardPage: React.FC = () => {
       {/* SITE FOCUS TAB */}
       {tab === 'site-focus' && (
         <div className="px-4 py-2 mb-24">
+          {/* Offline / pending-sync status */}
+          {!isOnline && (
+            <div className="flex items-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-3 py-2 mb-3">
+              <span className="text-base">📵</span>
+              <div>
+                <p className="text-xs font-bold text-orange-700">You are offline</p>
+                <p className="text-[10px] text-orange-600">Site data + GPS save on your device and sync automatically when connectivity returns</p>
+              </div>
+            </div>
+          )}
+          {pendingCount > 0 && (
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-3">
+              <span className="text-base">🔄</span>
+              <p className="text-xs text-blue-700">{pendingCount} record{pendingCount > 1 ? 's' : ''} pending sync{isOnline ? ' — syncing…' : ''}</p>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="font-bold text-sm text-gray-800">📍 Weekly Site Focus</h3>
