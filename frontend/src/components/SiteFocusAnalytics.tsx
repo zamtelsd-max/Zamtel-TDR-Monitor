@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from './UI';
 import { AsePlannedVsActual } from './AsePlannedVsActual';
+import { AseRankingByZone } from './AseRankingByZone';
 
 interface Props { fetchAnalytics: () => Promise<{ data: any }>; }
 
@@ -112,23 +113,8 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
       {/* ASE Planned vs Actual + Pending to target */}
       <AsePlannedVsActual byAse={a.byAse || []} />
 
-      {/* Per-ASE ranking */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-4 py-2 border-b border-gray-50"><p className="text-xs font-bold text-gray-700">👤 ASE Ranking ({(a.byAse || []).length}) <span className="text-[10px] text-gray-400 font-normal">— builds up to zones above</span></p></div>
-        <div className="divide-y divide-gray-50">
-          {(a.byAse || []).map((r: any, i: number) => (
-            <div key={r.aseId} className="px-4 py-2.5 flex items-center gap-2">
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${i===0?'bg-yellow-100 text-yellow-700':i===1?'bg-gray-200 text-gray-600':i===2?'bg-orange-100 text-orange-600':'bg-gray-100 text-gray-500'}`}>{i+1}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-800 truncate">{r.aseName}</p>
-                <p className="text-[10px] text-gray-400">{r.zone || '—'} · {r.visited}/{r.totalSites} visited · {r.agents}A {r.ssos}S {r.odrs}O</p>
-              </div>
-              <span className="text-base font-black" style={{ color: scColor(r.avgScore) }}>{r.avgScore}%</span>
-            </div>
-          ))}
-          {(a.byAse || []).length === 0 && <p className="px-4 py-6 text-center text-gray-400 text-sm">No ASE site data this period.</p>}
-        </div>
-      </Card>
+      {/* ASE ranking grouped by Zone */}
+      <AseRankingByZone byAse={a.byAse || []} />
     </div>
   );
 };
