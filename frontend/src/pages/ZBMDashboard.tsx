@@ -859,8 +859,8 @@ export const ZBMDashboardPage: React.FC = () => {
           <SiteFocusAnalytics fetchAnalytics={async () => { const r = await zbmApi.getSiteFocusAnalytics(); return { data: r.data }; }} />
           <SiteFocusPanel
             fetchSites={async () => { const r = await zbmApi.getSiteFocus(); return { data: r.data.data }; }}
-            exportXlsx={() => zbmApi.export()}
-            exportName={`zamtel-zone-export-${new Date().toISOString().slice(0,7)}.xlsx`}
+            exportXlsx={() => zbmApi.siteFocusExport()}
+            exportName={`site-focus-zone-${new Date().toISOString().slice(0,7)}.xlsx`}
           />
         </div>
       )}

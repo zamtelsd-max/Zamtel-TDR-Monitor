@@ -782,6 +782,47 @@ hsdRouter.get('/site-focus-analytics', responseCache(60), async (req: Request, r
   }
 });
 
+// ─── GET /hsd/site-focus-export — LIGHTWEIGHT national site focus only Excel ──
+hsdRouter.get('/site-focus-export', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const XLSX = await import('xlsx');
+    const period = (req.query.period as string) ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end } = monthRange(period);
+    const ases = await prisma.user.findMany({ where: { role: 'ASE' }, select: { id: true, name: true, zone: true } });
+    const aseMap = Object.fromEntries(ases.map(a => [a.id, a]));
+    const sites = await prisma.siteFocus.findMany({
+      where: { weekStart: { gte: start, lte: end } },
+      orderBy: [{ weekStart: 'desc' }, { siteName: 'asc' }],
+    });
+    const rows = sites.map((s: any) => {
+      const zmTgt = s.siteType === 'rural' ? 30 : 50;
+      const parts = [Math.min(s.agentsRec/3,1), Math.min(s.ssosRec/2,1), Math.min(s.odrsRec/1,1), Math.min(s.dataActs/15,1), Math.min(s.dtuSold/500,1), Math.min((s.zmGrossAdds||0)/zmTgt,1)];
+      return {
+        ASE: aseMap[s.aseId]?.name || s.aseId, Zone: aseMap[s.aseId]?.zone || '',
+        'Week Starting': s.weekStart.toISOString().split('T')[0],
+        Status: s.status, 'Site Name': s.siteName, 'Site ID': s.siteId, 'Site Type': s.siteType || 'urban',
+        'Agents (3)': s.agentsRec, 'SSOs (2)': s.ssosRec, 'ODRs (1)': s.odrsRec,
+        'Data Acts (15)': s.dataActs, 'DTU ZMW (500)': s.dtuSold, 'ZM GA': s.zmGrossAdds || 0, 'ZM GA Tgt': zmTgt,
+        'Agent Codes': s.agentCodes || '', 'SSO Codes': s.ssoCodes || '', 'ODR Codes': s.odrCodes || '',
+        'Site Score %': Math.round(parts.reduce((a,b)=>a+b,0)/parts.length*100),
+        Latitude: s.latitude ?? '', Longitude: s.longitude ?? '',
+        'GPS Link': (s.latitude!=null&&s.longitude!=null)?`https://www.google.com/maps?q=${s.latitude},${s.longitude}`:'',
+        Notes: s.notes || '',
+      };
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ Status: 'No site focus this period' }]), 'Site Focus');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="site-focus-national-${period}.xlsx"`);
+    res.send(buf);
+  } catch (err) {
+    console.error('Site focus export error:', err);
+    res.status(500).json({ error: 'Site focus export failed' });
+  }
+});
+
 // ─── POST /hsd/devices — HSD adds a new KYC device (any zone) ────────────────
 hsdRouter.post('/devices', async (req: Request, res: Response): Promise<void> => {
   try {
