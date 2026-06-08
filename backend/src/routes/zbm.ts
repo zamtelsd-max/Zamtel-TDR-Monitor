@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { apiRateLimit } from '../middleware/rateLimit';
 import { mtdRange, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, visitMonthlyTarget,
          workingDaysElapsed, workingDaysThisMonth } from '../utils/mtd';
-import { buildSiteFocusAnalytics, buildSiteFocusWorkbook } from '../utils/siteFocusAnalytics';
+import { buildSiteFocusAnalytics, buildSiteFocusWorkbookStyled } from '../utils/siteFocusAnalytics';
 
 export const zbmRouter = Router();
 zbmRouter.use(requireAuth('ZBM', 'HSD'));
@@ -686,10 +686,10 @@ zbmRouter.get('/site-focus-analytics', async (req: Request, res: Response): Prom
   }
 });
 
-// ─── GET /zbm/site-focus-export — analytical multi-sheet Excel report ────────
+// ─── GET /zbm/site-focus-export — Zamtel-green analytical multi-sheet report ──
 zbmRouter.get('/site-focus-export', async (req: Request, res: Response): Promise<void> => {
   try {
-    const XLSX = await import('xlsx');
+    const ExcelJS = (await import('exceljs')).default;
     const zone = resolveZone(req);
     const period = (req.query.period as string) ||
       `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
@@ -701,11 +701,11 @@ zbmRouter.get('/site-focus-export', async (req: Request, res: Response): Promise
       where: { aseId: { in: ases.map(a => a.id) }, weekStart: { gte: start, lte: end } },
       orderBy: [{ weekStart: 'desc' }, { siteName: 'asc' }],
     });
-    const wb = buildSiteFocusWorkbook(XLSX, sites, ases, zone || 'All Zones', period);
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const wb = await buildSiteFocusWorkbookStyled(ExcelJS, sites, ases, zone || 'All Zones', period);
+    const buf = await wb.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="site-focus-report-${zone || 'zone'}-${period}.xlsx"`);
-    res.send(buf);
+    res.send(Buffer.from(buf));
   } catch (err) {
     console.error('Site focus export error:', err);
     res.status(500).json({ error: 'Site focus export failed' });
