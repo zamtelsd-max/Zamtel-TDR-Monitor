@@ -59,24 +59,43 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
   }
   groups.sort((a, b) => a.aseName.localeCompare(b.aseName));
 
+  const visitedCount = sites.filter(s => s.status !== 'planned').length;
+  const plannedCount = sites.filter(s => s.status === 'planned').length;
+
   return (
     <div className="space-y-3">
-      {/* Header + summary */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-bold text-sm text-gray-800">📍 ASE Site Focus — Visited Sites</h3>
-          <p className="text-[11px] text-gray-400">{totalSites} sites · {aseCount} ASEs · avg score {avgScore}%</p>
-        </div>
-        <div className="flex gap-1.5">
-          <button onClick={load} className="p-2 rounded-xl hover:bg-gray-100"><RefreshCw className="w-4 h-4 text-gray-500" /></button>
-          <button onClick={() => setShowMap(!showMap)} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl" style={{ background: showMap ? '#2563EB' : '#f3f4f6', color: showMap ? '#fff' : '#374151' }}>
-            <MapIcon className="w-3.5 h-3.5" /> {showMap ? 'Hide Map' : 'Map'}
-          </button>
-          {exportXlsx && (
-            <button onClick={doExport} disabled={exporting} className="flex items-center gap-1.5 text-white text-xs font-bold px-3 py-2 rounded-xl disabled:opacity-50" style={{ background: '#00843D' }}>
-              <Download className="w-3.5 h-3.5" /> {exporting ? 'Exporting…' : 'Excel'}
+      {/* Beautiful gradient header banner */}
+      <div className="rounded-2xl p-4 text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #00843D 0%, #00a34c 55%, #0891b2 100%)' }}>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="font-black text-base flex items-center gap-1.5">📍 Site Focus — Visited Sites</h3>
+            <p className="text-[11px] text-green-50/90 mt-0.5">Weekly field visit performance</p>
+          </div>
+          <div className="flex gap-1.5">
+            <button onClick={load} className="p-2 rounded-xl bg-white/15 hover:bg-white/25 transition"><RefreshCw className="w-4 h-4 text-white" /></button>
+            <button onClick={() => setShowMap(!showMap)} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition" style={{ background: showMap ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.15)', color: showMap ? '#0891b2' : '#fff' }}>
+              <MapIcon className="w-3.5 h-3.5" /> Map
             </button>
-          )}
+            {exportXlsx && (
+              <button onClick={doExport} disabled={exporting} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl disabled:opacity-50 bg-white/95 text-green-700 hover:bg-white transition">
+                <Download className="w-3.5 h-3.5" /> {exporting ? '…' : 'Excel'}
+              </button>
+            )}
+          </div>
+        </div>
+        {/* Stat tiles */}
+        <div className="grid grid-cols-4 gap-2 mt-3">
+          {[
+            { v: totalSites, l: 'Total Sites' },
+            { v: visitedCount, l: 'Visited' },
+            { v: plannedCount, l: 'Planned' },
+            { v: `${avgScore}%`, l: 'Avg Score' },
+          ].map((t, i) => (
+            <div key={i} className="rounded-xl bg-white/15 backdrop-blur px-2 py-2 text-center">
+              <p className="text-xl font-black leading-none">{t.v}</p>
+              <p className="text-[9px] text-green-50/80 mt-1 uppercase tracking-wide">{t.l}</p>
+            </div>
+          ))}
         </div>
       </div>
 
