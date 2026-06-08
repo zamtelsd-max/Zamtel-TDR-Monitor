@@ -51,9 +51,66 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
           </div>
         ))}
       </Card>
+      {/* Zone achievement table (build-up: ASE → Zone) */}
+      {(a.byZone || []).length > 0 && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-4 py-2 border-b border-gray-50">
+            <p className="text-xs font-bold text-gray-700">🗺️ Achievement vs Target by Zone</p>
+            <p className="text-[10px] text-gray-400">Rolled up from ASEs · % = actual vs per-site target across visited sites</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-left">
+                  <th className="px-3 py-2 font-semibold">Zone</th>
+                  <th className="px-2 py-2 font-semibold text-center">ASEs</th>
+                  <th className="px-2 py-2 font-semibold text-center">Sites</th>
+                  <th className="px-2 py-2 font-semibold text-center">Agents</th>
+                  <th className="px-2 py-2 font-semibold text-center">SSOs</th>
+                  <th className="px-2 py-2 font-semibold text-center">ODRs</th>
+                  <th className="px-2 py-2 font-semibold text-center">Data</th>
+                  <th className="px-2 py-2 font-semibold text-center">DTU</th>
+                  <th className="px-2 py-2 font-semibold text-center">ZM GA</th>
+                  <th className="px-2 py-2 font-semibold text-center">Score</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {(a.byZone || []).map((z: any) => (
+                  <tr key={z.zone} className="hover:bg-gray-50/50">
+                    <td className="px-3 py-2 font-semibold text-gray-800 whitespace-nowrap">{z.zone}</td>
+                    <td className="px-2 py-2 text-center text-gray-500">{z.ases}</td>
+                    <td className="px-2 py-2 text-center text-gray-600">{z.visited}/{z.totalSites}</td>
+                    <td className="px-2 py-2 text-center font-bold" style={{ color: scColor(z.attainment.agents) }}>{z.attainment.agents}%</td>
+                    <td className="px-2 py-2 text-center font-bold" style={{ color: scColor(z.attainment.ssos) }}>{z.attainment.ssos}%</td>
+                    <td className="px-2 py-2 text-center font-bold" style={{ color: scColor(z.attainment.odrs) }}>{z.attainment.odrs}%</td>
+                    <td className="px-2 py-2 text-center font-bold" style={{ color: scColor(z.attainment.dataActs) }}>{z.attainment.dataActs}%</td>
+                    <td className="px-2 py-2 text-center font-bold" style={{ color: scColor(z.attainment.dtu) }}>{z.attainment.dtu}%</td>
+                    <td className="px-2 py-2 text-center font-bold" style={{ color: scColor(z.attainment.zmGa) }}>{z.attainment.zmGa}%</td>
+                    <td className="px-2 py-2 text-center font-black" style={{ color: scColor(z.avgScore) }}>{z.avgScore}%</td>
+                  </tr>
+                ))}
+                {/* National/overall total row */}
+                <tr className="bg-green-50 border-t-2 border-green-200 font-bold">
+                  <td className="px-3 py-2 text-gray-800">{a.scope === 'National' ? '🇿🇲 NATIONAL' : 'TOTAL'}</td>
+                  <td className="px-2 py-2 text-center text-gray-600">{s.activeAses ?? 0}</td>
+                  <td className="px-2 py-2 text-center text-gray-700">{s.visitedSites ?? 0}/{s.totalSites ?? 0}</td>
+                  <td className="px-2 py-2 text-center" style={{ color: scColor(at.agents ?? 0) }}>{at.agents ?? 0}%</td>
+                  <td className="px-2 py-2 text-center" style={{ color: scColor(at.ssos ?? 0) }}>{at.ssos ?? 0}%</td>
+                  <td className="px-2 py-2 text-center" style={{ color: scColor(at.odrs ?? 0) }}>{at.odrs ?? 0}%</td>
+                  <td className="px-2 py-2 text-center" style={{ color: scColor(at.dataActs ?? 0) }}>{at.dataActs ?? 0}%</td>
+                  <td className="px-2 py-2 text-center" style={{ color: scColor(at.dtu ?? 0) }}>{at.dtu ?? 0}%</td>
+                  <td className="px-2 py-2 text-center" style={{ color: scColor(at.zmGa ?? 0) }}>{at.zmGa ?? 0}%</td>
+                  <td className="px-2 py-2 text-center font-black" style={{ color: scColor(s.avgSiteScore ?? 0) }}>{s.avgSiteScore ?? 0}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* Per-ASE ranking */}
       <Card className="p-0 overflow-hidden">
-        <div className="px-4 py-2 border-b border-gray-50"><p className="text-xs font-bold text-gray-700">ASE Ranking ({(a.byAse || []).length})</p></div>
+        <div className="px-4 py-2 border-b border-gray-50"><p className="text-xs font-bold text-gray-700">👤 ASE Ranking ({(a.byAse || []).length}) <span className="text-[10px] text-gray-400 font-normal">— builds up to zones above</span></p></div>
         <div className="divide-y divide-gray-50">
           {(a.byAse || []).map((r: any, i: number) => (
             <div key={r.aseId} className="px-4 py-2.5 flex items-center gap-2">

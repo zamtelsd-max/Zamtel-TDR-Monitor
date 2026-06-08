@@ -90,6 +90,41 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
     zmGa:     zmTargetTotal ? Math.min(Math.round(totals.zmGa / zmTargetTotal * 100), 100) : 0,
   };
 
+  // ── Zone roll-up (build-up from ASE → Zone) ──────────────────────────────
+  const zoneMap: Record<string, any> = {};
+  for (const s of sites) {
+    const z = aseMap[s.aseId]?.zone || 'Unassigned';
+    if (!zoneMap[z]) zoneMap[z] = {
+      zone: z, aseIds: new Set<string>(), planned: 0, visited: 0,
+      agents: 0, ssos: 0, odrs: 0, dataActs: 0, dtu: 0, zmGa: 0, zmTgt: 0, scoreSum: 0,
+    };
+    const r = zoneMap[z];
+    r.aseIds.add(s.aseId);
+    if (s.status === 'visited') {
+      r.visited++; r.agents += s.agentsRec; r.ssos += s.ssosRec; r.odrs += s.odrsRec;
+      r.dataActs += s.dataActs; r.dtu += s.dtuSold; r.zmGa += (s.zmGrossAdds || 0);
+      r.zmTgt += zmTargetFor(s); r.scoreSum += PER_SITE(s);
+    } else { r.planned++; }
+  }
+  const byZone = Object.values(zoneMap).map((r: any) => {
+    const v = r.visited;
+    return {
+      zone: r.zone, ases: r.aseIds.size,
+      planned: r.planned, visited: v, totalSites: r.planned + v,
+      agents: r.agents, ssos: r.ssos, odrs: r.odrs, dataActs: r.dataActs, dtu: r.dtu, zmGa: r.zmGa,
+      // achievement % vs per-site targets × visited count
+      attainment: {
+        agents:   v ? Math.min(Math.round(r.agents   / (3 * v)   * 100), 100) : 0,
+        ssos:     v ? Math.min(Math.round(r.ssos     / (2 * v)   * 100), 100) : 0,
+        odrs:     v ? Math.min(Math.round(r.odrs     / (1 * v)   * 100), 100) : 0,
+        dataActs: v ? Math.min(Math.round(r.dataActs / (15 * v)  * 100), 100) : 0,
+        dtu:      v ? Math.min(Math.round(r.dtu      / (500 * v) * 100), 100) : 0,
+        zmGa:     r.zmTgt ? Math.min(Math.round(r.zmGa / r.zmTgt * 100), 100) : 0,
+      },
+      avgScore: v ? Math.round(r.scoreSum / v) : 0,
+    };
+  }).sort((a, b) => b.avgScore - a.avgScore);
+
   return {
     summary: {
       totalSites:   sites.length,
@@ -103,5 +138,6 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
     totals,
     attainment,
     byAse,
+    byZone,
   };
 }
