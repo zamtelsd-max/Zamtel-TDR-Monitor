@@ -138,6 +138,19 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
     };
   }).sort((a, b) => b.avgScore - a.avgScore);
 
+  // ── Top sites by activity (visited only) ─────────────────────────────────
+  // Activity = sum of all deliverables actually achieved at the site.
+  const topSites = visited.map((s: any) => ({
+    siteName: s.siteName, siteId: s.siteId, siteType: s.siteType || 'urban',
+    aseName: aseMap[s.aseId]?.name || s.aseId, zone: aseMap[s.aseId]?.zone || '',
+    agents: s.agentsRec, ssos: s.ssosRec, odrs: s.odrsRec, dataActs: s.dataActs,
+    dtu: s.dtuSold, zmGa: s.zmGrossAdds || 0,
+    score: PER_SITE(s),
+    // composite activity metric (raw deliverable units)
+    activity: (s.agentsRec || 0) + (s.ssosRec || 0) + (s.odrsRec || 0) + (s.dataActs || 0) + (s.zmGrossAdds || 0),
+    latitude: s.latitude ?? null, longitude: s.longitude ?? null,
+  })).sort((a, b) => b.activity - a.activity || b.score - a.score).slice(0, 40);
+
   return {
     summary: {
       totalSites:   sites.length,
@@ -152,5 +165,6 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
     attainment,
     byAse,
     byZone,
+    topSites,
   };
 }

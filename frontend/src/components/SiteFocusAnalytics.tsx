@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Card } from './UI';
 import { AsePlannedVsActual } from './AsePlannedVsActual';
 import { AseRankingByZone } from './AseRankingByZone';
+import { TopSitesTable } from './TopSitesTable';
 
 interface Props { fetchAnalytics: () => Promise<{ data: any }>; }
 
@@ -109,6 +110,9 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
           </div>
         </Card>
       )}
+
+      {/* Top 40 sites by activity */}
+      <TopSitesTable sites={a.topSites || []} />
 
       {/* ASE Planned vs Actual + Pending to target */}
       <AsePlannedVsActual byAse={a.byAse || []} />
