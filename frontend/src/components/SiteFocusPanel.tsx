@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Download, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { MapPin, Download, RefreshCw, ChevronDown, ChevronUp, Map as MapIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from './UI';
+import { SiteFocusMap } from './SiteFocusMap';
 
 interface SiteFocusPanelProps {
   fetchSites: () => Promise<{ data: any[] }>;
@@ -16,6 +17,7 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
   const [exporting, setExporting] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [openAse, setOpenAse] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -28,11 +30,18 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
     setExporting(true);
     try {
       const r = await exportXlsx();
-      const url = window.URL.createObjectURL(new Blob([r.data]));
-      const a = document.createElement('a'); a.href = url; a.download = exportName; a.click();
-      window.URL.revokeObjectURL(url);
+      const blob = new Blob([r.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = exportName;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
       toast.success('Excel exported');
-    } catch { toast.error('Export failed'); } finally { setExporting(false); }
+    } catch (e: any) {
+      console.error('Export failed:', e);
+      toast.error(e?.response?.status === 401 ? 'Session expired — please log in again' : 'Export failed');
+    } finally { setExporting(false); }
   };
 
   const scColor = (s: number) => s >= 70 ? '#00843D' : s >= 40 ? '#f59e0b' : '#ef4444';
@@ -60,6 +69,9 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
         </div>
         <div className="flex gap-1.5">
           <button onClick={load} className="p-2 rounded-xl hover:bg-gray-100"><RefreshCw className="w-4 h-4 text-gray-500" /></button>
+          <button onClick={() => setShowMap(!showMap)} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl" style={{ background: showMap ? '#2563EB' : '#f3f4f6', color: showMap ? '#fff' : '#374151' }}>
+            <MapIcon className="w-3.5 h-3.5" /> {showMap ? 'Hide Map' : 'Map'}
+          </button>
           {exportXlsx && (
             <button onClick={doExport} disabled={exporting} className="flex items-center gap-1.5 text-white text-xs font-bold px-3 py-2 rounded-xl disabled:opacity-50" style={{ background: '#00843D' }}>
               <Download className="w-3.5 h-3.5" /> {exporting ? 'Exporting…' : 'Excel'}
@@ -67,6 +79,8 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
           )}
         </div>
       </div>
+
+      {showMap && <Card className="p-2"><SiteFocusMap sites={sites} /></Card>}
 
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}</div>
