@@ -62,22 +62,35 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
     const k = s.aseId;
     if (!byAseMap[k]) byAseMap[k] = {
       aseId: k, aseName: aseMap[k]?.name || k, zone: aseMap[k]?.zone || '',
-      planned: 0, visited: 0, agents: 0, ssos: 0, odrs: 0, dataActs: 0, dtu: 0, scoreSum: 0,
+      planned: 0, visited: 0, agents: 0, ssos: 0, odrs: 0, dataActs: 0, dtu: 0, zmGa: 0, zmTgt: 0, scoreSum: 0,
     };
     const row = byAseMap[k];
     if (s.status === 'visited') {
       row.visited++; row.agents += s.agentsRec; row.ssos += s.ssosRec;
       row.odrs += s.odrsRec; row.dataActs += s.dataActs; row.dtu += s.dtuSold;
+      row.zmGa += (s.zmGrossAdds || 0); row.zmTgt += zmTargetFor(s);
       row.scoreSum += PER_SITE(s);
     } else { row.planned++; }
   }
-  const byAse = Object.values(byAseMap).map((r: any) => ({
-    aseId: r.aseId, aseName: r.aseName, zone: r.zone,
-    planned: r.planned, visited: r.visited,
-    totalSites: r.planned + r.visited,
-    agents: r.agents, ssos: r.ssos, odrs: r.odrs, dataActs: r.dataActs, dtu: r.dtu,
-    avgScore: r.visited ? Math.round(r.scoreSum / r.visited) : 0,
-  })).sort((a, b) => b.avgScore - a.avgScore || b.visited - a.visited);
+  const WEEKLY_SITES = 5; // sites per week target
+  const byAse = Object.values(byAseMap).map((r: any) => {
+    const v = r.visited;
+    // Weekly target = 5 sites × per-site deliverable target (ZM GA uses 50/urban default avg)
+    const tgtAgents = WEEKLY_SITES * 3, tgtSsos = WEEKLY_SITES * 2, tgtOdrs = WEEKLY_SITES * 1;
+    const tgtData = WEEKLY_SITES * 15, tgtDtu = WEEKLY_SITES * 500;
+    // ZM GA target: use the actual mix where recorded, else 50/site default
+    const tgtZmGa = r.zmTgt > 0 ? r.zmTgt + (WEEKLY_SITES - v) * 50 : WEEKLY_SITES * 50;
+    const pend = (target: number, actual: number) => Math.max(target - actual, 0);
+    return {
+      aseId: r.aseId, aseName: r.aseName, zone: r.zone,
+      planned: r.planned, visited: v, totalSites: r.planned + v,
+      sitesTarget: WEEKLY_SITES, sitesPending: pend(WEEKLY_SITES, v),
+      agents: r.agents, ssos: r.ssos, odrs: r.odrs, dataActs: r.dataActs, dtu: r.dtu, zmGa: r.zmGa,
+      targets:  { sites: WEEKLY_SITES, agents: tgtAgents, ssos: tgtSsos, odrs: tgtOdrs, dataActs: tgtData, dtu: tgtDtu, zmGa: tgtZmGa },
+      pending:  { sites: pend(WEEKLY_SITES, v), agents: pend(tgtAgents, r.agents), ssos: pend(tgtSsos, r.ssos), odrs: pend(tgtOdrs, r.odrs), dataActs: pend(tgtData, r.dataActs), dtu: pend(tgtDtu, r.dtu), zmGa: pend(tgtZmGa, r.zmGa) },
+      avgScore: v ? Math.round(r.scoreSum / v) : 0,
+    };
+  }).sort((a, b) => b.avgScore - a.avgScore || b.visited - a.visited);
 
   // Deliverable target attainment (per-visited-site targets × visited count)
   const tgt = visited.length;

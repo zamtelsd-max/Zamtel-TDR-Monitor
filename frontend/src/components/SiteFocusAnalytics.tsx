@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from './UI';
+import { AsePlannedVsActual } from './AsePlannedVsActual';
 
 interface Props { fetchAnalytics: () => Promise<{ data: any }>; }
 
@@ -107,6 +108,9 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
           </div>
         </Card>
       )}
+
+      {/* ASE Planned vs Actual + Pending to target */}
+      <AsePlannedVsActual byAse={a.byAse || []} />
 
       {/* Per-ASE ranking */}
       <Card className="p-0 overflow-hidden">
