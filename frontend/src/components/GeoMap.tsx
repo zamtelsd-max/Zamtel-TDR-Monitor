@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import 'leaflet.heat'
 
 // Inject popup style overrides once
 if (typeof document !== 'undefined' && !document.getElementById('zamtel-popup-style')) {
@@ -75,15 +76,18 @@ interface GeoMapProps {
   visits: VisitPoint[]
   height?: string
   showVisits?: boolean
+  showHeatToggle?: boolean
 }
 
 export const GeoMap: React.FC<GeoMapProps> = ({
-  agents, visits, height = '500px', showVisits = true
+  agents, visits, height = '500px', showVisits = true, showHeatToggle = true
 }) => {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
+  const heatLayerRef = useRef<any>(null)
   const [showAgents, setShowAgents] = useState(true)
   const [showVisitLayer, setShowVisitLayer] = useState(false)
+  const [showHeat, setShowHeat] = useState(false)
   const [activeZone, setActiveZone] = useState<string>('all')
 
   const zones = ['all', 'Lusaka (Both)', ...Array.from(new Set(agents.map(a => a.zone).filter(Boolean))).sort()]
@@ -259,6 +263,47 @@ export const GeoMap: React.FC<GeoMapProps> = ({
     }
   }, [agents, visits, showAgents, showVisitLayer, activeZone])
 
+  // ─── Activity heat map layer (sites visited + activity density) ────────────
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    // Remove existing heat layer
+    if (heatLayerRef.current) {
+      map.removeLayer(heatLayerRef.current)
+      heatLayerRef.current = null
+    }
+    if (!showHeat) return
+
+    const scoped = activeZone === 'all' ? agents
+      : activeZone === 'Lusaka (Both)' ? agents.filter(a => a.zone === 'Lusaka North' || a.zone === 'Lusaka South')
+      : agents.filter(a => a.zone === activeZone)
+    const scopedV = activeZone === 'all' ? visits
+      : activeZone === 'Lusaka (Both)' ? visits.filter(v => v.zone === 'Lusaka North' || v.zone === 'Lusaka South')
+      : visits.filter(v => v.zone === activeZone)
+
+    // Heat points: each outlet weighted by recency of activity; each visit adds density
+    const heatPts: [number, number, number][] = []
+    scoped.forEach(a => {
+      if (!a.latitude || !a.longitude) return
+      // More recently visited = hotter; never/overdue = cooler base presence
+      const intensity = (a.daysAgo == null) ? 0.3 : a.daysAgo < 2 ? 1.0 : a.daysAgo < 4 ? 0.6 : 0.4
+      heatPts.push([a.latitude, a.longitude, intensity])
+    })
+    scopedV.forEach(v => {
+      if (!v.latitude || !v.longitude) return
+      heatPts.push([v.latitude, v.longitude, 0.8])
+    })
+
+    if (heatPts.length > 0) {
+      // @ts-ignore — leaflet.heat augments L at runtime
+      heatLayerRef.current = (L as any).heatLayer(heatPts, {
+        radius: 28, blur: 22, maxZoom: 14, max: 1.0,
+        gradient: { 0.0: '#2563EB', 0.35: '#16A34A', 0.6: '#F59E0B', 0.85: '#EF4444', 1.0: '#B91C1C' },
+      }).addTo(map)
+    }
+  }, [showHeat, agents, visits, activeZone])
+
   useEffect(() => {
     const handler = () => window.dispatchEvent(new Event('resize'));
     window.addEventListener('zamtel-offline-synced', handler);
@@ -349,6 +394,17 @@ export const GeoMap: React.FC<GeoMapProps> = ({
           </button>
         )}
 
+        {showHeatToggle && (
+          <button
+            onClick={() => setShowHeat(!showHeat)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition"
+            style={{ background: showHeat ? '#EF4444' : '#f3f4f6', color: showHeat ? 'white' : '#374151' }}
+          >
+            <span>🔥</span>
+            Heat Map
+          </button>
+        )}
+
         {/* Fit all markers */}
         <button
           onClick={() => {
@@ -390,6 +446,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
           </>
         )}
         {showVisitLayer && <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block bg-blue-600 opacity-75" /> Visit</span>}
+        {showHeat && <span className="flex items-center gap-1.5"><span className="inline-block w-8 h-3 rounded" style={{ background: 'linear-gradient(to right,#2563EB,#16A34A,#F59E0B,#EF4444)' }} /> Activity density (low→high)</span>}
         <span className="ml-auto text-gray-400">Click any marker for details</span>
       </div>
 
