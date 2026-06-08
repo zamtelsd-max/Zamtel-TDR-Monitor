@@ -860,7 +860,7 @@ export const ZBMDashboardPage: React.FC = () => {
           <SiteFocusPanel
             fetchSites={async () => { const r = await zbmApi.getSiteFocus(); return { data: r.data.data }; }}
             exportXlsx={() => zbmApi.siteFocusExport()}
-            exportName={`site-focus-zone-${new Date().toISOString().slice(0,7)}.xlsx`}
+            exportName={`site-focus-report-zone-${new Date().toISOString().slice(0,7)}.xlsx`}
           />
         </div>
       )}

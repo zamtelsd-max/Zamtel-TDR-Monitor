@@ -168,3 +168,89 @@ export function buildSiteFocusAnalytics(sites: SiteRow[], ases: AseRef[]) {
     topSites,
   };
 }
+
+// Build a multi-sheet analytical Excel workbook (XLSX) from sites + analytics.
+export function buildSiteFocusWorkbook(XLSX: any, sites: any[], ases: AseRef[], scope: string, period: string) {
+  const a = buildSiteFocusAnalytics(sites, ases);
+  const aseMap = Object.fromEntries(ases.map(x => [x.id, x]));
+  const wb = XLSX.utils.book_new();
+  const aoa = (rows: any[][]) => XLSX.utils.aoa_to_sheet(rows);
+
+  // ── Sheet 1: Executive Summary ──
+  const s = a.summary; const t = a.totals; const at = a.attainment;
+  const summary: any[][] = [
+    ['ZAMTEL SITE FOCUS — SUMMARY REPORT'],
+    ['Scope', scope, '', 'Period', period, '', 'Generated', new Date().toISOString().split('T')[0]],
+    [],
+    ['KEY METRICS'],
+    ['Total Sites', s.totalSites],
+    ['Visited', s.visitedSites],
+    ['Planned (pending)', s.plannedSites],
+    ['Overdue', s.overdueSites],
+    ['Completion Rate %', s.completionRate],
+    ['Avg Site Score %', s.avgSiteScore],
+    ['Active ASEs', s.activeAses],
+    [],
+    ['DELIVERABLES — ACTUAL vs ATTAINMENT (visited sites)'],
+    ['Deliverable', 'Actual', 'Attainment %'],
+    ['Agents (tgt 3/site)', t.agents, at.agents],
+    ['SSOs (tgt 2/site)', t.ssos, at.ssos],
+    ['ODRs (tgt 1/site)', t.odrs, at.odrs],
+    ['Data Acts (tgt 15/site)', t.dataActs, at.dataActs],
+    ['DTU ZMW (tgt 500/site)', t.dtu, at.dtu],
+    ['ZM Gross Adds (30 rural/50 urban)', t.zmGa, at.zmGa],
+  ];
+  XLSX.utils.book_append_sheet(wb, aoa(summary), 'Summary');
+
+  // ── Sheet 2: By Zone ──
+  const zoneRows = a.byZone.map((z: any) => ({
+    Zone: z.zone, ASEs: z.ases, 'Sites Visited': z.visited, 'Total Sites': z.totalSites,
+    'Agents %': z.attainment.agents, 'SSOs %': z.attainment.ssos, 'ODRs %': z.attainment.odrs,
+    'Data %': z.attainment.dataActs, 'DTU %': z.attainment.dtu, 'ZM GA %': z.attainment.zmGa,
+    'Avg Score %': z.avgScore,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(zoneRows.length ? zoneRows : [{ Zone: 'No data' }]), 'By Zone');
+
+  // ── Sheet 3: By ASE (planned vs actual + pending) ──
+  const aseRows = a.byAse.map((r: any) => ({
+    ASE: r.aseName, Zone: r.zone,
+    'Sites Visited': r.visited, 'Sites Planned': r.planned, 'Sites Target': r.sitesTarget, 'Sites Pending': r.sitesPending,
+    'Agents': r.agents, 'Agents Tgt': r.targets.agents, 'Agents Pending': r.pending.agents,
+    'SSOs': r.ssos, 'SSOs Tgt': r.targets.ssos, 'SSOs Pending': r.pending.ssos,
+    'ODRs': r.odrs, 'ODRs Tgt': r.targets.odrs, 'ODRs Pending': r.pending.odrs,
+    'Data Acts': r.dataActs, 'Data Tgt': r.targets.dataActs, 'Data Pending': r.pending.dataActs,
+    'DTU ZMW': r.dtu, 'DTU Tgt': r.targets.dtu, 'DTU Pending': r.pending.dtu,
+    'ZM GA': r.zmGa, 'ZM GA Tgt': r.targets.zmGa, 'ZM GA Pending': r.pending.zmGa,
+    'Avg Score %': r.avgScore,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(aseRows.length ? aseRows : [{ ASE: 'No data' }]), 'By ASE');
+
+  // ── Sheet 4: Top Sites by Activity ──
+  const topRows = a.topSites.map((x: any, i: number) => ({
+    Rank: i + 1, Site: x.siteName, 'Site ID': x.siteId, Type: x.siteType, ASE: x.aseName, Zone: x.zone,
+    Agents: x.agents, SSOs: x.ssos, ODRs: x.odrs, 'Data Acts': x.dataActs, 'ZM GA': x.zmGa,
+    'Total Activity': x.activity, 'Score %': x.score,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(topRows.length ? topRows : [{ Rank: 0 }]), 'Top Sites');
+
+  // ── Sheet 5: Raw Site Data ──
+  const raw = sites.map((x: any) => {
+    const zmTgt = x.siteType === 'rural' ? 30 : 50;
+    const parts = [Math.min(x.agentsRec/3,1), Math.min(x.ssosRec/2,1), Math.min(x.odrsRec/1,1), Math.min(x.dataActs/15,1), Math.min(x.dtuSold/500,1), Math.min((x.zmGrossAdds||0)/zmTgt,1)];
+    return {
+      ASE: aseMap[x.aseId]?.name || x.aseId, Zone: aseMap[x.aseId]?.zone || '',
+      'Week': x.weekStart ? new Date(x.weekStart).toISOString().split('T')[0] : '',
+      Status: x.status, 'Site Name': x.siteName, 'Site ID': x.siteId, 'Type': x.siteType || 'urban',
+      Agents: x.agentsRec, SSOs: x.ssosRec, ODRs: x.odrsRec, 'Data Acts': x.dataActs,
+      'DTU ZMW': x.dtuSold, 'ZM GA': x.zmGrossAdds || 0, 'ZM GA Tgt': zmTgt,
+      'Agent Codes': x.agentCodes || '', 'SSO Codes': x.ssoCodes || '', 'ODR Codes': x.odrCodes || '',
+      'Score %': Math.round(parts.reduce((p,q)=>p+q,0)/parts.length*100),
+      Latitude: x.latitude ?? '', Longitude: x.longitude ?? '',
+      'GPS Link': (x.latitude!=null&&x.longitude!=null)?`https://www.google.com/maps?q=${x.latitude},${x.longitude}`:'',
+      Notes: x.notes || '',
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(raw.length ? raw : [{ Status: 'No site focus this period' }]), 'Raw Data');
+
+  return wb;
+}

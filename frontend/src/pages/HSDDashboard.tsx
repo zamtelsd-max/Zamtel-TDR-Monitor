@@ -199,7 +199,7 @@ export const HSDDashboardPage: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([res.data as BlobPart]));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `site-focus-national-${period}.xlsx`;
+      a.download = `site-focus-report-national-${period}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {
@@ -882,7 +882,7 @@ export const HSDDashboardPage: React.FC = () => {
             showZone
             fetchSites={async () => { const r = await hsdApi.getSiteFocus(); return { data: r.data.data }; }}
             exportXlsx={() => hsdApi.siteFocusExport()}
-            exportName={`site-focus-national-${new Date().toISOString().slice(0,7)}.xlsx`}
+            exportName={`site-focus-report-national-${new Date().toISOString().slice(0,7)}.xlsx`}
           />
         </div>
       )}
