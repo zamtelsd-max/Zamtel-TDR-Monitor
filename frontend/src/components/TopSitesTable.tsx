@@ -25,6 +25,7 @@ export const TopSitesTable: React.FC<Props> = ({ sites }) => {
               <th className="px-2 py-2 font-semibold text-center">SSO</th>
               <th className="px-2 py-2 font-semibold text-center">ODR</th>
               <th className="px-2 py-2 font-semibold text-center">Data</th>
+              <th className="px-2 py-2 font-semibold text-center">DTU</th>
               <th className="px-2 py-2 font-semibold text-center">ZM GA</th>
               <th className="px-2 py-2 font-semibold text-center">Activity</th>
               <th className="px-2 py-2 font-semibold text-center">Score</th>
@@ -46,6 +47,7 @@ export const TopSitesTable: React.FC<Props> = ({ sites }) => {
                   <td className="px-2 py-2 text-center text-gray-600">{s.ssos}</td>
                   <td className="px-2 py-2 text-center text-gray-600">{s.odrs}</td>
                   <td className="px-2 py-2 text-center text-gray-600">{s.dataActs}</td>
+                  <td className="px-2 py-2 text-center text-gray-600">K{Number(s.dtu || 0).toLocaleString()}</td>
                   <td className="px-2 py-2 text-center text-gray-600">{s.zmGa}</td>
                   <td className="px-2 py-2">
                     <div className="flex items-center gap-1.5">

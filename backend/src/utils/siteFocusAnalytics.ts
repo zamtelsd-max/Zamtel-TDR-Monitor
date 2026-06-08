@@ -340,13 +340,13 @@ export async function buildSiteFocusWorkbookStyled(ExcelJS: any, sites: any[], a
 
   // ===== Sheet 4: Top Sites =====
   const ts = wb.addWorksheet('Top Sites', { properties: { tabColor: { argb: ZG } } });
-  const tHead = ts.addRow(['Rank','Site','Site ID','Type','ASE','Zone','Agents','SSOs','ODRs','Data','ZM GA','Activity','Score %']); styleHeaderRow(tHead);
+  const tHead = ts.addRow(['Rank','Site','Site ID','Type','ASE','Zone','Agents','SSOs','ODRs','Data','DTU ZMW','ZM GA','Activity','Score %']); styleHeaderRow(tHead);
   a.topSites.forEach((x: any, i: number) => {
-    const r = ts.addRow([i+1, x.siteName, x.siteId, x.siteType, x.aseName, x.zone, x.agents, x.ssos, x.odrs, x.dataActs, x.zmGa, x.activity, x.score]);
+    const r = ts.addRow([i+1, x.siteName, x.siteId, x.siteType, x.aseName, x.zone, x.agents, x.ssos, x.odrs, x.dataActs, x.dtu, x.zmGa, x.activity, x.score]);
     if (i < 3) r.eachCell((c:any)=>c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF7E0'}});
     else if (i % 2 === 0) r.eachCell((c:any)=>c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ZG_LIGHT}});
     r.getCell(2).font={bold:true};
-    const sc=r.getCell(13); sc.font={bold:true,color:{argb:scoreColor(x.score)}}; sc.alignment={horizontal:'center'};
+    const sc=r.getCell(14); sc.font={bold:true,color:{argb:scoreColor(x.score)}}; sc.alignment={horizontal:'center'};
   });
   ts.columns.forEach((c:any,i:number)=>{ c.width = i===1?22:(i===4?18:(i===5?14:9)); });
 
