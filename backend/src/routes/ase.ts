@@ -231,6 +231,62 @@ aseRouter.get('/kyc-summary', async (req: Request, res: Response): Promise<void>
   }
 });
 
+// ─── POST /ase/devices — ASE adds a KYC device to their OWN profile ──────────
+aseRouter.post('/devices', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseName = req.user!.name;          // device is tagged to this ASE
+    const zone    = req.user!.zone || '';
+    const {
+      dealerCode, description, imei1, imei2, msisdn, simSerial, siteId,
+      region, teamLead, status, activityStatus,
+      kycReg, grossAdds, zamoGA, recharges, deviceSource,
+    } = req.body as Record<string, any>;
+
+    if (!imei1) { res.status(400).json({ error: 'IMEI 1 is required' }); return; }
+    const existing = await prisma.$queryRaw<any[]>`SELECT id FROM kyc_devices WHERE imei1 = ${imei1} LIMIT 1`;
+    if (existing.length > 0) { res.status(409).json({ error: `Device with IMEI ${imei1} already exists` }); return; }
+
+    const result = await prisma.$queryRaw<any[]>`
+      INSERT INTO kyc_devices
+        (id, "dealerCode","description","imei1","imei2","msisdn","simSerial","siteId",
+         "region","zone","rbmName","aseName","teamLead","status","activityStatus",
+         "kycReg","grossAdds","zamoGA","recharges","deviceSource","createdAt","updatedAt")
+      VALUES (
+        gen_random_uuid(),
+        ${dealerCode||null},${description||'ASE Entry'},${imei1},${imei2||null},
+        ${msisdn||null},${simSerial||null},${siteId||null},
+        ${region||zone},${zone},${aseName},
+        ${aseName},${teamLead||null},${status||'ACTIVE'},
+        ${Number(activityStatus)||0},${Number(kycReg)||0},${Number(grossAdds)||0},
+        ${Number(zamoGA)||0},${Number(recharges)||0},${deviceSource||'MobiGO2+'},
+        NOW(),NOW()
+      )
+      RETURNING id, "imei1","aseName","zone","deviceSource"
+    `;
+    res.status(201).json({ success: true, data: result[0], message: 'Device added to your profile' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to add device' });
+  }
+});
+
+// ─── GET /ase/devices — list this ASE's own KYC devices ──────────────────────
+aseRouter.get('/devices', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const aseName = req.user!.name;
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT id, "dealerCode","description","imei1","imei2","msisdn","siteId",
+             "zone","region","status","activityStatus","kycReg","grossAdds","zamoGA","deviceSource","createdAt"
+      FROM kyc_devices WHERE LOWER("aseName") = LOWER(${aseName})
+      ORDER BY "createdAt" DESC LIMIT 300
+    `;
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load devices' });
+  }
+});
+
 // ─── GET /ase/available-tdrs ──────────────────────────────────────────────────
 aseRouter.get('/available-tdrs', async (req: Request, res: Response): Promise<void> => {
   try {

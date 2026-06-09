@@ -370,6 +370,12 @@ export const aseApi = {
   dashboard: () =>
     client.get<{ ase: { id: string; name: string }; tdrStats: Array<{ tdr: { id: string; name: string; zone: string | null }; agents: number; visits: number; floatIssues: number; prospects: number }> }>('/ase/dashboard'),
 
+  addDevice: (data: Record<string, any>) =>
+    client.post('/ase/devices', data),
+
+  getDevices: () =>
+    client.get<{ success: boolean; data: any[] }>('/ase/devices'),
+
   getTDR: (id: string) =>
     client.get(`/ase/tdr/${id}`),
 

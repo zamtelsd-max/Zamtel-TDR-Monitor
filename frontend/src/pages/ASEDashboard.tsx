@@ -12,6 +12,7 @@ import type { TDRFlag } from '../types';
 import { Layout, PageHeader } from '../components/Layout';
 import { Card, Skeleton, Badge } from '../components/UI';
 import { useAppSelector } from '../hooks/useAppDispatch';
+import { AddDeviceModal } from '../components/AddDeviceModal';
 import { OutletForm } from '../components/OutletForm';
 
 // ── Ring (Donut) Chart ────────────────────────────────────────────────────────
@@ -101,6 +102,7 @@ export const ASEDashboardPage: React.FC = () => {
 
   // ── ALL hooks must be declared before any early returns ──
   const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'sso-odr' | 'pick-tdrs' | 'map' | 'site-focus'>('my-tdrs');
+  const [showAddDevice, setShowAddDevice] = useState(false);
   const [ssoTab, setSsoTab]             = useState<'SSO' | 'ODR' | null>(null);
   const [ssoData, setSsoData]           = useState<{ sso: any[]; odr: any[] }>({ sso: [], odr: [] });
   const [ssoSummary, setSsoSummary]     = useState<{ totalSso:number; totalOdr:number; mtdSso:number; mtdOdr:number; targetSso:number; targetOdr:number } | null>(null);
@@ -709,6 +711,13 @@ export const ASEDashboardPage: React.FC = () => {
       {/* ── KYC DEVICES TAB ── */}
       {tab === 'kyc-devices' && (
         <div className="px-4 py-2">
+          {/* Add device button */}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold text-gray-700">My KYC Devices</p>
+            <button onClick={() => setShowAddDevice(true)} className="flex items-center gap-1.5 text-white text-xs font-bold px-3 py-2 rounded-xl" style={{ background: '#00843D' }}>
+              <Smartphone className="w-3.5 h-3.5" /> + Add Device
+            </button>
+          </div>
           {/* Source breakdown */}
           {kyc && (
             <div className="grid grid-cols-2 gap-3 mb-4">
@@ -1348,6 +1357,15 @@ export const ASEDashboardPage: React.FC = () => {
             />
           )}
         </div>
+      )}
+
+      {showAddDevice && (
+        <AddDeviceModal
+          onClose={() => setShowAddDevice(false)}
+          onSaved={() => { setShowAddDevice(false); loadDevices(1, devSource, devStatus); loadDashboard(); }}
+          defaultZone={user?.zone || ''}
+          addDevice={aseApi.addDevice}
+        />
       )}
     </Layout>
   );
