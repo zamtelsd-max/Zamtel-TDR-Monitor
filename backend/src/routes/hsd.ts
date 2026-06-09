@@ -806,6 +806,62 @@ hsdRouter.get('/site-focus-export', async (req: Request, res: Response): Promise
 });
 
 // ─── POST /hsd/devices — HSD adds a new KYC device (any zone) ────────────────
+// ─── POST /hsd/kyc-upload — bulk update active/inactive devices from KYC report ──
+// Body: { fileBase64 } (xlsx) — matches devices by IMEI (or MSISDN) and updates
+// activityStatus (active=1/inactive=0), kycReg, grossAdds, zamoGA, recharges.
+hsdRouter.post('/kyc-upload', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const XLSX = await import('xlsx');
+    const { fileBase64 } = req.body as { fileBase64?: string };
+    if (!fileBase64) { res.status(400).json({ error: 'fileBase64 is required' }); return; }
+    const b64 = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
+    const wb = XLSX.read(Buffer.from(b64, 'base64'), { type: 'buffer' });
+    const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+    if (!rows.length) { res.status(400).json({ error: 'No rows found in file' }); return; }
+
+    // flexible column matching (case/space-insensitive)
+    const norm = (s: string) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const keyOf = (row: any, ...names: string[]) => {
+      const keys = Object.keys(row);
+      for (const n of names) { const k = keys.find(k => norm(k) === norm(n)); if (k) return row[k]; }
+      return undefined;
+    };
+    const isActive = (v: any): number => {
+      const s = String(v ?? '').trim().toLowerCase();
+      if (s === '1' || s === 'active' || s === 'yes' || s === 'true' || s === 'transacting') return 1;
+      if (s === '0' || s === 'inactive' || s === 'no' || s === 'false' || s === 'non-transacting' || s === 'nontransacting' || s === 'dormant') return 0;
+      const n = Number(v); return isNaN(n) ? 0 : (n > 0 ? 1 : 0);
+    };
+
+    let matched = 0, updated = 0, notFound = 0, activeCount = 0, inactiveCount = 0;
+    for (const r of rows) {
+      const imei = String(keyOf(r, 'imei1', 'imei', 'imei 1', 'device imei') ?? '').trim();
+      const msisdn = String(keyOf(r, 'msisdn', 'phone', 'agent number') ?? '').trim();
+      if (!imei && !msisdn) continue;
+      const actRaw = keyOf(r, 'activityStatus', 'activity', 'status', 'active', 'transacting');
+      const act = isActive(actRaw);
+      const kyc = Number(keyOf(r, 'kycReg', 'kyc', 'kyc reg', 'registrations') ?? 0) || 0;
+      const ga  = Number(keyOf(r, 'grossAdds', 'gross adds', 'ga') ?? 0) || 0;
+      const zamo = Number(keyOf(r, 'zamoGA', 'zamo ga', 'zamo') ?? 0) || 0;
+      const rech = Number(keyOf(r, 'recharges', 'recharge') ?? 0) || 0;
+
+      const where = imei ? `imei1 = '${imei.replace(/'/g, "''")}'` : `msisdn = '${msisdn.replace(/'/g, "''")}'`;
+      const found = await prisma.$queryRawUnsafe(`SELECT id FROM kyc_devices WHERE ${where} LIMIT 1`) as any[];
+      if (!found.length) { notFound++; continue; }
+      matched++;
+      await prisma.$queryRawUnsafe(
+        `UPDATE kyc_devices SET "activityStatus"=$1, "kycReg"=$2, "grossAdds"=$3, "zamoGA"=$4, "recharges"=$5, "status"=$6, "updatedAt"=NOW() WHERE id=$7`,
+        act, kyc, ga, zamo, rech, act ? 'ACTIVE' : 'INACTIVE', found[0].id
+      );
+      updated++; if (act) activeCount++; else inactiveCount++;
+    }
+    res.json({ success: true, data: { totalRows: rows.length, matched, updated, notFound, nowActive: activeCount, nowInactive: inactiveCount } });
+  } catch (err) {
+    console.error('KYC upload error:', err);
+    res.status(500).json({ error: 'KYC upload failed — check the file format' });
+  }
+});
+
 hsdRouter.post('/devices', async (req: Request, res: Response): Promise<void> => {
   try {
     const {

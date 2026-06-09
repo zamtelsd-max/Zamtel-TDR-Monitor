@@ -328,6 +328,9 @@ export const hsdApi = {
   addDevice: (data: Record<string, any>) =>
     client.post('/hsd/devices', data),
 
+  uploadKyc: (fileBase64: string) =>
+    client.post<{ success: boolean; data: { totalRows: number; matched: number; updated: number; notFound: number; nowActive: number; nowInactive: number } }>('/hsd/kyc-upload', { fileBase64 }),
+
   getDevices: (params?: { page?: number; limit?: number; search?: string; zone?: string; source?: string; status?: string }) =>
     client.get('/hsd/devices', { params }),
 

@@ -12,22 +12,32 @@ if (typeof document !== 'undefined' && !document.getElementById('zamtel-popup-st
       padding: 0 !important;
       border-radius: 10px !important;
       box-shadow: 0 8px 30px rgba(0,0,0,0.18) !important;
-      overflow: visible !important;
+      overflow: hidden !important;
     }
     .zamtel-popup .leaflet-popup-content {
       margin: 0 !important;
       width: auto !important;
-      overflow: visible !important;
+      min-width: 240px !important;
+      max-height: 60vh !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+    }
+    .zamtel-popup .leaflet-popup-content * {
+      box-sizing: border-box;
     }
     .zamtel-popup .leaflet-popup-tip-container {
       margin-top: -1px;
     }
-    .leaflet-popup-close-button {
-      top: 6px !important;
-      right: 8px !important;
-      color: white !important;
-      font-size: 18px !important;
-      font-weight: 300 !important;
+    .zamtel-popup .leaflet-popup-close-button {
+      top: 7px !important;
+      right: 9px !important;
+      color: #ffffff !important;
+      font-size: 20px !important;
+      font-weight: 400 !important;
+      z-index: 10 !important;
+      width: 22px !important;
+      height: 22px !important;
+      line-height: 20px !important;
     }
   `;
   document.head.appendChild(s);
@@ -198,7 +208,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
         const marker = L.marker([a.latitude, a.longitude], { icon })
           .bindPopup(`
             <div style="width:260px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:visible">
-              <div style="background:${colour};color:white;padding:8px 12px;border-radius:8px 8px 0 0;margin:-1px -1px 0;font-weight:700;font-size:13px;letter-spacing:0.3px">
+              <div style="background:${colour};color:white;padding:8px 34px 8px 12px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;letter-spacing:0.3px">
                 ${isMerchant ? '🏪 Merchant Outlet' : '🏦 Mobile Agent'}
               </div>
               <div style="padding:10px 12px;background:#fff;border-radius:0 0 8px 8px;border:1px solid #e5e7eb;border-top:none">
@@ -238,7 +248,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
         L.marker([v.latitude, v.longitude], { icon })
           .bindPopup(`
             <div style="width:240px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-              <div style="background:#2563EB;color:white;padding:8px 12px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px">
+              <div style="background:#2563EB;color:white;padding:8px 34px 8px 12px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px">
                 📋 Outlet Visit
               </div>
               <div style="padding:10px 12px;background:#fff;border-radius:0 0 8px 8px;border:1px solid #e5e7eb;border-top:none">

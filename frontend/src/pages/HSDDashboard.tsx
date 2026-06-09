@@ -109,6 +109,32 @@ export const HSDDashboardPage: React.FC = () => {
   const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
+  const [kycUploading, setKycUploading] = useState(false);
+  const kycFileRef = React.useRef<HTMLInputElement>(null);
+
+  const handleKycUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setKycUploading(true);
+    try {
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result));
+        fr.onerror = reject;
+        fr.readAsDataURL(file);
+      });
+      const r = await hsdApi.uploadKyc(b64);
+      const d = r.data.data;
+      toast.success(`KYC report applied: ${d.updated} devices updated (${d.nowActive} active, ${d.nowInactive} inactive)`, { duration: 7000 });
+      if (d.notFound > 0) toast(`${d.notFound} rows had no matching device (by IMEI/MSISDN)`, { icon: 'ℹ️', duration: 6000 });
+      fetchData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'KYC upload failed');
+    } finally {
+      setKycUploading(false);
+      if (kycFileRef.current) kycFileRef.current.value = '';
+    }
+  };
   const [asePerf,     setAsePerf]     = useState<any>(null);
   const [asePerfLoad, setAsePerfLoad] = useState(false);
 
@@ -281,6 +307,15 @@ export const HSDDashboardPage: React.FC = () => {
           className="flex-shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-green-700 to-green-600 text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:from-green-800 transition-all whitespace-nowrap"
         >
           <Plus size={12}/> Device
+        </button>
+        <input ref={kycFileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleKycUpload} className="hidden" />
+        <button
+          onClick={() => kycFileRef.current?.click()}
+          disabled={kycUploading}
+          className="flex-shrink-0 flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:bg-blue-700 transition-all whitespace-nowrap disabled:opacity-50"
+          title="Upload KYC report (xlsx/csv) to update active/inactive devices"
+        >
+          📤 {kycUploading ? 'Uploading…' : 'Upload KYC'}
         </button>
       </div>
 
