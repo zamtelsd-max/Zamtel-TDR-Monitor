@@ -805,6 +805,22 @@ zbmRouter.patch('/tdrs/:id/deactivate', async (req: Request, res: Response): Pro
   }
 });
 
+// ─── DELETE /zbm/tdrs/:id — ZBM deletes a TDR in their zone ──────────────────
+zbmRouter.delete('/tdrs/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const zone = resolveZone(req);
+    const tdr = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!tdr || tdr.role !== 'TDR') { res.status(404).json({ error: 'TDR not found' }); return; }
+    if (zone && tdr.zone !== zone) { res.status(403).json({ error: 'TDR is not in your zone' }); return; }
+    // Soft-delete: deactivate + unassign (preserves their agents/visits history)
+    await prisma.user.update({ where: { id: tdr.id }, data: { active: false, aseId: null } });
+    res.json({ success: true, data: { id: tdr.id, name: tdr.name, message: `${tdr.name} removed` } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete TDR' });
+  }
+});
+
 // ─── POST /zbm/assign-tdr — assign TDR to an ASE ─────────────────────────────
 zbmRouter.post('/assign-tdr', async (req: Request, res: Response): Promise<void> => {
   try {

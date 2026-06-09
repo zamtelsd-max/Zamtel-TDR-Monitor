@@ -173,6 +173,17 @@ export const ZBMDashboardPage: React.FC = () => {
     }
   };
 
+  const handleDeleteTDR = async (tdr: any) => {
+    if (!confirm(`Delete TDR "${tdr.name}"? They will be removed and unassigned. Their history is preserved.`)) return;
+    try {
+      await zbmApi.deleteTDR(tdr.id);
+      toast.success('TDR deleted');
+      loadAseTdrs();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to delete TDR');
+    }
+  };
+
   const fetchData = async () => {
     try {
       const [dashRes, issuesRes, mapRes, prospectsRes, staleRes] = await Promise.all([
@@ -385,6 +396,7 @@ export const ZBMDashboardPage: React.FC = () => {
                         <button onClick={() => handleToggleTDRActive(tdr)} title={isInactive ? 'Reactivate' : 'Deactivate'} className={`text-xs px-2 py-1 rounded-lg font-medium ${isInactive ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
                           {isInactive ? 'Activate' : 'Deactivate'}
                         </button>
+                        <button onClick={() => handleDeleteTDR(tdr)} title="Delete TDR" className="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200">🗑️</button>
                       </div>
                     </div>
                     <div className="flex gap-2 flex-wrap">

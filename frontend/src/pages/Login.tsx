@@ -178,9 +178,10 @@ export const Login: React.FC = () => {
                     <input
                       key={i}
                       ref={pinRefs[i]}
-                      type="tel"
+                      type="password"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      autoComplete="one-time-code"
                       maxLength={1}
                       value={digit}
                       onChange={e => handlePinChange(i, e.target.value)}

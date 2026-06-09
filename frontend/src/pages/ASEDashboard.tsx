@@ -383,6 +383,29 @@ export const ASEDashboardPage: React.FC = () => {
     }
   };
 
+  const editTDR = async (tdr: any) => {
+    const newName = prompt('Edit TDR name:', tdr.name);
+    if (newName === null || !newName.trim() || newName.trim() === tdr.name) return;
+    try {
+      await aseApi.updateTDR(tdr.id, { name: newName.trim() });
+      toast.success('TDR updated');
+      loadDashboard();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to update TDR');
+    }
+  };
+
+  const deleteTDR = async (tdr: any) => {
+    if (!confirm(`Remove TDR "${tdr.name}"? They will be unassigned from you. History is preserved.`)) return;
+    try {
+      await aseApi.deleteTDR(tdr.id);
+      toast.success('TDR removed');
+      loadDashboard();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Failed to remove TDR');
+    }
+  };
+
   const viewTDR = async (id: string) => {
     setSelected(id);
     setTdrLoading(true);
@@ -653,9 +676,15 @@ export const ASEDashboardPage: React.FC = () => {
                       <div className="flex flex-col items-end gap-1.5">
                         <span className="text-xs font-black px-2 py-1 rounded-xl" style={{ background: scBg, color: scColor }}>{sc}%</span>
                         <div className="flex items-center gap-1">
+                          <button onClick={(e) => { e.stopPropagation(); editTDR(tdr); }}
+                            className="text-xs p-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                            title="Edit TDR name">✏️</button>
+                          <button onClick={(e) => { e.stopPropagation(); deleteTDR(tdr); }}
+                            className="text-xs p-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                            title="Delete TDR">🗑️</button>
                           <button onClick={(e) => { e.stopPropagation(); releaseTDR(tdr.id); }}
                             className="text-xs text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                            title="Release TDR">
+                            title="Release (unassign)">
                             <X className="w-3 h-3" />
                           </button>
                           <button onClick={() => viewTDR(tdr.id)}

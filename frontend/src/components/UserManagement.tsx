@@ -55,7 +55,7 @@ export const UserManagement: React.FC = () => {
             </select>
             <input value={form.id} onChange={e => setForm({...form, id: e.target.value})} placeholder="Login ID (e.g. hsd-jdoe)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
             <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Full name" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
-            <input value={form.pin} onChange={e => setForm({...form, pin: e.target.value})} placeholder="4-digit PIN" maxLength={4} className="border rounded-xl px-3 py-2 text-sm" />
+            <input value={form.pin} onChange={e => setForm({...form, pin: e.target.value})} type="password" inputMode="numeric" placeholder="4-digit PIN" maxLength={4} className="border rounded-xl px-3 py-2 text-sm" />
             {form.role !== 'HSD' && (
               <select value={form.zone} onChange={e => setForm({...form, zone: e.target.value})} className="border rounded-xl px-3 py-2 text-sm">
                 <option value="">Select zone</option>

@@ -293,6 +293,38 @@ aseRouter.get('/tdr/:id', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
+// ─── PATCH /ase/tdr/:id — ASE edits a TDR assigned to them (name / active) ───
+aseRouter.patch('/tdr/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tdr = await prisma.user.findFirst({ where: { id: req.params.id, aseId: req.user!.userId, role: 'TDR' } });
+    if (!tdr) { res.status(403).json({ error: 'TDR not assigned to you' }); return; }
+    const { name, active } = req.body as { name?: string; active?: boolean };
+    const data: any = {};
+    if (name !== undefined && name.trim()) data.name = name.trim();
+    if (active !== undefined) data.active = !!active;
+    if (Object.keys(data).length === 0) { res.status(400).json({ error: 'Nothing to update' }); return; }
+    const updated = await prisma.user.update({ where: { id: tdr.id }, data });
+    res.json({ success: true, data: { id: updated.id, name: updated.name, active: updated.active } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update TDR' });
+  }
+});
+
+// ─── DELETE /ase/tdr/:id — ASE removes a TDR assigned to them ────────────────
+aseRouter.delete('/tdr/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const tdr = await prisma.user.findFirst({ where: { id: req.params.id, aseId: req.user!.userId, role: 'TDR' } });
+    if (!tdr) { res.status(403).json({ error: 'TDR not assigned to you' }); return; }
+    // Soft-delete: deactivate + unassign (preserves history)
+    await prisma.user.update({ where: { id: tdr.id }, data: { active: false, aseId: null } });
+    res.json({ success: true, data: { id: tdr.id, name: tdr.name, message: `${tdr.name} removed` } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete TDR' });
+  }
+});
+
 // ─── GET /ase/map — zone-scoped agent & visit map data ───────────────────────
 
 aseRouter.get('/map', responseCache(45), async (req: Request, res: Response): Promise<void> => {

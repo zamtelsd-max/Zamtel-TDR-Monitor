@@ -262,6 +262,9 @@ export const zbmApi = {
   setTDRActive: (id: string, active: boolean) =>
     client.patch(`/zbm/tdrs/${id}/deactivate`, { active }),
 
+  deleteTDR: (id: string) =>
+    client.delete(`/zbm/tdrs/${id}`),
+
   // ── Device management ──────────────────────────────────────────────────
   addDevice: (data: Record<string, any>) =>
     client.post('/zbm/devices', data),
@@ -369,6 +372,12 @@ export const aseApi = {
 
   getTDR: (id: string) =>
     client.get(`/ase/tdr/${id}`),
+
+  updateTDR: (id: string, data: { name?: string; active?: boolean }) =>
+    client.patch(`/ase/tdr/${id}`, data),
+
+  deleteTDR: (id: string) =>
+    client.delete(`/ase/tdr/${id}`),
 
   availableTDRs: () =>
     client.get<{ success: boolean; data: Array<{ id: string; name: string; zone: string | null; aseId: string | null; mine: boolean }> }>('/ase/available-tdrs'),
