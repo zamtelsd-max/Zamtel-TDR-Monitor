@@ -115,6 +115,7 @@ const agentSchema = z.object({
   latitude:         z.number().optional(),
   longitude:        z.number().optional(),
   notes:            z.string().optional(),
+  prospectId:       z.string().optional(),  // if converting a prospect → agent
 });
 
 tdrRouter.post('/agents', async (req: Request, res: Response): Promise<void> => {
@@ -145,15 +146,23 @@ tdrRouter.post('/agents', async (req: Request, res: Response): Promise<void> => 
     }
 
     const zbm = await prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user!.zone || '' } });
+    const { prospectId, ...agentData } = parsed.data;
     const agent = await prisma.agent.create({
       data: {
-        ...parsed.data,
+        ...agentData,
         tdrId,
         tdrName: req.user!.name,
         zone:    req.user!.zone || '',
         zbmName: zbm?.name || '',
       },
     });
+    // If this agent came from a prospect, mark that prospect converted
+    if (prospectId) {
+      await prisma.prospect.updateMany({
+        where: { id: prospectId, tdrId },
+        data: { status: 'converted', convertedAt: new Date() },
+      }).catch(() => {});
+    }
     invalidateCache(`${req.user!.userId}::`);
     res.status(201).json(agent);
   } catch (err: any) {
@@ -329,6 +338,32 @@ tdrRouter.get('/prospects', async (req: Request, res: Response): Promise<void> =
     orderBy: { createdAt: 'desc' },
   });
   res.json(prospects);
+});
+
+// ─── GET /tdr/prospects/search?q= — find prospects by business/owner name ─────
+// Used at agent creation: TDR types the name → prospect details auto-fill.
+tdrRouter.get('/prospects/search', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) { res.json({ data: [] }); return; }
+    const matches = await prisma.prospect.findMany({
+      where: {
+        // this TDR's prospects (their own prospecting pipeline)
+        tdrId: req.user!.userId,
+        status: { not: 'converted' },
+        OR: [
+          { businessName: { contains: q, mode: 'insensitive' } },
+          { ownerName:    { contains: q, mode: 'insensitive' } },
+          { contactPhone: { contains: q } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+    res.json({ data: matches });
+  } catch (err) {
+    res.status(500).json({ error: 'Prospect search failed' });
+  }
 });
 
 // ─── POST /tdr/reactivations ──────────────────────────────────────────────────

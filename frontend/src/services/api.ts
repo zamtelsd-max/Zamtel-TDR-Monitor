@@ -161,6 +161,9 @@ export const tdrApi = {
   getProspects: () =>
     client.get<Prospect[]>('/tdr/prospects'),
 
+  searchProspects: (q: string) =>
+    client.get<{ data: Prospect[] }>(`/tdr/prospects/search?q=${encodeURIComponent(q)}`),
+
   updateProspect: (id: string, data: Partial<Prospect>) =>
     client.patch<Prospect>(`/tdr/prospects/${id}`, data),
 

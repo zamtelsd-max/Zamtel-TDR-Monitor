@@ -98,6 +98,50 @@ export const AddAgentForm: React.FC = () => {
   const [form, setForm] = useState<AgentForm>(savedDraft || defaultForm);
   useEffect(() => { if (savedDraft) toast('📋 Draft restored', { icon: '📋' }); }, []); // eslint-disable-line
 
+  // ── Prospect lookup: typing the name suggests matching prospects to auto-fill ──
+  const [prospectMatches, setProspectMatches] = useState<any[]>([]);
+  const [prospectId, setProspectId] = useState<string | null>(null);
+  const [showProspects, setShowProspects] = useState(false);
+  const prospectTimer = useRef<any>(null);
+
+  const onNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    set('agentName')(e);
+    setProspectId(null);
+    const q = e.target.value.trim();
+    if (prospectTimer.current) clearTimeout(prospectTimer.current);
+    if (q.length < 2) { setProspectMatches([]); setShowProspects(false); return; }
+    prospectTimer.current = setTimeout(async () => {
+      try {
+        const r = await tdrApi.searchProspects(q);
+        setProspectMatches(r.data.data || []);
+        setShowProspects((r.data.data || []).length > 0);
+      } catch { /* silent */ }
+    }, 350);
+  };
+
+  const applyProspect = (p: any) => {
+    setForm(prev => {
+      const next = {
+        ...prev,
+        agentName: p.businessName || p.ownerName || prev.agentName,
+        contactPhone: p.contactPhone || prev.contactPhone,
+        type: (p.prospectType === 'merchant' ? 'merchant' : 'normal') as 'normal'|'merchant',
+        merchantCategory: p.merchantCategory || prev.merchantCategory,
+        initialFloat: p.estimatedFloat != null ? String(p.estimatedFloat) : prev.initialFloat,
+        town: p.town || prev.town,
+        address: p.address || prev.address,
+        latitude: p.latitude != null ? String(p.latitude) : prev.latitude,
+        longitude: p.longitude != null ? String(p.longitude) : prev.longitude,
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      return next;
+    });
+    setProspectId(p.id);
+    setShowProspects(false);
+    setProspectMatches([]);
+    toast.success('Prospect details loaded — now enter the Agent Code', { duration: 4000 });
+  };
+
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
     setForm(prev => { const next = { ...prev, [key]: val }; localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); return next; });
@@ -180,6 +224,7 @@ export const AddAgentForm: React.FC = () => {
       latitude:         form.latitude  ? parseFloat(form.latitude)  : undefined,
       longitude:        form.longitude ? parseFloat(form.longitude) : undefined,
       notes:            form.notes    || undefined,
+      prospectId:       prospectId    || undefined,
     };
     try {
       if (!navigator.onLine) {
@@ -189,7 +234,7 @@ export const AddAgentForm: React.FC = () => {
         navigate('/tdr');
         return;
       }
-      await tdrApi.createAgent(payload);
+      await tdrApi.createAgent(payload as any);
       localStorage.removeItem(DRAFT_KEY);
       toast.success('Agent recruited successfully!');
       navigate('/tdr');
@@ -241,8 +286,25 @@ export const AddAgentForm: React.FC = () => {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <Input label="Agent / Business Name *" value={form.agentName} onChange={set('agentName')} placeholder="e.g. Chanda Supermarket" required />
+          <div className="col-span-2 relative">
+            <Input label="Agent / Business Name *" value={form.agentName} onChange={onNameChange}
+              placeholder="Type the prospect / business name…" required
+              onFocus={() => { if (prospectMatches.length) setShowProspects(true); }} />
+            {prospectId && (
+              <p className="text-[11px] mt-1 font-semibold" style={{ color: '#00843D' }}>✓ Loaded from prospect — just enter the Agent Code below</p>
+            )}
+            {showProspects && prospectMatches.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+                <p className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wide border-b border-gray-50">Matching prospects — tap to load</p>
+                {prospectMatches.map((p: any) => (
+                  <button key={p.id} type="button" onClick={() => applyProspect(p)}
+                    className="w-full text-left px-3 py-2 hover:bg-green-50 border-b border-gray-50 last:border-0">
+                    <p className="text-sm font-semibold text-gray-800">{p.businessName || p.ownerName}</p>
+                    <p className="text-[10px] text-gray-400">{p.ownerName ? `${p.ownerName} · ` : ''}{p.town || ''} · {p.contactPhone || ''} · {p.prospectType}</p>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Agent Code with live system check */}
