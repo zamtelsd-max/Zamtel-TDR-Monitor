@@ -338,6 +338,9 @@ export const hsdApi = {
     client.get<{ success: boolean; data: any }>(`/hsd/login-report?role=${role}`),
   loginReportExportUrl: (role = 'ZBM') => `/hsd/login-report-export?role=${role}`,
 
+  flaggedVisits: () =>
+    client.get<{ success: boolean; data: any }>('/hsd/flagged-visits'),
+
   getDevices: (params?: { page?: number; limit?: number; search?: string; zone?: string; source?: string; status?: string }) =>
     client.get('/hsd/devices', { params }),
 

@@ -20,6 +20,7 @@ import { SiteFocusPanel } from '../components/SiteFocusPanel';
 import { SiteFocusAnalytics } from '../components/SiteFocusAnalytics';
 import { UserManagement } from '../components/UserManagement';
 import { LoginActivity } from '../components/LoginActivity';
+import { FlaggedVisits } from '../components/FlaggedVisits';
 import { TabBar } from '../components/TabBar';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
@@ -104,7 +105,7 @@ export const HSDDashboardPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [mapData,   setMapData]   = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
   const [showMap,   setShowMap]   = useState(true);
-  const [mainTab,   setMainTab]   = useState<'dashboard' | 'ase' | 'site-focus' | 'users' | 'logins' | 'flags'>('dashboard');
+  const [mainTab,   setMainTab]   = useState<'dashboard' | 'ase' | 'site-focus' | 'users' | 'logins' | 'visits' | 'flags'>('dashboard');
   const [tdrFlags,  setTdrFlags]  = useState<TDRFlag[]>([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
@@ -300,6 +301,7 @@ export const HSDDashboardPage: React.FC = () => {
               { id: 'site-focus', label: '📍 Site Focus' },
               { id: 'users',      label: '👤 Users' },
               { id: 'logins',     label: '🔐 Login Activity' },
+              { id: 'visits',     label: '🚩 Visit Quality' },
               { id: 'flags',      label: '🚩 Flags', badge: tdrFlags.length, badgeColor: 'amber' },
             ]}
           />
@@ -927,6 +929,7 @@ export const HSDDashboardPage: React.FC = () => {
       {/* USERS Tab */}
       {mainTab === 'users' && <UserManagement />}
       {mainTab === 'logins' && <LoginActivity />}
+      {mainTab === 'visits' && <FlaggedVisits />}
     </Layout>
   );
 };
