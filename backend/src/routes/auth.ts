@@ -45,6 +45,11 @@ authRouter.post('/login', loginRateLimit, async (req: Request, res: Response): P
     name:   user.name,
   });
 
+  // Record login event (fire-and-forget — never block the login)
+  prisma.loginLog.create({
+    data: { userId: user.id, userName: user.name, role: user.role, zone: user.zone },
+  }).catch(() => {});
+
   res.json({
     token,
     mustChangePin: !!user.mustChangePin,

@@ -100,7 +100,7 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
       totalAgents, totalMerchants, totalVisits, totalProspects, totalReactivations, openFloatIssues: openIssues, conversionRate,
       agentPct:      nationalAgentTarget    > 0 ? Math.min(Math.round(totalAgents    / nationalAgentTarget    * 100), 100) : 0,
       merchantPct:   nationalMerchantTarget > 0 ? Math.min(Math.round(totalMerchants / nationalMerchantTarget * 100), 100) : 0,
-      visitPct:      nationalVisitTarget    > 0 ? Math.min(Math.round(totalVisits    / nationalVisitTarget    * 100), 100) : 0,
+      visitPct:      100, // full 10% weight regardless of visit count (policy 2026-07-15)
       prospectPct:   nationalProspectTarget > 0 ? Math.min(Math.round(totalProspects / nationalProspectTarget * 100), 100) : 0,
       reactivationPct: nationalReactivationTarget > 0 ? Math.min(Math.round(totalReactivations / nationalReactivationTarget * 100), 100) : 0,
       nationalTargets: { agents: nationalAgentTarget, merchants: nationalMerchantTarget, visits: nationalVisitTarget, prospects: nationalProspectTarget, reactivations: nationalReactivationTarget },
@@ -783,6 +783,96 @@ hsdRouter.get('/site-focus-analytics', responseCache(60), async (req: Request, r
 });
 
 // ─── GET /hsd/site-focus-export — Zamtel-green analytical national report ─────
+// ─── GET /hsd/login-report — ZBM login activity (daily/weekly/monthly) ───────
+hsdRouter.get('/login-report', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const role = (req.query.role as string) || 'ZBM';
+    const now = new Date();
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(dayStart); weekStart.setDate(dayStart.getDate() - 6);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const logs = await prisma.loginLog.findMany({
+      where: { role, loggedAt: { gte: monthStart } },
+      orderBy: { loggedAt: 'desc' },
+    });
+    const inRange = (from: Date) => logs.filter(l => l.loggedAt >= from);
+    const uniq = (arr: any[]) => new Set(arr.map(l => l.userId)).size;
+
+    const dayL = inRange(dayStart), weekL = inRange(weekStart), monthL = logs;
+    // per-user rollup (this month)
+    const byUser: Record<string, any> = {};
+    for (const l of logs) {
+      if (!byUser[l.userId]) byUser[l.userId] = { userId: l.userId, name: l.userName, zone: l.zone, today: 0, week: 0, month: 0, lastLogin: l.loggedAt };
+      byUser[l.userId].month++;
+      if (l.loggedAt >= weekStart) byUser[l.userId].week++;
+      if (l.loggedAt >= dayStart) byUser[l.userId].today++;
+    }
+    // total eligible users of this role
+    const totalUsers = await prisma.user.count({ where: { role, active: true } });
+
+    res.json({
+      success: true,
+      data: {
+        role,
+        summary: {
+          totalUsers,
+          today:  { logins: dayL.length,   uniqueUsers: uniq(dayL) },
+          weekly: { logins: weekL.length,  uniqueUsers: uniq(weekL) },
+          monthly:{ logins: monthL.length, uniqueUsers: uniq(monthL) },
+        },
+        byUser: Object.values(byUser).sort((a: any, b: any) => b.month - a.month),
+      },
+    });
+  } catch (err) {
+    console.error('Login report error:', err);
+    res.status(500).json({ error: 'Failed to build login report' });
+  }
+});
+
+// ─── GET /hsd/login-report-export — Excel of the login report ────────────────
+hsdRouter.get('/login-report-export', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ExcelJS = (await import('exceljs')).default;
+    const role = (req.query.role as string) || 'ZBM';
+    const now = new Date();
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(dayStart); weekStart.setDate(dayStart.getDate() - 6);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const logs = await prisma.loginLog.findMany({ where: { role, loggedAt: { gte: monthStart } }, orderBy: { loggedAt: 'desc' } });
+    const byUser: Record<string, any> = {};
+    for (const l of logs) {
+      if (!byUser[l.userId]) byUser[l.userId] = { name: l.userName, zone: l.zone, today: 0, week: 0, month: 0, last: l.loggedAt };
+      byUser[l.userId].month++;
+      if (l.loggedAt >= weekStart) byUser[l.userId].week++;
+      if (l.loggedAt >= dayStart) byUser[l.userId].today++;
+    }
+    const ZG = 'FF00843D';
+    const wb = new ExcelJS.Workbook(); wb.creator = 'Zamtel TDR Monitor';
+    const s = wb.addWorksheet(`${role} Login Activity`, { properties: { tabColor: { argb: ZG } } });
+    s.mergeCells('A1:F1');
+    const t = s.getCell('A1'); t.value = `${role} LOGIN ACTIVITY REPORT — ${now.toISOString().split('T')[0]}`;
+    t.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ZG } }; t.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
+    s.getRow(1).height = 26;
+    s.addRow([]);
+    const hdr = s.addRow([`${role} Name`, 'Zone', 'Today', 'Last 7 Days', 'This Month', 'Last Login']);
+    hdr.eachCell((c: any) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ZG } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.alignment = { horizontal: 'center' }; });
+    Object.values(byUser).sort((a: any, b: any) => b.month - a.month).forEach((u: any, i: number) => {
+      const r = s.addRow([u.name, u.zone || '', u.today, u.week, u.month, new Date(u.last).toISOString().replace('T', ' ').slice(0, 16)]);
+      if (i % 2 === 0) r.eachCell((c: any) => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F4EC' } });
+    });
+    s.columns = [{ width: 26 }, { width: 16 }, { width: 9 }, { width: 12 }, { width: 12 }, { width: 20 }];
+    s.views = [{ state: 'frozen', ySplit: 3 }];
+    const buf = await wb.xlsx.writeBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${role.toLowerCase()}-login-activity-${now.toISOString().split('T')[0]}.xlsx"`);
+    res.send(Buffer.from(buf));
+  } catch (err) {
+    console.error('Login report export error:', err);
+    res.status(500).json({ error: 'Login report export failed' });
+  }
+});
+
 hsdRouter.get('/site-focus-export', async (req: Request, res: Response): Promise<void> => {
   try {
     const ExcelJS = (await import('exceljs')).default;

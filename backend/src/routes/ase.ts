@@ -18,7 +18,7 @@ function calcTdrScore(agents: number, _merchants: number, visits: number, reacti
   const reactivationTarget = 6 * workingDaysElapsed();
   const prospectTarget     = prospectStretchTarget(agentTarget); // 30% above agent MTD target
   const agentPct    = Math.min(agents        / Math.max(agentTarget,        1), 1) * 100;
-  const visitPct    = Math.min(visits        / Math.max(visitTarget,        1), 1) * 100;
+  const visitPct    = 100; // Visitations award full 10% weight regardless of visit count (policy 2026-07-15)
   const reactivPct  = Math.min(reactivations / Math.max(reactivationTarget, 1), 1) * 100;
   const prospectPct = Math.min(prospects     / Math.max(prospectTarget,     1), 1) * 100;
   return Math.round(agentPct * 0.50 + prospectPct * 0.10 + visitPct * 0.10 + reactivPct * 0.15);

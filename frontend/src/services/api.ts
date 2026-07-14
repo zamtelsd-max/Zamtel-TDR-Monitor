@@ -6,7 +6,7 @@ import type {
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
-const client = axios.create({ baseURL: BASE_URL });
+export const client = axios.create({ baseURL: BASE_URL });
 
 // ─── Attach token ─────────────────────────────────────────────────────────────
 client.interceptors.request.use((config) => {
@@ -333,6 +333,10 @@ export const hsdApi = {
 
   uploadKyc: (fileBase64: string) =>
     client.post<{ success: boolean; data: { totalRows: number; matched: number; updated: number; notFound: number; nowActive: number; nowInactive: number } }>('/hsd/kyc-upload', { fileBase64 }),
+
+  loginReport: (role = 'ZBM') =>
+    client.get<{ success: boolean; data: any }>(`/hsd/login-report?role=${role}`),
+  loginReportExportUrl: (role = 'ZBM') => `/hsd/login-report-export?role=${role}`,
 
   getDevices: (params?: { page?: number; limit?: number; search?: string; zone?: string; source?: string; status?: string }) =>
     client.get('/hsd/devices', { params }),

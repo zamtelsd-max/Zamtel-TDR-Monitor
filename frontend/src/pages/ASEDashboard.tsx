@@ -641,7 +641,7 @@ export const ASEDashboardPage: React.FC = () => {
                 const rTgt = Math.max(6 * workingDaysElapsed(), 1);
                 const pTgt = prospectStretchTarget(aTgt); // 30% above agent MTD target
                 const agentPct = Math.min(Math.round(agents / Math.max(aTgt, 1) * 100), 100);
-                const visitPct = Math.min(Math.round(visits / Math.max(vTgt, 1) * 100), 100);
+                const visitPct = 100; // Visitations award full 10% weight regardless of visit count (policy 2026-07-15)
                 const reactPct = Math.min(Math.round(reactivations / rTgt * 100), 100);
                 const prospectPct = Math.min(Math.round((prospects ?? 0) / pTgt * 100), 100);
                 const sc = tdrKpi ?? calcWeightedScore({

@@ -303,7 +303,7 @@ export const TDRDashboardPage: React.FC = () => {
 
   const agentPct        = data ? Math.min(Math.round(data.stats.agents.count        / data.stats.agents.target        * 100), 100) : 0;
   const merchantPct     = data ? Math.min(Math.round(data.stats.merchants.count     / data.stats.merchants.target     * 100), 100) : 0;
-  const visitPct        = data ? Math.min(Math.round(data.stats.visits.count        / data.stats.visits.target        * 100), 100) : 0;
+  const visitPct        = data ? 100 : 0; // Visitations award full 10% weight regardless of visit count (policy 2026-07-15)
   const floatPct        = data ? floatResolutionPct(data.floatIssues.resolved, data.floatIssues.total) : 100;
   const reactivationPct = data ? Math.min(Math.round((data.stats.reactivations?.count ?? 0) / Math.max(data.stats.reactivations?.target ?? 1, 1) * 100), 100) : 0;
   const prospectActual  = data?.prospects?.total ?? 0;

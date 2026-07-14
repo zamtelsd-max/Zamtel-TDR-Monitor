@@ -64,7 +64,7 @@ function tdrScore(row: TDRStat): number {
     merchantPct:     Math.min(Math.round((row.merchants / prorateMtdTarget(96)) * 100), 100),
     floatPct,
     reactivationPct: Math.min(Math.round(((row.reactivations ?? 0) / Math.max((row.reactivationTarget ?? 1), 1)) * 100), 100),
-    visitPct:        Math.min(Math.round((row.visits    / visitMtdTarget())      * 100), 100),
+    visitPct:        100, // full 10% weight regardless of visit count (policy 2026-07-15)
   });
 }
 

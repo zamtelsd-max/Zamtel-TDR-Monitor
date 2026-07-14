@@ -19,6 +19,7 @@ import { PerformanceBar } from '../components/PerformanceBar';
 import { SiteFocusPanel } from '../components/SiteFocusPanel';
 import { SiteFocusAnalytics } from '../components/SiteFocusAnalytics';
 import { UserManagement } from '../components/UserManagement';
+import { LoginActivity } from '../components/LoginActivity';
 import { TabBar } from '../components/TabBar';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
@@ -71,7 +72,7 @@ function zoneScore(z: any): number {
     prospectPct:     Math.min(Math.round(((z.prospects ?? 0) / Math.max(tp, 1)) * 100), 100),
     floatPct:        floatResolutionPct(0, z.floatIssues),
     reactivationPct: Math.min(Math.round(((z.reactivations ?? 0) / Math.max(tr, 1)) * 100), 100),
-    visitPct:        Math.min(Math.round(z.visits    / tv * 100), 100),
+    visitPct:        100, // full 10% weight regardless of visit count (policy 2026-07-15)
   });
 }
 
@@ -103,7 +104,7 @@ export const HSDDashboardPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [mapData,   setMapData]   = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
   const [showMap,   setShowMap]   = useState(true);
-  const [mainTab,   setMainTab]   = useState<'dashboard' | 'ase' | 'site-focus' | 'users' | 'flags'>('dashboard');
+  const [mainTab,   setMainTab]   = useState<'dashboard' | 'ase' | 'site-focus' | 'users' | 'logins' | 'flags'>('dashboard');
   const [tdrFlags,  setTdrFlags]  = useState<TDRFlag[]>([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
@@ -298,6 +299,7 @@ export const HSDDashboardPage: React.FC = () => {
               { id: 'ase',        label: '📱 ASE & Devices' },
               { id: 'site-focus', label: '📍 Site Focus' },
               { id: 'users',      label: '👤 Users' },
+              { id: 'logins',     label: '🔐 Login Activity' },
               { id: 'flags',      label: '🚩 Flags', badge: tdrFlags.length, badgeColor: 'amber' },
             ]}
           />
@@ -924,6 +926,7 @@ export const HSDDashboardPage: React.FC = () => {
 
       {/* USERS Tab */}
       {mainTab === 'users' && <UserManagement />}
+      {mainTab === 'logins' && <LoginActivity />}
     </Layout>
   );
 };

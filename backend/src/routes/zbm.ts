@@ -608,7 +608,7 @@ zbmRouter.get('/leaderboard', responseCache(60), async (req: Request, res: Respo
     const floatResolved= lbFrm[tdr.id] || 0;
     const agentPct    = Math.min(Math.round(agents    / Math.max(at, 1) * 100), 100);
     const merchantPct = Math.min(Math.round(merchants / Math.max(mt, 1) * 100), 100);
-    const visitPct    = Math.min(Math.round(visits    / Math.max(vt, 1) * 100), 100);
+    const visitPct    = 100; // full 10% weight regardless of visit count (policy 2026-07-15)
     const floatPct    = floatTotal > 0 ? Math.round(floatResolved / floatTotal * 100) : 100;
     // Merchant KPI removed from scoring — weight folded into agents (60%). Merchants still tracked for classification.
     const score = Math.round(agentPct * 0.6 + floatPct * 0.3 + visitPct * 0.1);
