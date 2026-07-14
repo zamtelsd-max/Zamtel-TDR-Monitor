@@ -14,6 +14,7 @@ export const RecordVisitForm: React.FC = () => {
   const { capture: captureGPS, loading: gpsLoading } = useGPS();
   const { isOnline, pendingCount } = useOfflineSync();
   const [submitting, setSubmitting] = useState(false);
+  const [startedAt] = useState<number>(Date.now()); // check-in time when TDR opens the visit form
   const [lookingUp, setLookingUp] = useState(false);
   const [agentStale, setAgentStale] = useState<{ daysAgo: number | null } | null>(null);
   const [outletInfo, setOutletInfo] = useState<{ registeredBy: string; lastVisitedBy: string; lastVisitedAt: string | null } | null>(null);
@@ -23,6 +24,9 @@ export const RecordVisitForm: React.FC = () => {
   const savedDraft: VisitForm | null = (() => { try { const d = localStorage.getItem(DRAFT_KEY); return d ? JSON.parse(d) as VisitForm : null; } catch { return null; } })();
   const [form, setForm] = useState<VisitForm>(savedDraft || defaultForm);
   useEffect(() => { if (savedDraft) toast('📋 Draft restored', { icon: '📋' }); }, []); // eslint-disable-line
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNowTick(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const elapsedMin = (nowTick - startedAt) / 60000;
 
   const set = (key: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -97,6 +101,8 @@ export const RecordVisitForm: React.FC = () => {
       latitude:     form.latitude  ? parseFloat(form.latitude)  : undefined,
       longitude:    form.longitude ? parseFloat(form.longitude) : undefined,
       notes:        form.notes     || undefined,
+      startedAt:    new Date(startedAt).toISOString(),
+      durationMin:  Math.round((Date.now() - startedAt) / 60000 * 10) / 10, // minutes at outlet
     };
     try {
       if (!navigator.onLine) {
@@ -107,7 +113,7 @@ export const RecordVisitForm: React.FC = () => {
         navigate('/tdr');
         return;
       }
-      await tdrApi.createVisit(payload);
+      await tdrApi.createVisit(payload as any);
       localStorage.removeItem(DRAFT_KEY);
       localStorage.removeItem('zamtel_tdr_dashboard');
       localStorage.setItem('zamtel_tdr_visit_recorded', form.agentCode);
@@ -134,6 +140,16 @@ export const RecordVisitForm: React.FC = () => {
     <Layout title="Record Visit" showBack backTo="/tdr">
       <form onSubmit={handleSubmit} className="space-y-4 max-w-lg mx-auto pb-8">
         <h2 className="text-lg font-bold text-zamtel-dark mb-2">Outlet Visitation Record</h2>
+
+        {/* Check-in timer — a quality visit averages ~10 minutes */}
+        <div className="flex items-center justify-between rounded-xl px-4 py-2.5 border"
+          style={{ background: elapsedMin >= 10 ? '#f0fdf4' : '#fffbeb', borderColor: elapsedMin >= 10 ? '#86efac' : '#fde68a' }}>
+          <span className="text-xs font-semibold text-gray-600">⏱️ Time at outlet</span>
+          <span className="text-sm font-black" style={{ color: elapsedMin >= 10 ? '#16a34a' : '#b45309' }}>
+            {Math.floor(elapsedMin)}m {String(Math.floor((elapsedMin % 1) * 60)).padStart(2, '0')}s
+            {elapsedMin < 10 && <span className="text-[10px] font-medium text-amber-600 ml-1">(target 10m)</span>}
+          </span>
+        </div>
 
         {!isOnline && (
           <div className="flex items-center gap-2 bg-orange-50 border border-orange-300 rounded-xl px-4 py-3">

@@ -783,6 +783,68 @@ hsdRouter.get('/site-focus-analytics', responseCache(60), async (req: Request, r
 });
 
 // ─── GET /hsd/site-focus-export — Zamtel-green analytical national report ─────
+// ─── GET /hsd/flagged-visits — suspicious / non-compliant (faked) visits ─────
+hsdRouter.get('/flagged-visits', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const period = (req.query.period as string) ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end } = monthRange(period);
+    const visits = await prisma.visit.findMany({
+      where: { createdAt: { gte: start, lte: end }, OR: [{ compliant: false }, { suspicious: true }] },
+      orderBy: { createdAt: 'desc' }, take: 500,
+    });
+    const faked = visits.filter(v => !v.compliant).length;
+    const suspicious = visits.filter(v => v.suspicious).length;
+    res.json({
+      success: true,
+      data: {
+        summary: { total: visits.length, faked, suspicious },
+        visits: visits.map(v => ({
+          id: v.id, tdrName: v.tdrName, zone: v.zone, outletName: v.outletName, agentCode: v.agentCode,
+          town: v.town, durationMin: v.durationMin, distanceM: v.distanceM,
+          compliant: v.compliant, suspicious: v.suspicious, flagReason: v.flagReason,
+          createdAt: v.createdAt,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error('Flagged visits error:', err);
+    res.status(500).json({ error: 'Failed to load flagged visits' });
+  }
+});
+
+hsdRouter.get('/flagged-visits-export', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ExcelJS = (await import('exceljs')).default;
+    const period = (req.query.period as string) ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end } = monthRange(period);
+    const visits = await prisma.visit.findMany({
+      where: { createdAt: { gte: start, lte: end }, OR: [{ compliant: false }, { suspicious: true }] },
+      orderBy: { createdAt: 'desc' },
+    });
+    const ZG = 'FF00843D';
+    const wb = new ExcelJS.Workbook(); wb.creator = 'Zamtel TDR Monitor';
+    const s = wb.addWorksheet('Flagged Visits', { properties: { tabColor: { argb: 'FFB91C1C' } } });
+    const hdr = s.addRow(['Date', 'TDR', 'Zone', 'Outlet', 'Agent Code', 'Town', 'Duration (min)', 'Distance (m)', 'Faked?', 'Suspicious?', 'Reason']);
+    hdr.eachCell((c: any) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ZG } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; });
+    visits.forEach((v, i) => {
+      const r = s.addRow([v.createdAt.toISOString().replace('T', ' ').slice(0, 16), v.tdrName, v.zone, v.outletName, v.agentCode, v.town, v.durationMin ?? '', v.distanceM ?? '', v.compliant ? 'No' : 'YES', v.suspicious ? 'YES' : 'No', v.flagReason || '']);
+      if (!v.compliant) r.eachCell((c: any) => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE2E2' } });
+      else if (i % 2 === 0) r.eachCell((c: any) => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF4E0' } });
+    });
+    s.columns = [{ width: 17 }, { width: 20 }, { width: 14 }, { width: 22 }, { width: 13 }, { width: 14 }, { width: 13 }, { width: 12 }, { width: 8 }, { width: 11 }, { width: 50 }];
+    s.views = [{ state: 'frozen', ySplit: 1 }];
+    const buf = await wb.xlsx.writeBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="flagged-visits-${period}.xlsx"`);
+    res.send(Buffer.from(buf));
+  } catch (err) {
+    console.error('Flagged visits export error:', err);
+    res.status(500).json({ error: 'Flagged visits export failed' });
+  }
+});
+
 // ─── GET /hsd/login-report — ZBM login activity (daily/weekly/monthly) ───────
 hsdRouter.get('/login-report', async (req: Request, res: Response): Promise<void> => {
   try {

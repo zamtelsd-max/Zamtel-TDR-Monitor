@@ -26,14 +26,14 @@ tdrRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
     await Promise.all([
       prisma.agent.count({ where: { tdrId, type: 'normal',   createdAt: { gte: start,      lte: end      } } }),
       prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: start,      lte: end      } } }),
-      prisma.visit.count({ where: { tdrId,                   createdAt: { gte: start,      lte: end      } } }),
+      prisma.visit.count({ where: { tdrId, compliant: true,   createdAt: { gte: start,      lte: end      } } }),
       prisma.floatIssue.findMany({ where: { tdrId }, orderBy: { reportedAt: 'desc' } }),
       prisma.prospect.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' } }),
       prisma.agent.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
       prisma.visit.findMany({ where: { tdrId }, orderBy: { createdAt: 'desc' }, take: 5 }),
       prisma.agent.count({ where: { tdrId, type: 'normal',   createdAt: { gte: todayStart, lte: todayEnd } } }),
       prisma.agent.count({ where: { tdrId, type: 'merchant', createdAt: { gte: todayStart, lte: todayEnd } } }),
-      prisma.visit.count({ where: { tdrId,                   createdAt: { gte: todayStart, lte: todayEnd } } }),
+      prisma.visit.count({ where: { tdrId, compliant: true,   createdAt: { gte: todayStart, lte: todayEnd } } }),
       // Reactivations submitted via the dedicated form this MTD
       prisma.reactivation.count({ where: { tdrId, createdAt: { gte: start, lte: end } } }),
     ]);
@@ -201,40 +201,98 @@ const visitSchema = z.object({
   latitude:     z.number().optional(),
   longitude:    z.number().optional(),
   notes:        z.string().optional(),
+  durationMin:  z.number().optional(),   // minutes at outlet
+  startedAt:    z.string().optional(),   // ISO check-in time
 });
+
+// Haversine distance in metres between two GPS points
+function distanceMetres(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000, toRad = (d: number) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Visit quality/fraud rules
+const QUALITY_MIN_MINUTES = 10;   // a quality visit averages ~10 minutes
+const LOCATION_TOLERANCE_M = 250; // visit must be within 250m of saved agent GPS
+const RAPID_WINDOW_MIN = 10;      // window for rapid-visit detection
+const RAPID_MAX_VISITS = 2;       // >2 visits within the window = suspicious
 
 tdrRouter.post('/visits', async (req: Request, res: Response): Promise<void> => {
   const parsed = visitSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  const d = parsed.data;
 
   try {
     // Duplicate check: same TDR + same agentCode on same calendar day
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
     const todayEnd   = new Date(); todayEnd.setHours(23, 59, 59, 999);
     const existing = await prisma.visit.findFirst({
-      where: {
-        tdrId:     req.user!.userId,
-        agentCode: parsed.data.agentCode,
-        createdAt: { gte: todayStart, lte: todayEnd },
-      },
+      where: { tdrId: req.user!.userId, agentCode: d.agentCode, createdAt: { gte: todayStart, lte: todayEnd } },
     });
     if (existing) {
-      res.status(409).json({ error: `You already recorded a visit for agent ${parsed.data.agentCode} today.` });
+      res.status(409).json({ error: `You already recorded a visit for agent ${d.agentCode} today.` });
       return;
     }
+
+    // ── Quality & fraud evaluation ──
+    let compliant = true, suspicious = false;
+    const reasons: string[] = [];
+    let distanceM: number | null = null;
+
+    // 1) Location check against the agent's SAVED GPS (name correct but wrong place = faked)
+    const agent = await prisma.agent.findUnique({ where: { agentCode: d.agentCode } }).catch(() => null);
+    if (agent && agent.latitude != null && agent.longitude != null) {
+      if (d.latitude != null && d.longitude != null) {
+        distanceM = Math.round(distanceMetres(agent.latitude, agent.longitude, d.latitude, d.longitude));
+        if (distanceM > LOCATION_TOLERANCE_M) {
+          compliant = false;
+          reasons.push(`Location mismatch: ${distanceM}m from saved outlet location (allowed ${LOCATION_TOLERANCE_M}m) — non-compliant / faked visit`);
+        }
+      } else {
+        compliant = false;
+        reasons.push('No GPS captured — cannot verify against saved outlet location');
+      }
+    } else if (agent && (agent.latitude == null || agent.longitude == null)) {
+      // Existing agent without a saved location yet → save it now from this visit (new-addition rule)
+      if (d.latitude != null && d.longitude != null) {
+        await prisma.agent.update({ where: { id: agent.id }, data: { latitude: d.latitude, longitude: d.longitude } }).catch(() => {});
+      }
+    }
+    // (If agent not found at all, it's a brand-new outlet — location is saved when the agent is created.)
+
+    // 2) Duration: quality visit should average ~10 minutes
+    if (d.durationMin != null && d.durationMin < QUALITY_MIN_MINUTES) {
+      suspicious = true;
+      reasons.push(`Visit too short: ${d.durationMin} min (quality target ${QUALITY_MIN_MINUTES} min)`);
+    }
+
+    // 3) Rapid-fire: more than 2 visits within a 10-minute window by this TDR
+    const windowStart = new Date(Date.now() - RAPID_WINDOW_MIN * 60 * 1000);
+    const recentCount = await prisma.visit.count({ where: { tdrId: req.user!.userId, createdAt: { gte: windowStart } } });
+    if (recentCount >= RAPID_MAX_VISITS) {
+      suspicious = true;
+      reasons.push(`Rapid visits: ${recentCount + 1} visits within ${RAPID_WINDOW_MIN} min (max ${RAPID_MAX_VISITS}) — suspicious`);
+    }
+
     const zbm = await prisma.user.findFirst({ where: { role: 'ZBM', zone: req.user!.zone || '' } });
     const visit = await prisma.visit.create({
       data: {
-        ...parsed.data,
-        tdrId:   req.user!.userId,
-        tdrName: req.user!.name,
-        zone:    req.user!.zone || '',
-        zbmName: zbm?.name || '',
+        outletName: d.outletName, agentCode: d.agentCode, contactPhone: d.contactPhone,
+        town: d.town, cluster: d.cluster, market: d.market, floatAmount: d.floatAmount,
+        latitude: d.latitude, longitude: d.longitude, notes: d.notes,
+        durationMin: d.durationMin ?? null,
+        startedAt: d.startedAt ? new Date(d.startedAt) : null,
+        compliant, suspicious, distanceM,
+        flagReason: reasons.length ? reasons.join(' | ') : null,
+        tdrId: req.user!.userId, tdrName: req.user!.name, zone: req.user!.zone || '', zbmName: zbm?.name || '',
       },
     });
     invalidateCache(`${req.user!.userId}::`);
-    res.status(201).json(visit);
+    res.status(201).json({ ...visit, quality: { compliant, suspicious, distanceM, reasons } });
   } catch (err: any) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to record visit' });
   }
 });

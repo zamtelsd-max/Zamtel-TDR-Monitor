@@ -215,6 +215,12 @@ model Visit {
   latitude     Float?
   longitude    Float?
   notes        String?
+  durationMin  Float?              // minutes spent at the outlet (quality target: ~10 min)
+  startedAt    DateTime?           // when the visit started (check-in)
+  compliant    Boolean  @default(true)   // false = location mismatch / faked visit
+  suspicious   Boolean  @default(false)  // true = flagged (rapid visits, too short, etc.)
+  flagReason   String?             // why it was flagged / invalidated
+  distanceM    Float?              // metres between visit GPS and saved agent GPS
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [tdrId], references: [id])
