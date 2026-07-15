@@ -143,11 +143,11 @@ export const RecordVisitForm: React.FC = () => {
 
         {/* Check-in timer — a quality visit averages ~10 minutes */}
         <div className="flex items-center justify-between rounded-xl px-4 py-2.5 border"
-          style={{ background: elapsedMin >= 10 ? '#f0fdf4' : '#fffbeb', borderColor: elapsedMin >= 10 ? '#86efac' : '#fde68a' }}>
+          style={{ background: elapsedMin >= 4 ? '#f0fdf4' : '#fffbeb', borderColor: elapsedMin >= 4 ? '#86efac' : '#fde68a' }}>
           <span className="text-xs font-semibold text-gray-600">⏱️ Time at outlet</span>
-          <span className="text-sm font-black" style={{ color: elapsedMin >= 10 ? '#16a34a' : '#b45309' }}>
+          <span className="text-sm font-black" style={{ color: elapsedMin >= 4 ? '#16a34a' : '#b45309' }}>
             {Math.floor(elapsedMin)}m {String(Math.floor((elapsedMin % 1) * 60)).padStart(2, '0')}s
-            {elapsedMin < 10 && <span className="text-[10px] font-medium text-amber-600 ml-1">(target 10m)</span>}
+            {elapsedMin < 4 && <span className="text-[10px] font-medium text-amber-600 ml-1">(min 4m)</span>}
           </span>
         </div>
 

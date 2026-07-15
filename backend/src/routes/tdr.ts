@@ -214,7 +214,7 @@ function distanceMetres(lat1: number, lon1: number, lat2: number, lon2: number):
 }
 
 // Visit quality/fraud rules
-const QUALITY_MIN_MINUTES = 10;   // a quality visit averages ~10 minutes
+const QUALITY_MIN_MINUTES = 4;    // a quality visit must be not less than 4 minutes
 const LOCATION_TOLERANCE_M = 250; // visit must be within 250m of saved agent GPS
 const RAPID_WINDOW_MIN = 10;      // window for rapid-visit detection
 const RAPID_MAX_VISITS = 2;       // >2 visits within the window = suspicious
