@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Zamtel KYC Device Map</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#0f172a;color:#f1f5f9;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#hdr{background:linear-gradient(135deg,#00843D,#005a2b);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:0 3px 16px rgba(0,132,61,.4);flex-shrink:0}
+#hdr h1{font-size:16px;font-weight:700;color:#fff}#hdr p{font-size:10px;color:#86efac;margin-top:1px}
+.badge{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:3px 10px;font-size:10px;color:#fff}
+#sbar{background:#1e293b;border-bottom:1px solid #334155;padding:5px 14px;display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0}
+.chip{background:#0f172a;border:1px solid #334155;border-radius:20px;padding:2px 9px;font-size:10.5px;display:flex;align-items:center;gap:4px}
+.dot{width:7px;height:7px;border-radius:50%}
+#frow{background:#1e293b;border-bottom:1px solid #334155;padding:5px 14px;display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0}
+.fb{background:#0f172a;border:1px solid #334155;color:#94a3b8;padding:3px 10px;border-radius:14px;font-size:10.5px;cursor:pointer;transition:all .15s}
+.fb:hover{border-color:#00843D;color:#86efac}.fb.active{background:#00843D;border-color:#00843D;color:#fff;font-weight:600}
+#main{display:flex;flex:1;overflow:hidden}
+#mwrap{flex:1;display:flex;align-items:center;justify-content:center;padding:8px;overflow:hidden}
+#msvg{width:100%;height:100%;max-height:100%}
+.prov{cursor:pointer;transition:opacity .15s}.prov:hover{opacity:1;stroke:#00843D !important;stroke-width:2.5 !important}
+.bbl{cursor:pointer}
+#tip{position:fixed;display:none;background:rgba(10,18,35,.97);border:1px solid #334155;border-radius:10px;padding:12px 15px;font-size:12px;z-index:999;box-shadow:0 10px 40px rgba(0,0,0,.8);max-width:230px;pointer-events:none}
+.ttt{font-size:13px;font-weight:700;color:#86efac;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid #334155}
+.tr{display:flex;justify-content:space-between;gap:12px;margin-bottom:3px}.tr span{color:#94a3b8}.tr b{color:#f1f5f9}
+.tbar{background:#1e293b;border-radius:4px;height:6px;margin:5px 0 8px;overflow:hidden}.tbf{height:100%;border-radius:4px}
+#side{width:178px;background:#1e293b;border-left:1px solid #334155;padding:9px;overflow-y:auto;flex-shrink:0;font-size:10.5px}
+#side h3{font-size:9.5px;text-transform:uppercase;letter-spacing:.7px;color:#64748b;margin-bottom:7px}
+.zc{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:6px 8px;margin-bottom:5px;cursor:pointer;transition:border-color .2s}
+.zc:hover{border-color:#00843D}.zcn{font-size:10.5px;font-weight:600;color:#e2e8f0;margin-bottom:2px}
+.zcr{display:flex;justify-content:space-between;font-size:9.5px;margin-bottom:1px;color:#94a3b8}
+.zcb{background:#1e293b;height:3px;border-radius:2px;margin-top:3px;overflow:hidden}.zcbf{height:100%;border-radius:2px}
+#leg{padding:8px;background:#0f172a;border-top:1px solid #334155;margin-top:6px}
+#leg h4{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:5px}
+.li{display:flex;align-items:center;gap:5px;font-size:9.5px;color:#cbd5e1;margin-bottom:3px}
+.ls{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+</style></head><body>
+<div id="hdr">
+  <div><h1>📱 Zamtel KYC Device Deployment Map</h1><p>All 11 Provinces · MobiGO 2+ &amp; ITEL A100C · May 2026</p></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <span class="badge">10,782 Devices</span>
+    <span class="badge">✅ 3,859 Active (36%)</span>
+  </div>
+</div>
+<div id="sbar">
+  <div class="chip"><span class="dot" style="background:#3b82f6"></span>Total:<b>&nbsp;10,782</b></div>
+  <div class="chip"><span class="dot" style="background:#22c55e"></span>Active:<b>&nbsp;3,859</b></div>
+  <div class="chip"><span class="dot" style="background:#f87171"></span>Inactive:<b>&nbsp;6,923</b></div>
+  <div class="chip"><span class="dot" style="background:#a78bfa"></span>KYC:<b>&nbsp;65,614</b></div>
+  <div class="chip"><span class="dot" style="background:#fbbf24"></span>GA:<b>&nbsp;42,942</b></div>
+  <div class="chip"><span class="dot" style="background:#E4007C"></span>Conv:<b>&nbsp;65%</b></div>
+</div>
+<div id="frow">
+  <button class="fb active" onclick="setV('activity',this)">Activity %</button>
+  <button class="fb" onclick="setV('total',this)">Total</button>
+  <button class="fb" onclick="setV('active',this)">Active</button>
+  <button class="fb" onclick="setV('kyc',this)">KYC</button>
+  <button class="fb" onclick="setV('ga',this)">Gross Adds</button>
+</div>
+<div id="main">
+<div id="mwrap">
+<svg id="msvg" viewBox="0 0 900 760" preserveAspectRatio="xMidYMid meet">
+<rect width="900" height="760" fill="#0f172a"/>
+<line x1="0" y1="0" x2="900" y2="0" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="70" x2="900" y2="70" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="140" x2="900" y2="140" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="210" x2="900" y2="210" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="280" x2="900" y2="280" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="350" x2="900" y2="350" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="420" x2="900" y2="420" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="490" x2="900" y2="490" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="560" x2="900" y2="560" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="630" x2="900" y2="630" stroke="#181f2e" stroke-width="0.4"/><line x1="0" y1="700" x2="900" y2="700" stroke="#181f2e" stroke-width="0.4"/>
+<line x1="0" y1="0" x2="0" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="70" y1="0" x2="70" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="140" y1="0" x2="140" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="210" y1="0" x2="210" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="280" y1="0" x2="280" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="350" y1="0" x2="350" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="420" y1="0" x2="420" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="490" y1="0" x2="490" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="560" y1="0" x2="560" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="630" y1="0" x2="630" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="700" y1="0" x2="700" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="770" y1="0" x2="770" y2="760" stroke="#181f2e" stroke-width="0.4"/><line x1="840" y1="0" x2="840" y2="760" stroke="#181f2e" stroke-width="0.4"/>
+<polygon id="p_Central" points="472.7,385.6 579.3,393.2 651.9,301.2 651.9,188.3 537.0,174.3 461.3,223.1 363.0,292.8 363.0,411.4" fill="#1c5e30" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Central" opacity="0.88"/><polygon id="p_Copperbelt" points="363.0,411.4 461.3,411.4 574.8,536.9 461.3,711.2 310.1,641.5" fill="#7c2d12" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Copperbelt" opacity="0.88"/><polygon id="p_Eastern" points="651.9,301.2 763.9,362.6 839.5,327.7 824.4,153.4 763.9,118.5 651.9,188.3" fill="#78350f" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Eastern" opacity="0.88"/><polygon id="p_Luapula" points="461.3,711.2 574.8,711.2 612.6,641.5 574.8,536.9 461.3,411.4" fill="#78350f" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Luapula" opacity="0.88"/><polygon id="p_Lusaka_North" points="461.3,285.9 552.1,285.9 552.1,223.1 461.3,223.1" fill="#78350f" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Lusaka North" opacity="0.88"/><polygon id="p_Lusaka_South" points="461.3,223.1 552.1,223.1 552.1,174.3 461.3,174.3" fill="#78350f" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Lusaka South" opacity="0.88"/><polygon id="p_Muchinga" points="574.8,711.2 763.9,711.2 763.9,362.6 651.9,301.2 574.8,536.9 612.6,641.5" fill="#7c2d12" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Muchinga" opacity="0.88"/><polygon id="p_North_Western" points="7.6,641.5 310.1,641.5 363.0,411.4 363.0,292.8 158.8,223.1 7.6,327.7" fill="#78350f" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="North-Western" opacity="0.88"/><polygon id="p_Northern" points="461.3,711.2 574.8,711.2 612.6,641.5 574.8,536.9 461.3,411.4 363.0,411.4 310.1,641.5" fill="#78350f" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Northern" opacity="0.88"/><polygon id="p_Southern" points="272.3,188.3 461.3,188.3 552.1,174.3 651.9,188.3 763.9,118.5 763.9,13.9 310.1,13.9 158.8,118.5" fill="#7c2d12" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Southern" opacity="0.88"/><polygon id="p_Western" points="7.6,327.7 158.8,223.1 272.3,188.3 310.1,13.9 7.6,13.9" fill="#78350f" stroke="#1e293b" stroke-width="1.5" class="prov" data-zone="Western" opacity="0.88"/>
+<circle cx="510.5" cy="299.8" r="22.0" fill="#f59e0b" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Central"/><circle cx="446.2" cy="411.4" r="31.2" fill="#f87171" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Copperbelt"/><circle cx="733.6" cy="292.8" r="25.5" fill="#fb923c" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Eastern"/><circle cx="544.5" cy="522.9" r="23.6" fill="#fb923c" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Luapula"/><circle cx="499.2" cy="251.0" r="22.8" fill="#fb923c" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Lusaka North"/><circle cx="499.2" cy="188.3" r="24.5" fill="#fb923c" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Lusaka South"/><circle cx="688.2" cy="550.8" r="22.1" fill="#fb923c" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Muchinga"/><circle cx="158.8" cy="432.3" r="23.5" fill="#fb923c" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="North-Western"/><circle cx="499.2" cy="641.5" r="23.1" fill="#fb923c" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Northern"/><circle cx="423.5" cy="118.5" r="28.4" fill="#f87171" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Southern"/><circle cx="121.0" cy="223.1" r="23.5" fill="#fb923c" fill-opacity="0.88" stroke="white" stroke-width="1.5" class="bbl" data-zone="Western"/>
+<text x="510.5" y="272.8" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Central</text><text x="510.5" y="283.8" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">677</text><text x="446.2" y="375.2" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">C/Belt</text><text x="446.2" y="386.2" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">1,875</text><text x="733.6" y="262.3" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Eastern</text><text x="733.6" y="273.3" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">1,067</text><text x="544.5" y="494.29999999999995" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Luapula</text><text x="544.5" y="505.29999999999995" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">849</text><text x="499.2" y="223.2" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Lsk N</text><text x="499.2" y="234.2" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">765</text><text x="499.2" y="158.8" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Lsk S</text><text x="499.2" y="169.8" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">949</text><text x="688.2" y="523.6999999999999" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Muchinga</text><text x="688.2" y="534.6999999999999" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">693</text><text x="158.8" y="403.8" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">NW</text><text x="158.8" y="414.8" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">838</text><text x="499.2" y="613.4" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Northern</text><text x="499.2" y="624.4" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">796</text><text x="423.5" y="85.1" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Southern</text><text x="423.5" y="96.1" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">1,442</text><text x="121.0" y="194.6" text-anchor="middle" font-size="9" fill="#e2e8f0" font-weight="600" style="pointer-events:none">Western</text><text x="121.0" y="205.6" text-anchor="middle" font-size="9" fill="#86efac" font-weight="700" style="pointer-events:none">831</text>
+<text x="8" y="754" font-size="9" fill="#334155">© Zamtel Sales &amp; Distribution · KYC Device Map · May 2026</text>
+</svg></div>
+<div id="side"><h3>🗺 All Zones</h3><div class="zc" onclick="hl('Central')" id="sc_Central"><div class="zcn">Central</div><div class="zcr"><span>Devices</span><b>677</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">390</b></div><div class="zcr"><span>Rate</span><b style="color:#f59e0b">58%</b></div><div class="zcb"><div class="zcbf" style="width:58%;background:#f59e0b"></div></div></div>
+<div class="zc" onclick="hl('Northern')" id="sc_Northern"><div class="zcn">Northern</div><div class="zcr"><span>Devices</span><b>796</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">368</b></div><div class="zcr"><span>Rate</span><b style="color:#fb923c">46%</b></div><div class="zcb"><div class="zcbf" style="width:46%;background:#fb923c"></div></div></div>
+<div class="zc" onclick="hl('Eastern')" id="sc_Eastern"><div class="zcn">Eastern</div><div class="zcr"><span>Devices</span><b>1,067</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">479</b></div><div class="zcr"><span>Rate</span><b style="color:#fb923c">45%</b></div><div class="zcb"><div class="zcbf" style="width:45%;background:#fb923c"></div></div></div>
+<div class="zc" onclick="hl('Western')" id="sc_Western"><div class="zcn">Western</div><div class="zcr"><span>Devices</span><b>831</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">348</b></div><div class="zcr"><span>Rate</span><b style="color:#fb923c">42%</b></div><div class="zcb"><div class="zcbf" style="width:42%;background:#fb923c"></div></div></div>
+<div class="zc" onclick="hl('Lusaka South')" id="sc_Lusaka_South"><div class="zcn">Lusaka South</div><div class="zcr"><span>Devices</span><b>949</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">366</b></div><div class="zcr"><span>Rate</span><b style="color:#fb923c">39%</b></div><div class="zcb"><div class="zcbf" style="width:39%;background:#fb923c"></div></div></div>
+<div class="zc" onclick="hl('North-Western')" id="sc_North_Western"><div class="zcn">North-Western</div><div class="zcr"><span>Devices</span><b>838</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">316</b></div><div class="zcr"><span>Rate</span><b style="color:#fb923c">38%</b></div><div class="zcb"><div class="zcbf" style="width:38%;background:#fb923c"></div></div></div>
+<div class="zc" onclick="hl('Luapula')" id="sc_Luapula"><div class="zcn">Luapula</div><div class="zcr"><span>Devices</span><b>849</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">308</b></div><div class="zcr"><span>Rate</span><b style="color:#fb923c">36%</b></div><div class="zcb"><div class="zcbf" style="width:36%;background:#fb923c"></div></div></div>
+<div class="zc" onclick="hl('Lusaka North')" id="sc_Lusaka_North"><div class="zcn">Lusaka North</div><div class="zcr"><span>Devices</span><b>765</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">268</b></div><div class="zcr"><span>Rate</span><b style="color:#fb923c">35%</b></div><div class="zcb"><div class="zcbf" style="width:35%;background:#fb923c"></div></div></div>
+<div class="zc" onclick="hl('Muchinga')" id="sc_Muchinga"><div class="zcn">Muchinga</div><div class="zcr"><span>Devices</span><b>693</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">232</b></div><div class="zcr"><span>Rate</span><b style="color:#fb923c">33%</b></div><div class="zcb"><div class="zcbf" style="width:33%;background:#fb923c"></div></div></div>
+<div class="zc" onclick="hl('Southern')" id="sc_Southern"><div class="zcn">Southern</div><div class="zcr"><span>Devices</span><b>1,442</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">413</b></div><div class="zcr"><span>Rate</span><b style="color:#f87171">29%</b></div><div class="zcb"><div class="zcbf" style="width:29%;background:#f87171"></div></div></div>
+<div class="zc" onclick="hl('Copperbelt')" id="sc_Copperbelt"><div class="zcn">Copperbelt</div><div class="zcr"><span>Devices</span><b>1,875</b></div><div class="zcr"><span>Active</span><b style="color:#22c55e">371</b></div><div class="zcr"><span>Rate</span><b style="color:#f87171">20%</b></div><div class="zcb"><div class="zcbf" style="width:20%;background:#f87171"></div></div></div>
+
+<div id="leg"><h4>Activity Rate</h4>
+<div class="li"><div class="ls" style="background:#22c55e"></div>≥70%</div>
+<div class="li"><div class="ls" style="background:#f59e0b"></div>50–69%</div>
+<div class="li"><div class="ls" style="background:#fb923c"></div>30–49%</div>
+<div class="li"><div class="ls" style="background:#f87171"></div>&lt;30%</div>
+<div class="li"><div class="ls" style="background:#22c55e;border-radius:50%"></div>Bubble = rate</div>
+</div></div></div>
+<div id="tip"></div>
+<script>
+const ZD={"Central": {"total": 677, "active": 390, "inactive": 287, "kyc": 6998, "ga": 4879, "pct": 58}, "Copperbelt": {"total": 1875, "active": 371, "inactive": 1504, "kyc": 2699, "ga": 1625, "pct": 20}, "Eastern": {"total": 1067, "active": 479, "inactive": 588, "kyc": 8108, "ga": 5853, "pct": 45}, "Luapula": {"total": 849, "active": 308, "inactive": 541, "kyc": 8324, "ga": 6380, "pct": 36}, "Lusaka North": {"total": 765, "active": 268, "inactive": 497, "kyc": 5377, "ga": 2962, "pct": 35}, "Lusaka South": {"total": 949, "active": 366, "inactive": 583, "kyc": 4507, "ga": 2240, "pct": 39}, "Muchinga": {"total": 693, "active": 232, "inactive": 461, "kyc": 7633, "ga": 4760, "pct": 33}, "North-Western": {"total": 838, "active": 316, "inactive": 522, "kyc": 4198, "ga": 2230, "pct": 38}, "Northern": {"total": 796, "active": 368, "inactive": 428, "kyc": 5846, "ga": 4025, "pct": 46}, "Southern": {"total": 1442, "active": 413, "inactive": 1029, "kyc": 6281, "ga": 3977, "pct": 29}, "Western": {"total": 831, "active": 348, "inactive": 483, "kyc": 5643, "ga": 4011, "pct": 42}};
+const tip=document.getElementById('tip');
+function bc(p){return p>=70?'#22c55e':p>=50?'#f59e0b':p>=30?'#fb923c':'#f87171';}
+function fmt(n){return Number(n).toLocaleString();}
+document.querySelectorAll('.prov,.bbl').forEach(el=>{
+  el.addEventListener('mousemove',e=>{
+    const z=el.dataset.zone,d=ZD[z];if(!d)return;
+    const c=bc(d.pct);
+    tip.innerHTML=`<div class="ttt">📍 ${z}</div>
+    <div class="tr"><span>Total</span><b>${fmt(d.total)}</b></div>
+    <div class="tr"><span>Active</span><b style="color:#22c55e">${fmt(d.active)}</b></div>
+    <div class="tr"><span>Inactive</span><b style="color:#f87171">${fmt(d.inactive)}</b></div>
+    <div class="tr"><span>Rate</span><b style="color:${c}">${d.pct}%</b></div>
+    <div class="tbar"><div class="tbf" style="width:${d.pct}%;background:${c}"></div></div>
+    <div class="tr"><span>KYC Reg</span><b style="color:#a78bfa">${fmt(d.kyc)}</b></div>
+    <div class="tr"><span>Gross Adds</span><b style="color:#fbbf24">${fmt(d.ga)}</b></div>
+    <div class="tr"><span>Conversion</span><b>${d.kyc>0?Math.round(d.ga/d.kyc*100):0}%</b></div>`;
+    tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-20)+'px';
+  });el.addEventListener('mouseleave',()=>tip.style.display='none');
+});
+const fills={
+  activity:z=>{const p=ZD[z].pct;return p>=70?'#14532d':p>=50?'#1c5e30':p>=35?'#78350f':p>=20?'#7c2d12':'#450a0a';},
+  total:z=>{const v=ZD[z].total;return v>1500?'#1e3a8a':v>1000?'#1d4ed8':v>600?'#2563eb':v>300?'#3b82f6':'#93c5fd';},
+  active:z=>{const v=ZD[z].active;return v>400?'#14532d':v>300?'#166534':v>200?'#15803d':v>100?'#16a34a':'#4ade80';},
+  kyc:z=>{const v=ZD[z].kyc;return v>7000?'#4c1d95':v>5000?'#5b21b6':v>3000?'#7c3aed':v>1500?'#8b5cf6':'#c4b5fd';},
+  ga:z=>{const v=ZD[z].ga;return v>5000?'#78350f':v>3500?'#92400e':v>2000?'#b45309':v>1000?'#d97706':'#fbbf24';},
+};
+function setV(m,btn){
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('.prov').forEach(el=>{const z=el.dataset.zone;if(z&&fills[m])el.style.fill=fills[m](z);});
+}
+function hl(z){
+  document.querySelectorAll('.prov').forEach(el=>{
+    el.style.strokeWidth=el.dataset.zone===z?'3':'1.5';
+    el.style.stroke=el.dataset.zone===z?'#00843D':'#1e293b';
+    el.style.opacity=el.dataset.zone===z?'1':'0.75';
+  });
+}
+</script></body></html>
