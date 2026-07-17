@@ -5,7 +5,10 @@ export interface OfflineRecord {
   data: Record<string, unknown>;
   queuedAt: string;
   synced: boolean;
+  attempts?: number;   // number of failed sync attempts
 }
+
+export const MAX_SYNC_ATTEMPTS = 3;
 
 const DB_NAME = 'zamtel-tdr-offline';
 const STORE   = 'pending';
@@ -59,6 +62,25 @@ export async function getPendingQueue(): Promise<OfflineRecord[]> {
   try {
     return (JSON.parse(localStorage.getItem('zamtel_offline_queue') || '[]') as OfflineRecord[]).filter(r => !r.synced);
   } catch { return []; }
+}
+
+// Update a record in place (e.g. bump attempts). No-op if not found.
+export async function updateRecord(id: string, patch: Partial<OfflineRecord>): Promise<void> {
+  const db = await getDB();
+  if (db) {
+    try {
+      const rec = await new Promise<OfflineRecord | undefined>((resolve) => {
+        const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(id);
+        req.onsuccess = () => resolve(req.result as OfflineRecord | undefined);
+        req.onerror = () => resolve(undefined);
+      });
+      if (rec) { const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).put({ ...rec, ...patch }); }
+    } catch { /* ignore */ }
+  }
+  try {
+    const existing = JSON.parse(localStorage.getItem('zamtel_offline_queue') || '[]') as OfflineRecord[];
+    localStorage.setItem('zamtel_offline_queue', JSON.stringify(existing.map(r => r.id === id ? { ...r, ...patch } : r)));
+  } catch { /* ignore */ }
 }
 
 export async function removeFromPending(id: string): Promise<void> {
