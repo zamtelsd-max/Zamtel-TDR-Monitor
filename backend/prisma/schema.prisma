@@ -362,6 +362,77 @@ model SiteFocus {
   @@map("site_focus")
 }
 
+// ─── ASE Activity Tracker (additive; spec ASE_Activity_Tracker) ──────────────
+model AseZoneTarget {
+  id            String   @id @default(cuid())
+  zone          String   @unique
+  zbmName       String
+  monthlyTarget Float    @default(0)
+  dailyTarget   Float    @default(0)   // 220 working days basis
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("ase_zone_targets")
+}
+
+model AseDayPlan {
+  id          String   @id @default(cuid())
+  date        String                       // YYYY-MM-DD (Eastern canonical calendar)
+  aseName     String
+  zone        String
+  market      String?
+  cluster     String?
+  gaTarget    Int      @default(0)
+  dsaCount    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([aseName, date])
+  @@index([zone, date])
+  @@map("ase_day_plans")
+}
+
+model AseTransaction {
+  id            String   @id @default(cuid())
+  dealerCode    String
+  aseName       String?                     // attributed via KYC masterfile
+  zone          String?
+  region        String?
+  status        String                      // APPROVED | REJECTED
+  rejectReason  String?
+  customerMsisdn String?
+  customerId    String?
+  supervisor    String?
+  location      String?
+  txnDate       String                      // YYYY-MM-DD (approved/rejected date)
+  unmapped      Boolean  @default(false)    // dealer_code not found in KYC master
+  duplicate     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([aseName, txnDate])
+  @@index([zone, txnDate])
+  @@index([dealerCode])
+  @@unique([customerMsisdn, customerId, status, txnDate], name: "txn_dedupe")
+  @@map("ase_transactions")
+}
+
+model AseInsight {
+  id          String   @id @default(cuid())
+  aseName     String
+  zone        String?
+  focusArea   String                        // e.g. "Image quality rejects"
+  severity    String   @default("watch")    // watch | warning | critical
+  trigger     String                        // rule + evidence
+  action      String                        // recommended action
+  escalation  String?
+  evidenceCount Int    @default(0)
+  score       Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([aseName])
+  @@index([severity])
+  @@map("ase_insights")
+}
+
 model LoginLog {
   id        String   @id @default(cuid())
   userId    String

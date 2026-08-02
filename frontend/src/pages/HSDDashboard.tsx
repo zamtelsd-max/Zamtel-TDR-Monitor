@@ -22,6 +22,7 @@ import { UserManagement } from '../components/UserManagement';
 import { LoginActivity } from '../components/LoginActivity';
 import { FlaggedVisits } from '../components/FlaggedVisits';
 import { TabBar } from '../components/TabBar';
+import AseActivityTracker from '../components/AseActivityTracker';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -297,6 +298,7 @@ export const HSDDashboardPage: React.FC = () => {
             onChange={(id) => setMainTab(id as any)}
             tabs={[
               { id: 'dashboard',  label: '📊 Overview' },
+              { id: 'ase-tracker', label: '🎯 ASE Tracker' },
               { id: 'ase',        label: '📱 ASE & Devices' },
               { id: 'site-focus', label: '📍 Site Focus' },
               { id: 'users',      label: '👤 Users' },
@@ -748,6 +750,13 @@ export const HSDDashboardPage: React.FC = () => {
         </div>
       )}
       </>)}
+
+      {/* ── ASE Activity Tracker Tab ── */}
+      {mainTab === 'ase-tracker' && (
+        <div className="px-4 pb-24">
+          <AseActivityTracker />
+        </div>
+      )}
 
       {/* ── ASE & Devices Tab ── */}
       {mainTab === 'ase' && (
