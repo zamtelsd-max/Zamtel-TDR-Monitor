@@ -12,6 +12,8 @@ import { SiteFocusPanel } from '../components/SiteFocusPanel';
 import { SiteFocusAnalytics } from '../components/SiteFocusAnalytics';
 import { TabBar } from '../components/TabBar';
 import StrategicAseDashboard from '../components/StrategicAseDashboard';
+import { DashboardHome, BottomNav } from '../components/DashboardHome';
+import { BarChart3, Target, MapPin, Flag, LayoutGrid } from 'lucide-react';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
@@ -71,7 +73,7 @@ function tdrScore(row: TDRStat): number {
 
 export const ZBMDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs' | 'ase-performance' | 'ase-tracker' | 'site-focus' | 'flags'>('dashboard');
+  const [mainTab, setMainTab]   = useState<'home' | 'dashboard' | 'ases-tdrs' | 'ase-performance' | 'ase-tracker' | 'site-focus' | 'flags'>('home');
   const [data,       setData]       = useState<ZBMDashboard | null>(null);
   const [issues,     setIssues]     = useState<FloatIssue[]>([]);
   const [prospects,  setProspects]  = useState<Prospect[]>([]);
@@ -276,10 +278,12 @@ export const ZBMDashboardPage: React.FC = () => {
       />
 
       {/* Main Tab Bar */}
+      {mainTab !== 'home' && (
       <TabBar
         active={mainTab}
         onChange={(id) => setMainTab(id as any)}
         tabs={[
+          { id: 'home',            label: '⌂ Menu' },
           { id: 'dashboard',       label: '📊 Dashboard' },
           { id: 'ases-tdrs',       label: '👥 ASEs & TDRs' },
           { id: 'ase-performance', label: '📱 ASE KYC' },
@@ -288,6 +292,25 @@ export const ZBMDashboardPage: React.FC = () => {
           { id: 'flags',           label: '🚩 Flags', badge: tdrFlags.length, badgeColor: tdrFlags.some(f => f.severity === 'critical') ? 'red' : 'amber' },
         ]}
       />
+      )}
+
+      {mainTab === 'home' && (
+        <div className="px-4 pb-28">
+          <DashboardHome
+            title="Zone Manager Console"
+            subtitle="Your zone at a glance — choose a section"
+            onSelect={(id) => setMainTab(id as any)}
+            tiles={[
+              { id: 'dashboard',       label: 'Dashboard',    icon: <BarChart3 size={22} />, sub: 'Zone KPIs' },
+              { id: 'ase-tracker',     label: 'ASE Tracker',  icon: <Target size={22} />,    sub: 'Daily · WTD · MTD' },
+              { id: 'ases-tdrs',       label: 'ASEs & TDRs',  icon: <Users size={22} />,     sub: 'Team' },
+              { id: 'ase-performance', label: 'ASE KYC',      icon: <Smartphone size={22} />, sub: 'Devices' },
+              { id: 'site-focus',      label: 'Site Focus',   icon: <MapPin size={22} />,    sub: 'Territory' },
+              { id: 'flags',           label: 'Flags',        icon: <Flag size={22} />,      sub: 'Escalations', badge: tdrFlags.length },
+            ]}
+          />
+        </div>
+      )}
 
       {/* ASEs & TDRs Tab */}
       {mainTab === 'ases-tdrs' && (
@@ -954,6 +977,16 @@ export const ZBMDashboardPage: React.FC = () => {
           )}
         </div>
       )}
+      <BottomNav
+        active={mainTab}
+        onChange={(id) => setMainTab(id as any)}
+        items={[
+          { id: 'home',        label: 'Menu',      icon: <LayoutGrid size={20} /> },
+          { id: 'dashboard',   label: 'Dashboard', icon: <BarChart3 size={20} /> },
+          { id: 'ase-tracker', label: 'ASE',       icon: <Target size={20} /> },
+          { id: 'flags',       label: 'Flags',     icon: <Flag size={20} /> },
+        ]}
+      />
     </Layout>
   );
 };

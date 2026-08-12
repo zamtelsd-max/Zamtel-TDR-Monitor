@@ -23,6 +23,8 @@ import { LoginActivity } from '../components/LoginActivity';
 import { FlaggedVisits } from '../components/FlaggedVisits';
 import { TabBar } from '../components/TabBar';
 import StrategicAseDashboard from '../components/StrategicAseDashboard';
+import { DashboardHome, BottomNav } from '../components/DashboardHome';
+import { BarChart3, Target, MapPin, Users2, ShieldCheck, Flag, LayoutGrid } from 'lucide-react';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -106,7 +108,7 @@ export const HSDDashboardPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [mapData,   setMapData]   = useState<{ agents: any[]; visits: any[] }>({ agents: [], visits: [] });
   const [showMap,   setShowMap]   = useState(true);
-  const [mainTab,   setMainTab]   = useState<'dashboard' | 'ase' | 'site-focus' | 'users' | 'logins' | 'visits' | 'flags'>('dashboard');
+  const [mainTab,   setMainTab]   = useState<'home' | 'dashboard' | 'ase-tracker' | 'ase' | 'site-focus' | 'users' | 'logins' | 'visits' | 'flags'>('home');
   const [tdrFlags,  setTdrFlags]  = useState<TDRFlag[]>([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
   const [flagsOpen, setFlagsOpen] = useState<Record<string, boolean>>({});
@@ -292,11 +294,12 @@ export const HSDDashboardPage: React.FC = () => {
 
       {/* Main Tab Bar */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0" style={{ display: mainTab === 'home' ? 'none' : undefined }}>
           <TabBar
             active={mainTab}
             onChange={(id) => setMainTab(id as any)}
             tabs={[
+              { id: 'home',       label: '⌂ Menu' },
               { id: 'dashboard',  label: '📊 Overview' },
               { id: 'ase-tracker', label: '🎯 ASE Tracker' },
               { id: 'ase',        label: '📱 ASE & Devices' },
@@ -326,6 +329,26 @@ export const HSDDashboardPage: React.FC = () => {
       </div>
 
       {/* Red Flags Tab */}
+      {mainTab === 'home' && (
+        <div className="px-4 pb-28">
+          <DashboardHome
+            title="HSD Command Centre"
+            subtitle="National strategic view — choose a section"
+            onSelect={(id) => setMainTab(id as any)}
+            tiles={[
+              { id: 'dashboard',   label: 'Overview',       icon: <BarChart3 size={22} />, sub: 'Zones & KPIs' },
+              { id: 'ase-tracker', label: 'ASE Tracker',    icon: <Target size={22} />,    sub: 'Daily · WTD · MTD' },
+              { id: 'ase',         label: 'ASE & Devices',  icon: <Smartphone size={22} />, sub: 'KYC fleet' },
+              { id: 'site-focus',  label: 'Site Focus',     icon: <MapPin size={22} />,    sub: 'Territory' },
+              { id: 'users',       label: 'Users',          icon: <Users2 size={22} />,    sub: 'Manage access' },
+              { id: 'logins',      label: 'Login Activity', icon: <ShieldCheck size={22} />, sub: 'Audit' },
+              { id: 'visits',      label: 'Visit Quality',  icon: <Flag size={22} />,      sub: 'Field checks' },
+              { id: 'flags',       label: 'Flags',          icon: <Flag size={22} />,      sub: 'Escalations', badge: tdrFlags.length },
+            ]}
+          />
+        </div>
+      )}
+
       {mainTab === 'flags' && (
         <div className="px-4 pb-24">
           <div className="flex items-center justify-between mb-3">
@@ -939,6 +962,17 @@ export const HSDDashboardPage: React.FC = () => {
       {mainTab === 'users' && <UserManagement />}
       {mainTab === 'logins' && <LoginActivity />}
       {mainTab === 'visits' && <FlaggedVisits />}
+
+      <BottomNav
+        active={mainTab}
+        onChange={(id) => setMainTab(id as any)}
+        items={[
+          { id: 'home',        label: 'Menu',    icon: <LayoutGrid size={20} /> },
+          { id: 'dashboard',   label: 'Overview', icon: <BarChart3 size={20} /> },
+          { id: 'ase-tracker', label: 'ASE',     icon: <Target size={20} /> },
+          { id: 'flags',       label: 'Flags',   icon: <Flag size={20} /> },
+        ]}
+      />
     </Layout>
   );
 };

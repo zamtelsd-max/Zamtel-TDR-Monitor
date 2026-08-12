@@ -6,6 +6,8 @@ import { aseApi, flagsApi, ssoOdrApi } from '../services/api';
 import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
 import { TabBar } from '../components/TabBar';
 import StrategicAseDashboard from '../components/StrategicAseDashboard';
+import { DashboardHome, BottomNav } from '../components/DashboardHome';
+import { BarChart3, Target, LayoutGrid } from 'lucide-react';
 import { enqueueOffline } from '../utils/offlineQueue';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, workingDaysElapsed, workingDaysThisMonth, getBand } from '../utils/performance';
@@ -102,7 +104,7 @@ export const ASEDashboardPage: React.FC = () => {
   const { isOnline, pendingCount } = useOfflineSync();
 
   // ── ALL hooks must be declared before any early returns ──
-  const [tab, setTab]                   = useState<'my-tdrs' | 'kyc-devices' | 'kpi-score' | 'sso-odr' | 'pick-tdrs' | 'map' | 'site-focus'>('my-tdrs');
+  const [tab, setTab]                   = useState<'home' | 'my-tdrs' | 'ase-tracker' | 'kyc-devices' | 'kpi-score' | 'sso-odr' | 'pick-tdrs' | 'map' | 'site-focus'>('home');
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [ssoTab, setSsoTab]             = useState<'SSO' | 'ODR' | null>(null);
   const [ssoData, setSsoData]           = useState<{ sso: any[]; odr: any[] }>({ sso: [], odr: [] });
@@ -526,7 +528,25 @@ export const ASEDashboardPage: React.FC = () => {
       )}
 
       {/* Tab bar */}
-      <TabBar active={tab} onChange={(id) => setTab(id as any)} tabs={TABS as any} />
+      {tab !== 'home' && <TabBar active={tab} onChange={(id) => setTab(id as any)} tabs={[{ id: 'home', label: '⌂ Menu' }, ...TABS] as any} />}
+
+      {tab === 'home' && (
+        <div className="px-4 pb-28">
+          <DashboardHome
+            title={`${user?.name ?? 'ASE'}`}
+            subtitle="Area Sales Executive — choose a section"
+            onSelect={(id) => setTab(id as any)}
+            tiles={[
+              { id: 'ase-tracker', label: 'My Performance', icon: <Target size={22} />,     sub: 'Daily · WTD · MTD' },
+              { id: 'my-tdrs',     label: 'My TDRs',        icon: <Users size={22} />,      sub: `${stats.length} TDRs` },
+              { id: 'kyc-devices', label: 'KYC Devices',    icon: <Smartphone size={22} />, sub: 'My fleet' },
+              { id: 'kpi-score',   label: 'KPI Score',      icon: <BarChart3 size={22} />,  sub: 'Scorecard' },
+              { id: 'site-focus',  label: 'Site Focus',     icon: <MapPin size={22} />,     sub: 'Territory' },
+              { id: 'map',         label: 'Field Map',      icon: <Map size={22} />,        sub: 'Locations' },
+            ]}
+          />
+        </div>
+      )}
 
       {/* ── MY TDRs TAB ── */}
       {tab === 'my-tdrs' && (
@@ -1375,6 +1395,16 @@ export const ASEDashboardPage: React.FC = () => {
           addDevice={aseApi.addDevice}
         />
       )}
+      <BottomNav
+        active={tab}
+        onChange={(id) => setTab(id as any)}
+        items={[
+          { id: 'home',        label: 'Menu',        icon: <LayoutGrid size={20} /> },
+          { id: 'ase-tracker', label: 'Performance', icon: <Target size={20} /> },
+          { id: 'my-tdrs',     label: 'TDRs',        icon: <Users size={20} /> },
+          { id: 'kyc-devices', label: 'Devices',     icon: <Smartphone size={20} /> },
+        ]}
+      />
     </Layout>
   );
 };
