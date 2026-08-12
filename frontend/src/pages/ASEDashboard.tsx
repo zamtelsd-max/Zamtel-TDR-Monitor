@@ -491,7 +491,7 @@ export const ASEDashboardPage: React.FC = () => {
                     <RingChart pct={agentPct} size={80} stroke={9} color="#00843D" label="Agents MTD" />
                   </div>
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
-                    <RingChart pct={kycPct} size={80} stroke={9} color="#2563EB" label="KYC Devices" />
+                    <RingChart pct={kycPct} size={80} stroke={9} color="#006630" label="KYC Devices" />
                   </div>
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center py-3">
                     <RingChart pct={ssoTarget > 0 ? ssoOdrPct : 0} size={80} stroke={9} color="#8B5CF6" label="SSO+ODR" />
@@ -686,7 +686,7 @@ export const ASEDashboardPage: React.FC = () => {
                         <p className="font-bold text-sm text-gray-800 truncate">{tdr.name}</p>
                         <p className="text-xs text-gray-400">{tdr.zone || 'No zone'}</p>
                         <div className="mt-1.5 space-y-1">
-                          {([['Agents', agentPct, '#00843D'], ['Prosp', prospectPct, '#0EA5E9'], ['Visits', visitPct, '#2563EB'], ['React', reactPct, '#F97316']] as const).map(([l,p,c]) => (
+                          {([['Agents', agentPct, '#00843D'], ['Prosp', prospectPct, '#4CAF7D'], ['Visits', visitPct, '#006630'], ['React', reactPct, '#1a9d54']] as const).map(([l,p,c]) => (
                             <div key={l} className="flex items-center gap-1.5">
                               <span className="text-[9px] text-gray-400 w-8 shrink-0">{l}</span>
                               <div className="flex-1 h-1.5 bg-gray-100 rounded-full">
@@ -993,7 +993,7 @@ export const ASEDashboardPage: React.FC = () => {
             <Card className="mb-4 p-4">
               {/* Mode toggle */}
               <div className="flex gap-2 mb-3">
-                <button type="button" onClick={() => setSfMode('plan')} className={`flex-1 text-xs font-bold py-2 rounded-xl ${sfMode === 'plan' ? 'text-white' : 'bg-gray-100 text-gray-500'}`} style={sfMode === 'plan' ? { background: '#0EA5E9' } : {}}>📅 Plan Visit</button>
+                <button type="button" onClick={() => setSfMode('plan')} className={`flex-1 text-xs font-bold py-2 rounded-xl ${sfMode === 'plan' ? 'text-white' : 'bg-gray-100 text-gray-500'}`} style={sfMode === 'plan' ? { background: '#4CAF7D' } : {}}>📅 Plan Visit</button>
                 <button type="button" onClick={() => setSfMode('record')} className={`flex-1 text-xs font-bold py-2 rounded-xl ${sfMode === 'record' ? 'text-white' : 'bg-gray-100 text-gray-500'}`} style={sfMode === 'record' ? { background: '#00843D' } : {}}>✅ Record Results</button>
               </div>
               <div className="grid grid-cols-2 gap-2 mb-3">
@@ -1035,7 +1035,7 @@ export const ASEDashboardPage: React.FC = () => {
                 </>)}
                 <input value={sfForm.notes} onChange={e => setSfForm({...sfForm, notes: e.target.value})} placeholder="Notes (optional)" className="col-span-2 border rounded-xl px-3 py-2 text-sm" />
               </div>
-              <button onClick={saveSiteFocus} disabled={sfSaving} className="w-full text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50" style={{ background: sfMode === 'plan' ? '#0EA5E9' : '#00843D' }}>
+              <button onClick={saveSiteFocus} disabled={sfSaving} className="w-full text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50" style={{ background: sfMode === 'plan' ? '#4CAF7D' : '#00843D' }}>
                 {sfSaving ? 'Saving...' : (sfMode === 'plan' ? (sfEditingId ? 'Update Plan' : 'Save Planned Visit') : 'Save Results')}
               </button>
             </Card>
@@ -1053,9 +1053,9 @@ export const ASEDashboardPage: React.FC = () => {
               {siteFocusData.map((s: any) => {
                 const kpis = [
                   { l: 'Agents', v: s.agentsRec, t: 3,   c: '#00843D' },
-                  { l: 'SSOs',   v: s.ssosRec,   t: 2,   c: '#2563EB' },
+                  { l: 'SSOs',   v: s.ssosRec,   t: 2,   c: '#006630' },
                   { l: 'ODRs',   v: s.odrsRec,   t: 1,   c: '#7C3AED' },
-                  { l: 'Data',   v: s.dataActs,  t: 15,  c: '#F97316' },
+                  { l: 'Data',   v: s.dataActs,  t: 15,  c: '#1a9d54' },
                   { l: 'DTU ZMW', v: s.dtuSold,  t: 500, c: '#00843D' },
                   { l: 'ZM GA',   v: s.zmGrossAdds ?? 0, t: (s.siteType === 'rural' ? 30 : 50), c: '#0891B2' },
                 ];
@@ -1184,7 +1184,7 @@ export const ASEDashboardPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-2 mb-4">
               {[
                 { label: 'SSO Outlets', val: ssoSummary.totalSso, mtd: ssoSummary.mtdSso, target: ssoSummary.targetSso, color: '#8B5CF6', bg: '#F3E8FF' },
-                { label: 'ODR Outlets', val: ssoSummary.totalOdr, mtd: ssoSummary.mtdOdr, target: ssoSummary.targetOdr, color: '#F97316', bg: '#FFF7ED' },
+                { label: 'ODR Outlets', val: ssoSummary.totalOdr, mtd: ssoSummary.mtdOdr, target: ssoSummary.targetOdr, color: '#1a9d54', bg: '#FFF7ED' },
               ].map(c => (
                 <div key={c.label} className="rounded-2xl p-3 border border-gray-100" style={{ background: c.bg }}>
                   <p className="text-xs font-semibold text-gray-500 mb-1">{c.label}</p>
@@ -1209,7 +1209,7 @@ export const ASEDashboardPage: React.FC = () => {
             </button>
             <button onClick={() => setSsoTab('ODR')}
               className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white"
-              style={{ background: '#F97316' }}>
+              style={{ background: '#1a9d54' }}>
               <Store size={15} /> ➕ Add ODR
             </button>
           </div>

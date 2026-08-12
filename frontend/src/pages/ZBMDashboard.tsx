@@ -517,8 +517,8 @@ export const ZBMDashboardPage: React.FC = () => {
             <div className="space-y-1.5">
               {[
                 ['👤 Agent Recruitment', aPct, data.zone.totals.agents,             data.zone.targets.agents,    '#00843D'],
-                ['🎯 Prospects',   pPct, data.zone.totals.prospects ?? 0,           pTgtZone,                    '#0EA5E9'],
-                ['📍 Visits',      vPct, data.zone.totals.visits,                   data.zone.targets.visits,    '#2563EB'],
+                ['🎯 Prospects',   pPct, data.zone.totals.prospects ?? 0,           pTgtZone,                    '#4CAF7D'],
+                ['📍 Visits',      vPct, data.zone.totals.visits,                   data.zone.targets.visits,    '#006630'],
                 ['🔄 Reactivations', rPct, data.zone.totals.reactivations ?? 0,     6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), '#8B5CF6'],
               ].map(([l, p, v, t, c]) => (
                 <div key={l as string} className="flex items-center gap-2">
@@ -542,11 +542,11 @@ export const ZBMDashboardPage: React.FC = () => {
         const vPct = Math.min(Math.round(data.zone.totals.visits / vTgt * 100), 100);
         const chips = [
           { label: 'Agents',    val: data.zone.totals.agents,    pct: aPct, color: '#00843D', bg: '#f0fdf4' },
-          { label: 'Prospects', val: data.zone.totals.prospects ?? 0, pct: 0, color: '#0EA5E9', bg: '#f0f9ff' },
-          { label: 'Visits',    val: data.zone.totals.visits,    pct: vPct, color: '#2563EB', bg: '#eff6ff' },
+          { label: 'Prospects', val: data.zone.totals.prospects ?? 0, pct: 0, color: '#4CAF7D', bg: '#E8F5EE' },
+          { label: 'Visits',    val: data.zone.totals.visits,    pct: vPct, color: '#006630', bg: '#E8F5EE' },
           { label: 'Reactiv.',  val: data.zone.totals.reactivations ?? 0, pct: 0, color: '#8B5CF6', bg: '#f5f3ff' },
           { label: 'SSO MTD',   val: ssoSummary?.mtdSso ?? 0,   pct: ssoSummary?.targetSso ? Math.min(100, Math.round((ssoSummary.mtdSso / ssoSummary.targetSso) * 100)) : 0, color: '#8B5CF6', bg: '#f5f3ff' },
-          { label: 'ODR MTD',   val: ssoSummary?.mtdOdr ?? 0,   pct: ssoSummary?.targetOdr ? Math.min(100, Math.round((ssoSummary.mtdOdr / ssoSummary.targetOdr) * 100)) : 0, color: '#F97316', bg: '#fff7ed' },
+          { label: 'ODR MTD',   val: ssoSummary?.mtdOdr ?? 0,   pct: ssoSummary?.targetOdr ? Math.min(100, Math.round((ssoSummary.mtdOdr / ssoSummary.targetOdr) * 100)) : 0, color: '#1a9d54', bg: '#E8F5EE' },
         ];
         return (
           <div className="grid grid-cols-3 gap-2 mb-4">
@@ -670,7 +670,7 @@ export const ZBMDashboardPage: React.FC = () => {
                       </p>
                       <p className="text-xs text-gray-400">{row.tdr.zone}</p>
                       <div className="mt-1.5 space-y-1">
-                        {([['Agents', agentPct, '#00843D'], ['Visits', visitPct, '#2563EB']] as const).map(([l,p,c]) => (
+                        {([['Agents', agentPct, '#00843D'], ['Visits', visitPct, '#006630']] as const).map(([l,p,c]) => (
                           <div key={l} className="flex items-center gap-1.5">
                             <span className="text-[9px] text-gray-400 w-8 shrink-0">{l}</span>
                             <div className="flex-1 h-1.5 bg-gray-100 rounded-full">
