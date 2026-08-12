@@ -178,8 +178,8 @@ export const HSDDashboardPage: React.FC = () => {
       });
       const r = await hsdApi.uploadKyc(b64);
       const d = r.data.data;
-      toast.success(`KYC report applied: ${d.updated} devices updated (${d.nowActive} active, ${d.nowInactive} inactive)`, { duration: 7000 });
-      if (d.notFound > 0) toast(`${d.notFound} rows had no matching device (by IMEI/MSISDN)`, { icon: 'ℹ️', duration: 6000 });
+      toast.success(`KYC report applied: ${d.updated} updated, ${d.inserted || 0} new devices added (${d.nowActive} active, ${d.nowInactive} inactive)`, { duration: 7000 });
+      if (d.notFound > 0) toast(`${d.notFound} rows could not be processed`, { icon: 'ℹ️', duration: 6000 });
       fetchData();
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'KYC upload failed');

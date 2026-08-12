@@ -40,6 +40,13 @@ agentReconRouter.post('/upload-agents', requireAuth('HSD', 'DM'), async (req: Re
       };
       await prisma.canonicalAgent.upsert({ where: { agentCode: code }, update: data, create: { agentCode: code, ...data } });
       upserted++;
+      // Also update the operational agent base if this code exists there (name/region kept fresh)
+      if (data.agentName || data.region) {
+        await prisma.agent.updateMany({
+          where: { agentCode: code },
+          data: { ...(data.agentName ? { agentName: data.agentName } : {}), ...(data.region ? { zone: data.region } : {}), updatedAt: new Date() },
+        }).catch(() => {});
+      }
     }
 
     // Run reconciliation immediately

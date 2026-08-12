@@ -989,7 +989,7 @@ hsdRouter.post('/kyc-upload', async (req: Request, res: Response): Promise<void>
       const n = Number(v); return isNaN(n) ? 0 : (n > 0 ? 1 : 0);
     };
 
-    let matched = 0, updated = 0, notFound = 0, activeCount = 0, inactiveCount = 0;
+    let matched = 0, updated = 0, inserted = 0, notFound = 0, activeCount = 0, inactiveCount = 0;
     for (const r of rows) {
       const imei = String(keyOf(r, 'imei1', 'imei', 'imei 1', 'device imei') ?? '').trim();
       const msisdn = String(keyOf(r, 'msisdn', 'phone', 'agent number') ?? '').trim();
@@ -1003,7 +1003,26 @@ hsdRouter.post('/kyc-upload', async (req: Request, res: Response): Promise<void>
 
       const where = imei ? `imei1 = '${imei.replace(/'/g, "''")}'` : `msisdn = '${msisdn.replace(/'/g, "''")}'`;
       const found = await prisma.$queryRawUnsafe(`SELECT id FROM kyc_devices WHERE ${where} LIMIT 1`) as any[];
-      if (!found.length) { notFound++; continue; }
+      if (!found.length) {
+        // Not in base yet → INSERT as a new device (so the base grows with each report)
+        const dealer = String(keyOf(r, 'dealerCode', 'dealer_code', 'dealer code') ?? '').trim() || null;
+        const region = String(keyOf(r, 'region', 'zone', 'province') ?? '').trim() || null;
+        const ase    = String(keyOf(r, 'aseName', 'ase', 'ase/bdc/tse', 'supervisor') ?? '').trim() || null;
+        const teamLead = String(keyOf(r, 'teamLead', 'team lead') ?? '').trim() || null;
+        const simSerial = String(keyOf(r, 'simSerial', 'sim serial') ?? '').trim() || null;
+        const desc   = String(keyOf(r, 'description', 'device', 'device type') ?? 'KYC Upload').trim();
+        try {
+          await prisma.$executeRawUnsafe(
+            `INSERT INTO kyc_devices (id,"dealerCode","description","imei1","msisdn","simSerial","region","zone","aseName","teamLead","status","activityStatus","kycReg","grossAdds","zamoGA","recharges","deviceSource","createdAt","updatedAt")
+             VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW(),NOW())`,
+            dealer, desc, imei || null, msisdn || null, simSerial, region, ase, teamLead,
+            act ? 'ACTIVE' : 'INACTIVE', act, kyc, ga, zamo, rech,
+            (desc || '').includes('A100') ? 'ItelA100C' : ((desc || '').includes('A50') ? 'A50' : 'MobiGO2+')
+          );
+          inserted++; if (act) activeCount++; else inactiveCount++;
+        } catch { notFound++; }
+        continue;
+      }
       matched++;
       await prisma.$queryRawUnsafe(
         `UPDATE kyc_devices SET "activityStatus"=$1, "kycReg"=$2, "grossAdds"=$3, "zamoGA"=$4, "recharges"=$5, "status"=$6, "updatedAt"=NOW() WHERE id=$7`,
@@ -1011,7 +1030,7 @@ hsdRouter.post('/kyc-upload', async (req: Request, res: Response): Promise<void>
       );
       updated++; if (act) activeCount++; else inactiveCount++;
     }
-    res.json({ success: true, data: { totalRows: rows.length, matched, updated, notFound, nowActive: activeCount, nowInactive: inactiveCount } });
+    res.json({ success: true, data: { totalRows: rows.length, matched, updated, inserted, notFound, nowActive: activeCount, nowInactive: inactiveCount } });
   } catch (err) {
     console.error('KYC upload error:', err);
     res.status(500).json({ error: 'KYC upload failed — check the file format' });

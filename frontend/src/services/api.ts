@@ -332,7 +332,7 @@ export const hsdApi = {
     client.post('/hsd/devices', data),
 
   uploadKyc: (fileBase64: string) =>
-    client.post<{ success: boolean; data: { totalRows: number; matched: number; updated: number; notFound: number; nowActive: number; nowInactive: number } }>('/hsd/kyc-upload', { fileBase64 }),
+    client.post<{ success: boolean; data: { totalRows: number; matched: number; updated: number; notFound: number; inserted: number; nowActive: number; nowInactive: number } }>('/hsd/kyc-upload', { fileBase64 }),
 
   uploadRegistrations: (fileBase64: string) =>
     client.post<{ success: boolean; data: { report: string; rows: number; inserted: number; attributed: number; viaDealerCode: number; viaSupervisor: number; unmapped: number; skipped: number; days: string[] } }>('/ase-tracker/upload-registrations', { fileBase64 }),
