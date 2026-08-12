@@ -473,65 +473,7 @@ export const HSDDashboardPage: React.FC = () => {
       {/* Modern strategic overview — KPI cards, rings, bar charts (green/white) */}
       {dashboard && <NationalOverview dashboard={dashboard} zones={zones} />}
 
-      {/* National KPI — performance against target (built from zone targets) */}
-      {loading && !dashboard ? (
-        <div className="space-y-2 mb-4">{[0,1,2].map(i => <Skeleton key={i} className="h-8 rounded-xl" />)}</div>
-      ) : dashboard && (
-        <Card className="mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-zamtel-green" />
-            <h3 className="font-bold text-sm text-gray-800">National Performance Against Target</h3>
-            <span className="text-xs text-gray-400 ml-auto">Built up from all zone targets</span>
-          </div>
-          {/* Overall national weighted score */}
-          {(() => {
-            const kpis = dashboard.kpis as any;
-            const aPct = kpis.agentPct    ?? 0;
-            const vPct = kpis.visitPct    ?? 0;
-            const pPct = kpis.prospectPct ?? 0;
-            const reactPct = kpis.reactivationPct ?? 0;
-            // Weights: Agents 50%, Prospects 10%, Visits 10%, Reactivation 15%, Float 15%
-            const fPct = floatResolutionPct(0, kpis.openFloatIssues ?? 0);
-            const overall = Math.round(aPct * 0.5 + pPct * 0.1 + vPct * 0.1 + reactPct * 0.15 + fPct * 0.15);
-            const band = getBand(overall);
-            return (
-              <>
-                {/* Ring charts row */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  <RingChart pct={overall}  color={band.ring || '#00843D'} label="Overall" sublabel="weighted"/>
-                  <RingChart pct={Math.min(aPct,100)} color="#00843D" label="Agents" sublabel="50% wt"/>
-                  <RingChart pct={Math.min(pPct,100)} color="#4CAF7D" label="Prospects" sublabel="10% wt"/>
-                  <RingChart pct={Math.min(vPct,100)} color="#00843D" label="Visits" sublabel="10% wt"/>
-                  <RingChart pct={Math.min(reactPct,100)} color="#8B5CF6" label="Reactivations" sublabel="15% wt"/>
-                </div>
-                {/* Overall score banner */}
-                <div className={`rounded-xl p-3 mb-3 flex items-center justify-between ${band.bg}`}>
-                  <div>
-                    <p className={`text-2xl font-black ${band.color}`}>{overall}%</p>
-                    <p className={`text-xs font-bold ${band.color}`}>{band.label} — National Weighted Score</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{kpis.totalAgents} agents · {kpis.totalVisits} visits</p>
-                  </div>
-                  <div className="text-right text-xs text-gray-500 space-y-1">
-                    <p>Open Float: <span className={`font-bold ${(kpis.openFloatIssues||0) > 0 ? 'text-red-600' : 'text-green-600'}`}>{kpis.openFloatIssues || 0}</span></p>
-                    <p>Conversion: <span className="font-bold text-green-700">{kpis.conversionRate || 0}%</span></p>
-                  </div>
-                </div>
-                {/* Per-KPI bars */}
-                <div className="space-y-3">
-                  <PerformanceBar label="Agent Recruitment (50% weight)" icon="👤"
-                    count={kpis.totalAgents || 0} target={kpis.nationalTargets?.agents || 1}/>
-                  <PerformanceBar label="Prospects (10% weight)" icon="🎯"
-                    count={kpis.totalProspects || 0} target={kpis.nationalTargets?.prospects || 1}/>
-                  <PerformanceBar label="Outlet Visits (10% weight)" icon="📍"
-                    count={kpis.totalVisits || 0} target={kpis.nationalTargets?.visits || 1}/>
-                  <PerformanceBar label="Agent Reactivation (15% weight)" icon="🔄"
-                    count={kpis.totalReactivations || 0} target={kpis.nationalTargets?.reactivations || 1}/>
-                </div>
-              </>
-            );
-          })()}
-        </Card>
-      )}
+      {/* (National Performance rings now shown in NationalOverview above) */}
 
       {/* NT Base Inactive vs Reactivated — HSD national view */}
       {dashboard?.ntBase && (

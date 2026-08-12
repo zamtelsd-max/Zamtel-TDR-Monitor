@@ -28,8 +28,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, backT
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header — Zamtel green */}
-      <header className="zamtel-header text-white sticky top-0 z-50 shadow-lg mb-1">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+      <header className="zamtel-header text-white sticky top-0 z-50 shadow-md mb-1">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-3">
           {showBack && (
             <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-white/10 transition flex-shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,7 +47,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, backT
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <h1 className="font-bold text-sm truncate">{title || 'Sales & Distribution Productivity Tool'}</h1>
-                <span className="hidden sm:inline-block text-[10px] bg-zamtel-pink text-white px-1.5 py-0.5 rounded-full font-semibold">
+                <span className="hidden sm:inline-block text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-semibold">
                   {user ? getShortTitle(user.id, user.role) : 'ZAMTEL'}
                 </span>
               </div>

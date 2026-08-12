@@ -32,7 +32,7 @@ export const DashboardHome: React.FC<{
     {/* Brand hero banner — Zamtel "Create your world" */}
     <div style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', marginBottom: 16, boxShadow: '0 4px 16px rgba(0,80,40,.12)' }}>
       <img src="brand/comehome.jpg" alt="Zamtel" style={{ width: '100%', height: 132, objectFit: 'cover', objectPosition: 'center 28%', display: 'block' }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(100deg, rgba(0,102,48,.86) 0%, rgba(0,132,61,.45) 48%, rgba(0,0,0,0) 78%)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(100deg, rgba(0,102,48,.62) 0%, rgba(0,132,61,.28) 46%, rgba(0,0,0,0) 74%)' }} />
       <div style={{ position: 'absolute', top: 0, bottom: 0, left: 18, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: '72%' }}>
         <h2 style={{ fontSize: 20, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: -0.3, textShadow: '0 1px 4px rgba(0,0,0,.25)' }}>{title}</h2>
         {subtitle && <p style={{ fontSize: 12, color: 'rgba(255,255,255,.92)', margin: '3px 0 0', textShadow: '0 1px 3px rgba(0,0,0,.25)' }}>{subtitle}</p>}

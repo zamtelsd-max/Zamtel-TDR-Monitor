@@ -519,7 +519,7 @@ export const ZBMDashboardPage: React.FC = () => {
                 ['👤 Agent Recruitment', aPct, data.zone.totals.agents,             data.zone.targets.agents,    '#00843D'],
                 ['🎯 Prospects',   pPct, data.zone.totals.prospects ?? 0,           pTgtZone,                    '#4CAF7D'],
                 ['📍 Visits',      vPct, data.zone.totals.visits,                   data.zone.targets.visits,    '#006630'],
-                ['🔄 Reactivations', rPct, data.zone.totals.reactivations ?? 0,     6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), '#8B5CF6'],
+                ['🔄 Reactivations', rPct, data.zone.totals.reactivations ?? 0,     6 * workingDaysElapsed() * (data.tdrStats?.length ?? 1), '#4CAF7D'],
               ].map(([l, p, v, t, c]) => (
                 <div key={l as string} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 w-24 shrink-0">{l}</span>
@@ -544,8 +544,8 @@ export const ZBMDashboardPage: React.FC = () => {
           { label: 'Agents',    val: data.zone.totals.agents,    pct: aPct, color: '#00843D', bg: '#f0fdf4' },
           { label: 'Prospects', val: data.zone.totals.prospects ?? 0, pct: 0, color: '#4CAF7D', bg: '#E8F5EE' },
           { label: 'Visits',    val: data.zone.totals.visits,    pct: vPct, color: '#006630', bg: '#E8F5EE' },
-          { label: 'Reactiv.',  val: data.zone.totals.reactivations ?? 0, pct: 0, color: '#8B5CF6', bg: '#f5f3ff' },
-          { label: 'SSO MTD',   val: ssoSummary?.mtdSso ?? 0,   pct: ssoSummary?.targetSso ? Math.min(100, Math.round((ssoSummary.mtdSso / ssoSummary.targetSso) * 100)) : 0, color: '#8B5CF6', bg: '#f5f3ff' },
+          { label: 'Reactiv.',  val: data.zone.totals.reactivations ?? 0, pct: 0, color: '#4CAF7D', bg: '#E8F5EE' },
+          { label: 'SSO MTD',   val: ssoSummary?.mtdSso ?? 0,   pct: ssoSummary?.targetSso ? Math.min(100, Math.round((ssoSummary.mtdSso / ssoSummary.targetSso) * 100)) : 0, color: '#4CAF7D', bg: '#E8F5EE' },
           { label: 'ODR MTD',   val: ssoSummary?.mtdOdr ?? 0,   pct: ssoSummary?.targetOdr ? Math.min(100, Math.round((ssoSummary.mtdOdr / ssoSummary.targetOdr) * 100)) : 0, color: '#1a9d54', bg: '#E8F5EE' },
         ];
         return (
@@ -571,7 +571,7 @@ export const ZBMDashboardPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className="text-[10px] text-gray-500 font-semibold block mb-1">SSO Target</label>
-              <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              <input type="number" min="0" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                 value={ssoTarget.targetSso} onChange={e => setSsoTarget(p => ({ ...p, targetSso: e.target.value }))}
                 placeholder={String(ssoSummary?.targetSso || 10)} />
             </div>

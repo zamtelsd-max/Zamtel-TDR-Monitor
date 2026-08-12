@@ -40,9 +40,10 @@
   }
   /* Header: pure Zamtel green sweep with curved white bottom edge */
   .zamtel-header {
-    background: linear-gradient(105deg, #006630 0%, #00843D 55%, #1a9d54 100%);
-    border-bottom-left-radius: 22px;
-    border-bottom-right-radius: 22px;
+    /* Softer, refined single-tone green — less heavy/bright on top */
+    background: linear-gradient(100deg, #00743a 0%, #00843D 100%);
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
     position: relative;
   }
   .zamtel-header::after {
