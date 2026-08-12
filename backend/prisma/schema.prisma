@@ -119,6 +119,10 @@ model User {
   updatedAt     DateTime       @updatedAt
   aseId         String?
   mustChangePin Boolean        @default(false)
+  fakeCodeCount Int            @default(0)   // rolling 90-day fake codes
+  blockedForFakeCodes Boolean  @default(false)
+  blockReason   String?
+  cooldownUntil DateTime?
   agents        Agent[]
   floatIssues   FloatIssue[]
   odrOutlets    OdrOutlet[]    @relation("TdrOdrOutlets")
@@ -450,4 +454,42 @@ model LoginLog {
   @@index([role])
   @@index([loggedAt])
   @@map("login_logs")
+}
+
+// ═══ TDR Tool: Canonical Agent upload + Fake-Code Reconciliation (spec 2026-08) ═══
+model CanonicalAgent {
+  id           String   @id @default(cuid())
+  agentCode    String   @unique
+  agentName    String?
+  creationDate DateTime?
+  tdrId        String?
+  tdrName      String?
+  region       String?
+  status       String   @default("Active")   // Active | Dormant | Terminated
+  uploadBatch  String?                         // upload timestamp/period for supersede
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tdrId])
+  @@index([status])
+  @@map("canonical_agents")
+}
+
+model CodeReconciliation {
+  id          String   @id @default(cuid())
+  agentCode   String
+  tdrId       String?
+  tdrName     String?
+  zone        String?
+  result      String   // Matched | FakeCode | Unreported | Suspected
+  claimants   Int      @default(1)   // # of TDRs claiming this code (Suspected if >1)
+  detectedAt  DateTime @default(now())
+  period      String                  // YYYY-MM window
+  disputed    Boolean  @default(false)
+  resolvedAt  DateTime?
+
+  @@index([tdrId, result])
+  @@index([result])
+  @@unique([agentCode, period], name: "recon_code_period")
+  @@map("code_reconciliations")
 }

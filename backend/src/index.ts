@@ -15,6 +15,7 @@ import { flagsRouter }  from './routes/flags';
 import { dmRouter }     from './routes/dm';
 import { ssoOdrRouter } from './routes/ssoOdr';
 import { aseTrackerRouter } from './routes/aseTracker';
+import { agentReconRouter } from './routes/agentReconciliation';
 import { errorHandler } from './middleware/errorHandler';
 
 const app  = express();
@@ -49,6 +50,7 @@ app.use('/api/v1/flags', flagsRouter);
 app.use('/api/v1/dm',      dmRouter);
 app.use('/api/v1/sso-odr', ssoOdrRouter);
 app.use('/api/v1/ase-tracker', aseTrackerRouter);
+app.use('/api/v1/agent-recon', agentReconRouter);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
