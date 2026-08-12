@@ -330,7 +330,7 @@ export const DMDashboardPage: React.FC = () => {
               <SC label="Inactive"       value={(summary.inactive||summary.total-summary.active).toLocaleString()} color="text-red-500"/>
               <SC label="KYC Reg"        value={summary.total_kyc.toLocaleString()} color="text-purple-600"/>
               <SC label="Gross Adds"     value={summary.total_ga.toLocaleString()} color="text-amber-600"/>
-              <SC label="ZaMo GA"        value={(summary.total_zamo||0).toLocaleString()} color="text-pink-600"/>
+              <SC label="ZaMo GA"        value={(summary.total_zamo||0).toLocaleString()} color="text-green-700"/>
             </div>
 
             {/* Device source breakdown */}

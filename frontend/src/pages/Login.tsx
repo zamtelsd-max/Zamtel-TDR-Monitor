@@ -143,7 +143,7 @@ export const Login: React.FC = () => {
         {/* Login card */}
         <div className="w-full max-w-sm">
           <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden">
-            <div className="h-2 w-full rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #00843D 0%, #006830 35%, #C0005A 70%, #E4007C 100%)' }} />
+            <div className="h-2 w-full rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #00843D 0%, #006830 35%, #006830 70%, #00843D 100%)' }} />
 
             <div className="p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-0.5 text-center">Sign In</h2>

@@ -321,7 +321,7 @@ export const HSDDashboardPage: React.FC = () => {
         <button
           onClick={() => kycFileRef.current?.click()}
           disabled={kycUploading}
-          className="flex-shrink-0 flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:bg-blue-700 transition-all whitespace-nowrap disabled:opacity-50"
+          className="flex-shrink-0 flex items-center gap-1.5 bg-zamtel-green text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:bg-green-800 transition-all whitespace-nowrap disabled:opacity-50"
           title="Upload KYC report (xlsx/csv) to update active/inactive devices"
         >
           📤 {kycUploading ? 'Uploading…' : 'Upload KYC'}
@@ -661,7 +661,7 @@ export const HSDDashboardPage: React.FC = () => {
           </div>
           {/* Map tips bar */}
           {!showMap && (
-            <div className="px-4 py-2 bg-blue-50 flex gap-4 text-[10px] text-blue-600 border-b border-blue-100">
+            <div className="px-4 py-2 bg-green-50 flex gap-4 text-[10px] text-green-700 border-b border-blue-100">
               <span>🖱 Scroll to zoom</span>
               <span>✋ Drag to pan</span>
               <span>📍 Click pin for details</span>
@@ -811,7 +811,7 @@ export const HSDDashboardPage: React.FC = () => {
                 />
                 <RingChart
                   pct={asePerf.summary?.avgScore || 0}
-                  size={100} stroke={11} color="#E4007C"
+                  size={100} stroke={11} color="#00843D"
                   label="Avg ASE Score" sublabel={`${asePerf.summary?.totalASEs} ASEs`}
                 />
                 <RingChart
@@ -825,7 +825,7 @@ export const HSDDashboardPage: React.FC = () => {
               {/* Stat row */}
               <div className="grid grid-cols-4 gap-2 text-center">
                 {[
-                  ['Total Devices', asePerf.summary?.totalDevices?.toLocaleString(), 'text-blue-600'],
+                  ['Total Devices', asePerf.summary?.totalDevices?.toLocaleString(), 'text-green-700'],
                   ['Active',        asePerf.summary?.activeDevices?.toLocaleString(), 'text-green-600'],
                   ['Inactive',      asePerf.summary?.inactiveDevices?.toLocaleString(), 'text-red-500'],
                   ['Gross Adds',    asePerf.summary?.totalGA?.toLocaleString(), 'text-amber-600'],
@@ -906,12 +906,12 @@ export const HSDDashboardPage: React.FC = () => {
                           <p className="text-xs font-bold text-green-700">{ase.kycDeviceScore}%</p>
                           <p className="text-[8px] text-gray-400">KYC Dev</p>
                         </div>
-                        <div className="bg-blue-50 rounded-lg py-1">
-                          <p className="text-xs font-bold text-blue-700">{ase.supervisionScore}%</p>
+                        <div className="bg-green-50 rounded-lg py-1">
+                          <p className="text-xs font-bold text-green-800">{ase.supervisionScore}%</p>
                           <p className="text-[8px] text-gray-400">Supervis.</p>
                         </div>
-                        <div className="bg-pink-50 rounded-lg py-1">
-                          <p className="text-xs font-bold text-pink-700">{ase.siteFocusScore ?? 0}%</p>
+                        <div className="bg-green-50 rounded-lg py-1">
+                          <p className="text-xs font-bold text-green-700">{ase.siteFocusScore ?? 0}%</p>
                           <p className="text-[8px] text-gray-400">Site Focus</p>
                         </div>
                         <div className="bg-gray-50 rounded-lg py-1">

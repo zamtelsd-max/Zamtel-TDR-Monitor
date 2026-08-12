@@ -38,9 +38,9 @@
   .zamtel-gradient-hero {
     background: linear-gradient(135deg, #00843D 0%, #006830 60%, #004d24 100%);
   }
-  /* Header: green → pink sweep with curved white bottom edge */
+  /* Header: pure Zamtel green sweep with curved white bottom edge */
   .zamtel-header {
-    background: linear-gradient(105deg, #00843D 0%, #006830 45%, #C0005A 75%, #E4007C 100%);
+    background: linear-gradient(105deg, #006630 0%, #00843D 55%, #1a9d54 100%);
     border-bottom-left-radius: 22px;
     border-bottom-right-radius: 22px;
     position: relative;
@@ -57,12 +57,16 @@
     opacity: 0.18;
   }
   .zamtel-card-green {
-    background: linear-gradient(135deg, #00843D22 0%, #00843D08 100%);
+    background: linear-gradient(135deg, #00843D14 0%, #00843D05 100%);
     border-left: 4px solid #00843D;
   }
+  /* pink accent retired — mapped to green for brand consistency */
   .zamtel-card-pink {
-    background: linear-gradient(135deg, #E4007C22 0%, #E4007C08 100%);
-    border-left: 4px solid #E4007C;
+    background: linear-gradient(135deg, #00843D14 0%, #00843D05 100%);
+    border-left: 4px solid #00843D;
+  }
+  .zamtel-gradient-pink {
+    background: linear-gradient(135deg, #00843D 0%, #006830 100%);
   }
 }
 

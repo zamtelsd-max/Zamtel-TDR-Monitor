@@ -800,7 +800,7 @@ export const ZBMDashboardPage: React.FC = () => {
                     <p className="text-xs text-gray-500 mt-0.5">Total ASEs</p>
                   </div>
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 text-center">
-                    <p className="text-2xl font-black text-blue-600">{ap.totalDevices}</p>
+                    <p className="text-2xl font-black text-green-700">{ap.totalDevices}</p>
                     <p className="text-xs text-gray-500 mt-0.5">Total Devices</p>
                   </div>
                   <div className={`rounded-2xl border shadow-sm p-3 text-center ${ap.activeDeviceRate >= 70 ? 'bg-green-50 border-green-200' : ap.activeDeviceRate >= 40 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>

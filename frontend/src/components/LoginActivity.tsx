@@ -51,7 +51,7 @@ export function LoginActivity() {
           <div className="grid grid-cols-3 gap-3">
             <Card label="Today" logins={s.today.logins} users={s.today.uniqueUsers} total={s.totalUsers} accent="#00843D" />
             <Card label="This Week" logins={s.weekly.logins} users={s.weekly.uniqueUsers} total={s.totalUsers} accent="#2563EB" />
-            <Card label="This Month" logins={s.monthly.logins} users={s.monthly.uniqueUsers} total={s.totalUsers} accent="#E4007C" />
+            <Card label="This Month" logins={s.monthly.logins} users={s.monthly.uniqueUsers} total={s.totalUsers} accent="#00843D" />
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-4 py-2 bg-gray-50 flex text-[10px] font-bold text-gray-400 uppercase tracking-wide">

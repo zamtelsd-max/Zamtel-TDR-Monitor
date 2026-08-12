@@ -43,7 +43,7 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
           ['SSOs', t.ssos, at.ssos, '#2563EB'],
           ['ODRs', t.odrs, at.odrs, '#7C3AED'],
           ['Data Acts', t.dataActs, at.dataActs, '#F97316'],
-          ['DTU (ZMW)', t.dtu, at.dtu, '#E4007C'],
+          ['DTU (ZMW)', t.dtu, at.dtu, '#00843D'],
           ['ZM Gross Adds', t.zmGa, at.zmGa, '#0891B2'],
         ] as [string, number, number, string][]).map(([l, val, pct, c]) => (
           <div key={l} className="flex items-center gap-2 mb-1.5">

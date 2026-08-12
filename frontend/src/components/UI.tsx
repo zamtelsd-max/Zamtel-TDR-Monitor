@@ -63,7 +63,7 @@ export const Button: React.FC<ButtonProps> = ({
   const base = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed';
   const variants = {
     primary:   'bg-zamtel-green text-white hover:bg-zamtel-green-dark focus:ring-zamtel-green',
-    pink:      'bg-zamtel-pink text-white hover:bg-zamtel-pink-dark focus:ring-zamtel-pink',
+    pink:      'bg-zamtel-green text-white hover:bg-zamtel-green-dark focus:ring-zamtel-green',
     secondary: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus:ring-gray-300',
     danger:    'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
     ghost:     'bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-300',
@@ -131,21 +131,34 @@ interface StatCardProps {
   label: string; value: number | string; sub?: string;
   icon?: React.ReactNode; color?: string; loading?: boolean; accent?: 'green' | 'pink';
 }
-export const StatCard: React.FC<StatCardProps> = ({ label, value, sub, icon, color = 'text-zamtel-green', loading, accent }) => (
-  <Card className={clsx(accent === 'pink' ? 'zamtel-card-pink' : accent === 'green' ? 'zamtel-card-green' : '')}>
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        {loading ? (
-          <><Skeleton className="h-7 w-16 mb-1" /><Skeleton className="h-4 w-24" /></>
-        ) : (
-          <>
-            <p className={clsx('text-2xl font-bold', color)}>{value}</p>
-            <p className="text-sm text-gray-500 mt-0.5">{label}</p>
-            {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-          </>
+export const StatCard: React.FC<StatCardProps> = ({ label, value, sub, icon, color, loading, accent }) => {
+  // Modern KPI card: white surface, faint-green icon chip, big green number,
+  // subtle top accent bar. Zamtel green/white identity across all dashboards.
+  const trendUp = typeof sub === 'string' && /▲|\+|up/i.test(sub);
+  const trendDown = typeof sub === 'string' && /▼|-\d|down/i.test(sub);
+  return (
+    <div className="relative bg-white rounded-2xl border border-[#DCEAE2] p-4 overflow-hidden shadow-[0_1px_3px_rgba(0,80,40,0.05)] transition-all hover:shadow-[0_6px_18px_rgba(0,132,61,0.12)] hover:-translate-y-0.5">
+      <span className="absolute top-0 left-0 h-1 w-full" style={{ background: 'linear-gradient(90deg,#00843D,#4CAF7D)' }} />
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          {loading ? (
+            <><Skeleton className="h-8 w-20 mb-1.5" /><Skeleton className="h-3.5 w-24" /></>
+          ) : (
+            <>
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-[#5B7267] mb-1.5">{label}</p>
+              <p className="text-[28px] leading-none font-extrabold text-[#006630]">{value}</p>
+              {sub && (
+                <p className={clsx('text-xs mt-1.5 font-medium', trendUp ? 'text-[#00843D]' : trendDown ? 'text-[#5B7267]' : 'text-[#5B7267]')}>{sub}</p>
+              )}
+            </>
+          )}
+        </div>
+        {icon && (
+          <div className="ml-3 shrink-0 w-11 h-11 rounded-xl grid place-items-center" style={{ background: '#E8F5EE', color: '#006630' }}>
+            {icon}
+          </div>
         )}
       </div>
-      {icon && <div className="ml-3 text-gray-300">{icon}</div>}
     </div>
-  </Card>
-);
+  );
+};

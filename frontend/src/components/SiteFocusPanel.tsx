@@ -136,7 +136,7 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
               { l: 'SSOs', v: s.ssosRec, t: 2, c: '#2563EB' },
               { l: 'ODRs', v: s.odrsRec, t: 1, c: '#7C3AED' },
               { l: 'Data', v: s.dataActs, t: 15, c: '#F97316' },
-              { l: 'DTU ZMW', v: s.dtuSold, t: 500, c: '#E4007C' },
+              { l: 'DTU ZMW', v: s.dtuSold, t: 500, c: '#00843D' },
               { l: 'ZM GA', v: s.zmGrossAdds ?? 0, t: (s.siteType === 'rural' ? 30 : 50), c: '#0891B2' },
             ];
             const open = expanded === s.id;
@@ -177,7 +177,7 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
                         {s.agentCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">Agents:</span> {s.agentCodes}</p>}
                         {s.ssoCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-blue-700">SSOs:</span> {s.ssoCodes}</p>}
                         {s.odrCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-purple-700">ODRs:</span> {s.odrCodes}</p>}
-                        {s.dtuAgentCode && <p className="text-[10px] text-gray-500"><span className="font-bold text-pink-700">DTU from:</span> {s.dtuAgentCode} (K{s.dtuSold})</p>}
+                        {s.dtuAgentCode && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">DTU from:</span> {s.dtuAgentCode} (K{s.dtuSold})</p>}
                       </div>
                     )}
                     {s.notes && <p className="text-[10px] text-gray-400 italic mt-1">{s.notes}</p>}

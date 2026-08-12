@@ -186,7 +186,7 @@ export const GeoMap: React.FC<GeoMapProps> = ({
         // In Lusaka view: outer ring shows ZBM territory colour
         const lusZbm = (activeZone === 'Lusaka (Both)' || activeZone === 'Lusaka North' || activeZone === 'Lusaka South')
           ? LUSAKA_ZBM[a.zone] : null;
-        const borderColour = lusZbm ? lusZbm.colour : (isMerchant ? '#E4007C' : '#ffffff');
+        const borderColour = lusZbm ? lusZbm.colour : (isMerchant ? '#00843D' : '#ffffff');
         const dotSize = lusZbm ? 13 : 12;
         const icon = L.divIcon({
           className: '',
@@ -387,9 +387,9 @@ export const GeoMap: React.FC<GeoMapProps> = ({
             const a = agents.filter(x => x.type === 'merchant')
           })}
           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition"
-          style={{ background: '#fff0f8', color: '#E4007C', border: '1px solid #E4007C' }}
+          style={{ background: '#fff0f8', color: '#00843D', border: '1px solid #00843D' }}
         >
-          <span className="w-2.5 h-2.5 rounded-full inline-block bg-pink-500" />
+          <span className="w-2.5 h-2.5 rounded-full inline-block bg-green-500" />
           Merchants
         </button>
 

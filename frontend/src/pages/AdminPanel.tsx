@@ -20,7 +20,7 @@ interface UserRecord {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const roleBadge = (role: string) => {
   if (role === 'HSD') return 'bg-purple-100 text-purple-700';
-  if (role === 'ZBM') return 'bg-pink-100 text-zamtel-pink';
+  if (role === 'ZBM') return 'bg-green-100 text-zamtel-pink';
   return 'bg-green-100 text-zamtel-green';
 };
 
@@ -66,7 +66,7 @@ const CreateUserModal: React.FC<{
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
         <div className={`h-1.5 w-full rounded-t-3xl sm:rounded-t-3xl`}
-          style={{ background: isPink ? 'linear-gradient(90deg,#E4007C,#B8005E)' : 'linear-gradient(90deg,#00843D,#004d24)' }} />
+          style={{ background: isPink ? 'linear-gradient(90deg,#00843D,#006830)' : 'linear-gradient(90deg,#00843D,#004d24)' }} />
         <div className="p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-bold text-gray-900 text-lg">Add {role}</h2>
@@ -149,7 +149,7 @@ const EditUserModal: React.FC<{
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md">
-        <div className="h-1.5 w-full rounded-t-3xl" style={{ background: 'linear-gradient(90deg,#00843D,#E4007C)' }} />
+        <div className="h-1.5 w-full rounded-t-3xl" style={{ background: 'linear-gradient(90deg,#00843D,#00843D)' }} />
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -322,7 +322,7 @@ const ZoneRow: React.FC<{
     </div>
     <div className="flex gap-1.5">
       <span className="text-xs bg-green-100 text-zamtel-green px-2 py-0.5 rounded-full font-medium">{tdrCount}</span>
-      <span className="text-xs bg-pink-100 text-zamtel-pink px-2 py-0.5 rounded-full font-medium">{zbmCount}</span>
+      <span className="text-xs bg-green-100 text-zamtel-pink px-2 py-0.5 rounded-full font-medium">{zbmCount}</span>
     </div>
     {isHSD && tdrCount === 0 && zbmCount === 0 && (
       <button onClick={() => onDelete(zone)}
@@ -475,7 +475,7 @@ export const AdminPanel: React.FC = () => {
           + Add TDR
         </Button>
         {isHSD && (
-          <Button onClick={() => setCreateRole('ZBM')} variant="pink" size="sm" className="flex-1 sm:flex-none">
+          <Button onClick={() => setCreateRole('ZBM')} variant="primary" size="sm" className="flex-1 sm:flex-none">
             + Add ZBM
           </Button>
         )}
@@ -565,7 +565,7 @@ export const AdminPanel: React.FC = () => {
             <div className="flex gap-3 flex-wrap">
               {[
                 { name: 'Zamtel Green', hex: '#00843D' },
-                { name: 'Zamtel Pink',  hex: '#E4007C' },
+                { name: 'Zamtel Pink',  hex: '#00843D' },
                 { name: 'White',        hex: '#FFFFFF', border: true },
               ].map(c => (
                 <div key={c.hex} className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl">

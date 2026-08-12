@@ -16,7 +16,7 @@ export const AsePlannedVsActual: React.FC<Props> = ({ byAse }) => {
     { k: 'ssos',     l: 'SSOs',    c: '#2563EB' },
     { k: 'odrs',     l: 'ODRs',    c: '#7C3AED' },
     { k: 'dataActs', l: 'Data Acts', c: '#F97316' },
-    { k: 'dtu',      l: 'DTU (ZMW)', c: '#E4007C' },
+    { k: 'dtu',      l: 'DTU (ZMW)', c: '#00843D' },
     { k: 'zmGa',     l: 'ZM Gross Adds', c: '#0891B2' },
   ];
   return (
