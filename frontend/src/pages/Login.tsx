@@ -102,47 +102,48 @@ export const Login: React.FC = () => {
     <div
       className="min-h-screen flex flex-col relative overflow-hidden"
       style={{
-        background: 'radial-gradient(1200px 600px at 20% -10%, #0a5a30 0%, transparent 60%), radial-gradient(900px 500px at 90% 110%, #00a34c 0%, transparent 55%), linear-gradient(155deg, #063d20 0%, #00843D 100%)',
+        background: 'radial-gradient(1000px 500px at 15% -10%, #E8F5EE 0%, transparent 55%), radial-gradient(900px 500px at 95% 110%, #DBF0E4 0%, transparent 55%), linear-gradient(160deg, #FBFDFC 0%, #F2F8F4 55%, #E9F4EE 100%)',
         paddingTop:    'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {/* Soft glow blobs */}
-      <div className="login-blob absolute -top-24 -left-16 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,255,255,.10) 0%, transparent 70%)' }} />
-      <div className="login-blob absolute bottom-0 -right-20 w-80 h-80 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(120,255,180,.14) 0%, transparent 70%)', animationDelay: '2s' }} />
+      {/* Soft glow blobs (subtle) */}
+      <div className="login-blob absolute -top-24 -left-16 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(0,132,61,.06) 0%, transparent 70%)' }} />
+      <div className="login-blob absolute bottom-0 -right-20 w-80 h-80 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(0,132,61,.05) 0%, transparent 70%)', animationDelay: '2s' }} />
 
       {/* Top brand stripe */}
       <div className="relative flex items-center justify-between px-5 pt-6 pb-2">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-            <span className="text-zamtel-green font-black text-xl leading-none font-display">Z</span>
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(135deg,#00843D,#006830)' }}>
+            <span className="text-white font-black text-xl leading-none font-display">Z</span>
           </div>
           <div>
-            <p className="text-white font-extrabold text-sm leading-tight tracking-wide font-display">ZAMTEL</p>
-            <div className="bounce-word text-[10px] font-bold text-green-200 font-display" aria-label="Create Your World">
+            <p className="text-zamtel-green font-extrabold text-sm leading-tight tracking-wide font-display">ZAMTEL</p>
+            <div className="bounce-word text-[10px] font-bold text-green-600 font-display" aria-label="Create Your World">
               {'Create Your World'.split('').map((c, i) => (
                 <span key={i} style={{ animationDelay: `${i * 0.06}s`, whiteSpace: c === ' ' ? 'pre' : 'normal' }}>{c === ' ' ? '\u00A0' : c}</span>
               ))}
             </div>
           </div>
         </div>
-        <div className="bg-white/15 border border-white/25 rounded-full px-3 py-1 backdrop-blur">
-          <span className="text-white text-[10px] font-bold tracking-wider">S&amp;D PRODUCTIVITY</span>
+        <div className="bg-zamtel-green/10 border border-zamtel-green/25 rounded-full px-3 py-1">
+          <span className="text-zamtel-green text-[10px] font-bold tracking-wider">S&amp;D PRODUCTIVITY</span>
         </div>
       </div>
 
       {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center px-5 py-6">
 
-        {/* Hero image — Zamtel "Come Home / Create your world" */}
-        <div className="w-full max-w-sm mb-5">
-          <div className="relative rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/20" style={{ aspectRatio: '16/10' }}>
+        {/* Hero image — Zamtel "Come Home / Create your world" (clean, no text overlay) */}
+        <div className="w-full max-w-sm mb-3">
+          <div className="relative rounded-3xl overflow-hidden shadow-xl ring-1 ring-zamtel-green/10" style={{ aspectRatio: '16/10' }}>
             <img src="brand/comehome.jpg" alt="Zamtel — Create your world" className="w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,45,22,.72) 100%)' }} />
-            <div className="absolute bottom-3.5 left-4 right-4 text-white">
-              <h1 className="text-[17px] leading-snug font-extrabold tracking-tight drop-shadow font-display">Sales &amp; Distribution<br/>Productivity Tool</h1>
-            </div>
           </div>
+        </div>
+
+        {/* Title — below the image, blocking nothing */}
+        <div className="w-full max-w-sm mb-5 text-center">
+          <h1 className="text-[18px] leading-tight font-extrabold tracking-tight font-display text-zamtel-green">Sales &amp; Distribution Productivity Tool</h1>
         </div>
 
         {/* Login card */}
