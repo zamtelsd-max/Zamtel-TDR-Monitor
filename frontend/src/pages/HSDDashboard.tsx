@@ -119,6 +119,30 @@ export const HSDDashboardPage: React.FC = () => {
   const kycFileRef = React.useRef<HTMLInputElement>(null);
   const [regUploading, setRegUploading] = useState(false);
   const regFileRef = React.useRef<HTMLInputElement>(null);
+  const [agentUploading, setAgentUploading] = useState(false);
+  const agentFileRef = React.useRef<HTMLInputElement>(null);
+
+  const handleAgentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAgentUploading(true);
+    try {
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader(); fr.onload = () => resolve(String(fr.result)); fr.onerror = reject; fr.readAsDataURL(file);
+      });
+      const r = await hsdApi.uploadAgents(b64);
+      const d = r.data.data; const rc = d.reconciliation;
+      toast.success(`Agents report applied: ${d.agentsUpserted} agents. Reconciliation — ${rc.matched} matched, ${rc.fake} fake, ${rc.suspected} suspected.`, { duration: 9000 });
+      if (rc.tdrsBlocked > 0) toast(`${rc.tdrsBlocked} TDR(s) auto-blocked (11+ fake codes)`, { icon: '⛔', duration: 8000 });
+      else if (rc.tdrsWarned > 0) toast(`${rc.tdrsWarned} TDR(s) at warning threshold (10 fake codes)`, { icon: '⚠️', duration: 7000 });
+      fetchData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Agents report upload failed');
+    } finally {
+      setAgentUploading(false);
+      if (agentFileRef.current) agentFileRef.current.value = '';
+    }
+  };
 
   const handleRegUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -340,6 +364,15 @@ export const HSDDashboardPage: React.FC = () => {
           className="flex-shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-green-700 to-green-600 text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:from-green-800 transition-all whitespace-nowrap"
         >
           <Plus size={12}/> Device
+        </button>
+        <input ref={agentFileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleAgentUpload} className="hidden" />
+        <button
+          onClick={() => agentFileRef.current?.click()}
+          disabled={agentUploading}
+          className="flex-shrink-0 flex items-center gap-1.5 bg-zamtel-green text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:bg-green-800 transition-all whitespace-nowrap disabled:opacity-50"
+          title="Upload canonical Agents report (xlsx/csv: agent_code, agent_name, creation_date, tdr_id, region, status). Reconciles TDR records & flags fake codes."
+        >
+          👥 {agentUploading ? 'Uploading…' : 'Update Agents Report'}
         </button>
         <input ref={regFileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleRegUpload} className="hidden" />
         <button

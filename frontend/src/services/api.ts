@@ -337,6 +337,11 @@ export const hsdApi = {
   uploadRegistrations: (fileBase64: string) =>
     client.post<{ success: boolean; data: { report: string; rows: number; inserted: number; attributed: number; viaDealerCode: number; viaSupervisor: number; unmapped: number; skipped: number; days: string[] } }>('/ase-tracker/upload-registrations', { fileBase64 }),
 
+  uploadAgents: (fileBase64: string) =>
+    client.post<{ success: boolean; data: { rows: number; agentsUpserted: number; skipped: number; reconciliation: { matched: number; fake: number; suspected: number; tdrsWarned: number; tdrsBlocked: number } } }>('/agent-recon/upload-agents', { fileBase64 }),
+  agentReconSummary: () => client.get('/agent-recon/summary'),
+  agentTdrRisk: () => client.get('/agent-recon/tdr-risk'),
+
   loginReport: (role = 'ZBM') =>
     client.get<{ success: boolean; data: any }>(`/hsd/login-report?role=${role}`),
   loginReportExportUrl: (role = 'ZBM') => `/hsd/login-report-export?role=${role}`,
