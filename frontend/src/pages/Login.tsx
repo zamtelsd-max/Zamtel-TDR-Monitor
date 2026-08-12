@@ -127,17 +127,17 @@ export const Login: React.FC = () => {
       {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center px-5 py-6">
 
-        {/* Logo */}
-        <div className="mb-7 text-center">
-          <div className="relative inline-block mb-4">
-            <div className="absolute inset-0 rounded-3xl bg-zamtel-green/30 blur-xl scale-110" />
-            <div className="relative w-24 h-24 bg-white rounded-3xl shadow-2xl flex items-center justify-center">
-              <span className="text-zamtel-green font-black text-5xl leading-none">Z</span>
+        {/* Hero image — Zamtel "Come Home / Create your world" */}
+        <div className="w-full max-w-sm mb-5">
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl" style={{ aspectRatio: '16/10' }}>
+            <img src="brand/comehome.jpg" alt="Zamtel — Create your world" className="w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
+            {/* gradient scrim for text legibility */}
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,50,25,.55) 100%)' }} />
+            <div className="absolute bottom-3 left-4 right-4 text-white">
+              <h1 className="text-xl font-black tracking-tight drop-shadow">TDR Monitor</h1>
+              <p className="text-[11px] text-green-100/90 drop-shadow">Territory Development · Create Your World</p>
             </div>
-            <div className="absolute -top-1 -right-1 w-5 h-5 bg-zamtel-pink rounded-full border-2 border-white shadow" />
           </div>
-          <h1 className="text-white text-2xl font-black tracking-tight">TDR Monitor</h1>
-          <p className="text-green-300 text-sm mt-1">Territory Development Representative System</p>
         </div>
 
         {/* Login card */}

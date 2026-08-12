@@ -117,6 +117,29 @@ export const HSDDashboardPage: React.FC = () => {
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [kycUploading, setKycUploading] = useState(false);
   const kycFileRef = React.useRef<HTMLInputElement>(null);
+  const [regUploading, setRegUploading] = useState(false);
+  const regFileRef = React.useRef<HTMLInputElement>(null);
+
+  const handleRegUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRegUploading(true);
+    try {
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader(); fr.onload = () => resolve(String(fr.result)); fr.onerror = reject; fr.readAsDataURL(file);
+      });
+      const r = await hsdApi.uploadRegistrations(b64);
+      const d = r.data.data;
+      toast.success(`${d.report} registrations applied — ${d.inserted} records for ${d.days?.length || 0} day(s). ${d.attributed} attributed to ASEs.`, { duration: 8000 });
+      if (d.unmapped > 0) toast(`${d.unmapped} could not be matched to an ASE`, { icon: 'ℹ️', duration: 6000 });
+      fetchData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Registration upload failed');
+    } finally {
+      setRegUploading(false);
+      if (regFileRef.current) regFileRef.current.value = '';
+    }
+  };
 
   const handleKycUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -317,6 +340,15 @@ export const HSDDashboardPage: React.FC = () => {
           className="flex-shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-green-700 to-green-600 text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:from-green-800 transition-all whitespace-nowrap"
         >
           <Plus size={12}/> Device
+        </button>
+        <input ref={regFileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleRegUpload} className="hidden" />
+        <button
+          onClick={() => regFileRef.current?.click()}
+          disabled={regUploading}
+          className="flex-shrink-0 flex items-center gap-1.5 bg-zamtel-green text-white px-3 py-2 rounded-full text-xs font-bold shadow hover:bg-green-800 transition-all whitespace-nowrap disabled:opacity-50"
+          title="Upload daily Approved/Rejected registration report (xlsx). Re-uploading a day refreshes it; new days accumulate."
+        >
+          🧾 {regUploading ? 'Uploading…' : 'Upload Registrations'}
         </button>
         <input ref={kycFileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleKycUpload} className="hidden" />
         <button
