@@ -10,8 +10,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Zamtel TDR Monitor',
-        short_name: 'TDR Monitor',
+        name: 'Zamtel Sales & Distribution Productivity Tool',
+        short_name: 'S&D Productivity',
         description: 'Zamtel Territory Development Representative Sales Performance Monitor',
         theme_color: '#00843D',
         background_color: '#0D1B12',

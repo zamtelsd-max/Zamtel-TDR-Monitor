@@ -138,7 +138,7 @@ export const ChangePinPage: React.FC = () => {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          Zamtel TDR Monitor — Security Enforcement
+          Zamtel Sales & Distribution Productivity Tool — Security
         </p>
       </div>
     </div>

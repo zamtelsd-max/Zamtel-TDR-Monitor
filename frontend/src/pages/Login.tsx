@@ -120,7 +120,7 @@ export const Login: React.FC = () => {
           </div>
         </div>
         <div className="bg-zamtel-pink/20 border border-zamtel-pink/40 rounded-full px-3 py-1">
-          <span className="text-zamtel-pink text-[10px] font-bold tracking-wider">TDR MONITOR</span>
+          <span className="text-white text-[10px] font-bold tracking-wider">S&amp;D PRODUCTIVITY</span>
         </div>
       </div>
 
@@ -134,8 +134,8 @@ export const Login: React.FC = () => {
             {/* gradient scrim for text legibility */}
             <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,50,25,.55) 100%)' }} />
             <div className="absolute bottom-3 left-4 right-4 text-white">
-              <h1 className="text-xl font-black tracking-tight drop-shadow">TDR Monitor</h1>
-              <p className="text-[11px] text-green-100/90 drop-shadow">Territory Development · Create Your World</p>
+              <h1 className="text-xl font-black tracking-tight drop-shadow">Sales &amp; Distribution Productivity Tool</h1>
+              <p className="text-[11px] text-green-100/90 drop-shadow">Zamtel · Create Your World</p>
             </div>
           </div>
         </div>

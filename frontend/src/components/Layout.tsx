@@ -46,7 +46,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack, backT
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h1 className="font-bold text-sm truncate">{title || 'TDR Monitor'}</h1>
+                <h1 className="font-bold text-sm truncate">{title || 'Sales & Distribution Productivity Tool'}</h1>
                 <span className="hidden sm:inline-block text-[10px] bg-zamtel-pink text-white px-1.5 py-0.5 rounded-full font-semibold">
                   {user ? getShortTitle(user.id, user.role) : 'ZAMTEL'}
                 </span>
