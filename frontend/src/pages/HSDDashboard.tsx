@@ -22,7 +22,7 @@ import { UserManagement } from '../components/UserManagement';
 import { LoginActivity } from '../components/LoginActivity';
 import { FlaggedVisits } from '../components/FlaggedVisits';
 import { TabBar } from '../components/TabBar';
-import AseActivityTracker from '../components/AseActivityTracker';
+import StrategicAseDashboard from '../components/StrategicAseDashboard';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
 type SortDir = 'asc' | 'desc';
@@ -751,10 +751,10 @@ export const HSDDashboardPage: React.FC = () => {
       )}
       </>)}
 
-      {/* ── ASE Activity Tracker Tab ── */}
+      {/* ── ASE Activity Tracker Tab (strategic command centre) ── */}
       {mainTab === 'ase-tracker' && (
         <div className="px-4 pb-24">
-          <AseActivityTracker />
+          <StrategicAseDashboard />
         </div>
       )}
 

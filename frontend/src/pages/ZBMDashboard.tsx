@@ -11,6 +11,7 @@ import { Card, Skeleton, Badge, Button } from '../components/UI';
 import { SiteFocusPanel } from '../components/SiteFocusPanel';
 import { SiteFocusAnalytics } from '../components/SiteFocusAnalytics';
 import { TabBar } from '../components/TabBar';
+import StrategicAseDashboard from '../components/StrategicAseDashboard';
 import { ISSUE_TYPE_LABELS } from '../types';
 import { format } from 'date-fns';
 import { GeoMap } from '../components/GeoMap';
@@ -70,7 +71,7 @@ function tdrScore(row: TDRStat): number {
 
 export const ZBMDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs' | 'ase-performance' | 'site-focus' | 'flags'>('dashboard');
+  const [mainTab, setMainTab]   = useState<'dashboard' | 'ases-tdrs' | 'ase-performance' | 'ase-tracker' | 'site-focus' | 'flags'>('dashboard');
   const [data,       setData]       = useState<ZBMDashboard | null>(null);
   const [issues,     setIssues]     = useState<FloatIssue[]>([]);
   const [prospects,  setProspects]  = useState<Prospect[]>([]);
@@ -282,6 +283,7 @@ export const ZBMDashboardPage: React.FC = () => {
           { id: 'dashboard',       label: '📊 Dashboard' },
           { id: 'ases-tdrs',       label: '👥 ASEs & TDRs' },
           { id: 'ase-performance', label: '📱 ASE KYC' },
+          { id: 'ase-tracker',     label: '🎯 ASE Tracker' },
           { id: 'site-focus',      label: '📍 Site Focus' },
           { id: 'flags',           label: '🚩 Flags', badge: tdrFlags.length, badgeColor: tdrFlags.some(f => f.severity === 'critical') ? 'red' : 'amber' },
         ]}
@@ -866,6 +868,12 @@ export const ZBMDashboardPage: React.FC = () => {
 
 
       {/* SITE FOCUS Tab */}
+      {mainTab === 'ase-tracker' && (
+        <div className="px-4 py-3 pb-24">
+          <StrategicAseDashboard />
+        </div>
+      )}
+
       {mainTab === 'site-focus' && (
         <div className="px-4 py-3 pb-24 space-y-4">
           <SiteFocusAnalytics fetchAnalytics={async () => { const r = await zbmApi.getSiteFocusAnalytics(); return { data: r.data }; }} />

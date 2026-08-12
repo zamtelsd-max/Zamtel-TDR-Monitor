@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { aseApi, flagsApi, ssoOdrApi } from '../services/api';
 import { TDRPerfCard, PerformanceBar } from '../components/PerformanceBar';
 import { TabBar } from '../components/TabBar';
+import StrategicAseDashboard from '../components/StrategicAseDashboard';
 import { enqueueOffline } from '../utils/offlineQueue';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { calcWeightedScore, floatResolutionPct, visitMtdTarget, prorateMtdTarget, prospectStretchTarget, workingDaysElapsed, workingDaysThisMonth, getBand } from '../utils/performance';
@@ -432,6 +433,7 @@ export const ASEDashboardPage: React.FC = () => {
 
   const TABS = [
     { id: 'my-tdrs',     label: `👥 TDRs (${stats.length})` },
+    { id: 'ase-tracker', label: `🎯 My Performance` },
     { id: 'kyc-devices', label: `📱 KYC Devices` },
     { id: 'kpi-score',   label: `🎯 KPI Score` },
     { id: 'site-focus',  label: `📍 Site Focus` },
@@ -709,6 +711,12 @@ export const ASEDashboardPage: React.FC = () => {
       )}
 
       {/* ── KYC DEVICES TAB ── */}
+      {tab === 'ase-tracker' && (
+        <div className="px-4 py-3 pb-24">
+          <StrategicAseDashboard />
+        </div>
+      )}
+
       {tab === 'kyc-devices' && (
         <div className="px-4 py-2">
           {/* Add device button */}
