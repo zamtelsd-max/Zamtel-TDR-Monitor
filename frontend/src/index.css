@@ -74,6 +74,25 @@
   .animate-skeleton {
     animation: skeleton 1.5s ease-in-out infinite;
   }
+  .font-display { font-family: 'Poppins', 'Inter', system-ui, sans-serif; }
+
+  /* Bouncing per-letter "Create Your World" */
+  .bounce-word { display: inline-flex; }
+  .bounce-word span {
+    display: inline-block;
+    animation: letterBounce 1.8s ease-in-out infinite;
+  }
+  @keyframes letterBounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-9px); }
+  }
+
+  /* Soft radial glow blobs for login background */
+  @keyframes floatBlob {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(14px,-18px) scale(1.06); }
+  }
+  .login-blob { animation: floatBlob 9s ease-in-out infinite; }
 
   @keyframes skeleton {
     0%, 100% { opacity: 1; }

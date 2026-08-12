@@ -100,26 +100,33 @@ export const Login: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="min-h-screen flex flex-col relative overflow-hidden"
       style={{
-        background: 'linear-gradient(160deg, #0D1B12 0%, #003d1c 50%, #00843D 100%)',
-        /* iOS safe area */
+        background: 'radial-gradient(1200px 600px at 20% -10%, #0a5a30 0%, transparent 60%), radial-gradient(900px 500px at 90% 110%, #00a34c 0%, transparent 55%), linear-gradient(155deg, #063d20 0%, #00843D 100%)',
         paddingTop:    'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
+      {/* Soft glow blobs */}
+      <div className="login-blob absolute -top-24 -left-16 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,255,255,.10) 0%, transparent 70%)' }} />
+      <div className="login-blob absolute bottom-0 -right-20 w-80 h-80 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(120,255,180,.14) 0%, transparent 70%)', animationDelay: '2s' }} />
+
       {/* Top brand stripe */}
-      <div className="flex items-center justify-between px-5 pt-6 pb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-zamtel-green font-black text-lg leading-none">Z</span>
+      <div className="relative flex items-center justify-between px-5 pt-6 pb-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-lg">
+            <span className="text-zamtel-green font-black text-xl leading-none font-display">Z</span>
           </div>
           <div>
-            <p className="text-white font-bold text-sm leading-tight">ZAMTEL</p>
-            <p className="text-green-300 text-[10px] leading-tight">Create Your World</p>
+            <p className="text-white font-extrabold text-sm leading-tight tracking-wide font-display">ZAMTEL</p>
+            <div className="bounce-word text-[10px] font-bold text-green-200 font-display" aria-label="Create Your World">
+              {'Create Your World'.split('').map((c, i) => (
+                <span key={i} style={{ animationDelay: `${i * 0.06}s`, whiteSpace: c === ' ' ? 'pre' : 'normal' }}>{c === ' ' ? '\u00A0' : c}</span>
+              ))}
+            </div>
           </div>
         </div>
-        <div className="bg-zamtel-pink/20 border border-zamtel-pink/40 rounded-full px-3 py-1">
+        <div className="bg-white/15 border border-white/25 rounded-full px-3 py-1 backdrop-blur">
           <span className="text-white text-[10px] font-bold tracking-wider">S&amp;D PRODUCTIVITY</span>
         </div>
       </div>
@@ -129,33 +136,31 @@ export const Login: React.FC = () => {
 
         {/* Hero image — Zamtel "Come Home / Create your world" */}
         <div className="w-full max-w-sm mb-5">
-          <div className="relative rounded-3xl overflow-hidden shadow-2xl" style={{ aspectRatio: '16/10' }}>
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/20" style={{ aspectRatio: '16/10' }}>
             <img src="brand/comehome.jpg" alt="Zamtel — Create your world" className="w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
-            {/* gradient scrim for text legibility */}
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,50,25,.55) 100%)' }} />
-            <div className="absolute bottom-3 left-4 right-4 text-white">
-              <h1 className="text-xl font-black tracking-tight drop-shadow">Sales &amp; Distribution Productivity Tool</h1>
-              <p className="text-[11px] text-green-100/90 drop-shadow">Zamtel · Create Your World</p>
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,45,22,.72) 100%)' }} />
+            <div className="absolute bottom-3.5 left-4 right-4 text-white">
+              <h1 className="text-[17px] leading-snug font-extrabold tracking-tight drop-shadow font-display">Sales &amp; Distribution<br/>Productivity Tool</h1>
             </div>
           </div>
         </div>
 
         {/* Login card */}
         <div className="w-full max-w-sm">
-          <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden">
-            <div className="h-2 w-full rounded-t-3xl" style={{ background: 'linear-gradient(90deg, #00843D 0%, #006830 35%, #006830 70%, #00843D 100%)' }} />
+          <div className="bg-white rounded-[28px] shadow-2xl overflow-hidden" style={{ boxShadow: '0 24px 60px -12px rgba(0,50,25,.55)' }}>
+            <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #00a34c 0%, #00843D 50%, #006830 100%)' }} />
 
             <div className="p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-0.5 text-center">Sign In</h2>
-              <p className="text-xs text-gray-400 text-center mb-5">Enter your ID and 4-digit PIN</p>
+              <h2 className="text-xl font-extrabold text-gray-900 mb-0.5 text-center font-display">Welcome back</h2>
+              <p className="text-xs text-gray-400 text-center mb-6">Sign in with your ID and 4-digit PIN</p>
 
               {/* User ID */}
               <div className="mb-5">
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
                   User ID
                 </label>
                 <input
-                  className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50 px-4 py-3.5 text-sm font-medium focus:outline-none focus:border-zamtel-green focus:bg-white transition placeholder-gray-300"
+                  className="w-full rounded-2xl border border-gray-200 bg-[#F6FAF7] px-4 py-4 text-sm font-medium focus:outline-none focus:border-zamtel-green focus:bg-white focus:ring-4 focus:ring-zamtel-green/10 transition-all placeholder-gray-300 shadow-sm"
                   placeholder="e.g. tdr-cb-01"
                   value={userId}
                   onChange={e => setUserId(e.target.value.trim())}
