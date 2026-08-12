@@ -72,7 +72,11 @@ hsdRouter.get('/dashboard', responseCache(30), async (req: Request, res: Respons
 
   const totalRecruits     = totalAgents + totalMerchants;
   const totalConversions  = await prisma.prospect.count({ where: { status: 'converted', convertedAt: { gte: start, lte: end } } });
-  const totalProspects    = await prisma.prospect.count({ where: { createdAt: { gte: start, lte: end } } });
+  // Pipeline = prospects anchored to this month via pipelinePeriod (includes carried-forward
+  // un-converted prospects from prior months). Falls back to createdAt for un-backfilled rows.
+  const totalProspects    = await prisma.prospect.count({
+    where: { OR: [{ pipelinePeriod: period }, { AND: [{ pipelinePeriod: null }, { createdAt: { gte: start, lte: end } }] }] },
+  });
   const conversionRate    = totalRecruits > 0 ? Math.round(totalConversions / totalRecruits * 100) : 0;
 
   // National targets = sum of all zone-level targets (each zone target is per-TDR × TDR count)
@@ -1163,5 +1167,49 @@ hsdRouter.patch('/users/:id', async (req: Request, res: Response): Promise<void>
     res.json({ success: true, data: { id: updated.id, name: updated.name, role: updated.role, zone: updated.zone, active: updated.active } });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// ─── POST /hsd/carry-forward — month-end roll-over ────────────────────────────
+// Carries UN-CONVERTED prospects into the target month (only), and reports the
+// inactive-agent base that was NOT reactivated (carries forward automatically as
+// it lives in the persistent nt_codes pool). Idempotent per period.
+//   Body/Query: { period?: 'YYYY-MM' }  (defaults to current month)
+hsdRouter.post('/carry-forward', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const now = new Date();
+    const target = (req.body?.period || req.query.period as string) || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    // 1) Prospects: open (not converted / not rejected) with an EARLIER pipelinePeriod → roll to target month
+    const rolled = await prisma.prospect.updateMany({
+      where: {
+        status: { notIn: ['converted', 'rejected'] as any },
+        OR: [{ pipelinePeriod: { lt: target } }, { pipelinePeriod: null }],
+      },
+      data: { pipelinePeriod: target, carriedOver: true, carryCount: { increment: 1 } },
+    });
+
+    // 2) Agents not reactivated: inactive base still in nt_codes minus those reactivated.
+    //    nt_codes is a persistent pool so un-reactivated agents inherently carry forward.
+    //    Report the remaining (carried) base for visibility.
+    const ntTotalRows = await prisma.$queryRaw<{ cnt: number }[]>`SELECT COUNT(*)::int AS cnt FROM nt_codes`.catch(() => [{ cnt: 0 }]);
+    const ntTotal = ntTotalRows?.[0]?.cnt ?? 0;
+    const reactivatedRows = await prisma.$queryRaw<{ cnt: number }[]>`
+      SELECT COUNT(DISTINCT r."agentCode")::int AS cnt
+      FROM reactivations r
+      WHERE r."agentCode" IN (SELECT agent_code FROM nt_codes)`.catch(() => [{ cnt: 0 }]);
+    const reactivated = reactivatedRows?.[0]?.cnt ?? 0;
+    const carriedBase = Math.max(0, ntTotal - reactivated);
+
+    res.json({
+      success: true,
+      period: target,
+      prospectsCarried: rolled.count,
+      inactiveBase: { total: ntTotal, reactivated, carriedForward: carriedBase },
+      message: `${rolled.count} un-converted prospects carried into ${target}; ${carriedBase} un-reactivated agents remain in the base for ${target}.`,
+    });
+  } catch (err) {
+    console.error('carry-forward error:', err);
+    res.status(500).json({ error: 'Carry-forward failed' });
   }
 });

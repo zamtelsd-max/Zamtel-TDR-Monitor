@@ -81,8 +81,14 @@ model Prospect {
   zbmApprovalRequired Boolean        @default(false)
   latitude            Float?
   longitude           Float?
+  // Month-end carry-forward: pipeline period this prospect currently belongs to
+  // (YYYY-MM). Set to creation month; rolled forward each month if still open.
+  pipelinePeriod      String?
+  carriedOver         Boolean        @default(false)
+  carryCount          Int            @default(0)
   user                User           @relation(fields: [tdrId], references: [id])
 
+  @@index([pipelinePeriod, status])
   @@map("prospects")
 }
 

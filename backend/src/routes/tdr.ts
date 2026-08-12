@@ -374,6 +374,7 @@ tdrRouter.post('/prospects', async (req: Request, res: Response): Promise<void> 
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
   try {
+    const nowP = new Date();
     const prospect = await prisma.prospect.create({
       data: {
         ...parsed.data,
@@ -381,6 +382,7 @@ tdrRouter.post('/prospects', async (req: Request, res: Response): Promise<void> 
         tdrId:   req.user!.userId,
         tdrName: req.user!.name,
         zone:    req.user!.zone || '',
+        pipelinePeriod: `${nowP.getFullYear()}-${String(nowP.getMonth() + 1).padStart(2, '0')}`,
       },
     });
     res.status(201).json(prospect);
