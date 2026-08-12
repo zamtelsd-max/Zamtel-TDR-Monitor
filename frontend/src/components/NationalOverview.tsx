@@ -53,10 +53,10 @@ const NationalOverview: React.FC<{ dashboard: HSDDashboard; zones: ZoneStat[] }>
         )}
       </div>
 
-      {/* Zone leaderboard bar chart */}
+      {/* Zone leaderboard — vertical bar chart */}
       {zoneBars.length > 0 && (
-        <ChartCard title="Zone Leaderboard — Agents (% of target)">
-          <BarChart data={zoneBars} />
+        <ChartCard title="Zone Leaderboard — Agents">
+          <ColumnChart height={210} data={zoneBars.map(z => ({ label: z.label, value: z.value, pct: z.pct }))} />
         </ChartCard>
       )}
 

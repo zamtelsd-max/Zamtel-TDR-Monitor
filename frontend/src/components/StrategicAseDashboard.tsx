@@ -38,6 +38,25 @@ function BarChart({ data, max }: { data: { label: string; value: number; sub?: s
   );
 }
 
+/* Vertical bar chart (columns) */
+function ColumnChart({ data, showPct }: { data: { label: string; value: number; pct?: number }[]; showPct?: boolean }) {
+  const m = Math.max(1, ...data.map(d => d.value));
+  const height = 220, barArea = height - 44;
+  return (
+    <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height, minWidth: data.length > 8 ? data.length * 46 : undefined }}>
+        {data.map((d, i) => (
+          <div key={i} style={{ flex: '1 0 34px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%', justifyContent: 'flex-end' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{showPct && d.pct != null ? `${d.pct}%` : fmt(d.value)}</span>
+            <div title={`${d.label}: ${fmt(d.value)}`} style={{ width: 30, height: `${Math.max(3, (d.value / m) * barArea)}px`, background: `linear-gradient(180deg,${attain(d.pct ?? 100)},${GREEN_MID})`, borderRadius: '7px 7px 0 0', transition: 'height .6s ease', boxShadow: '0 1px 2px rgba(0,80,40,.15)' }} />
+            <span style={{ fontSize: 9.5, color: MUTE, textAlign: 'center', lineHeight: 1.1, height: 22, overflow: 'hidden', width: 46, wordBreak: 'break-word' }}>{d.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── SVG trend line (approved vs target) ─────────────────────────────── */
 function TrendLine({ points }: { points: { date: string; actual: number; target: number }[] }) {
   if (!points.length) return <div style={{ color: MUTE, fontSize: 12, padding: 20 }}>No trend data yet.</div>;
@@ -192,7 +211,7 @@ export default function StrategicAseDashboard() {
           {/* Zone bar chart */}
           <div style={card}>
             <h3 style={h3}>Zone Performance — Today (% of daily target)</h3>
-            <BarChart data={strat.zones.map((z: any) => ({ label: z.zone, value: z.dayActual, sub: `${z.dayPct}%`, pct: z.dayPct }))} />
+            <ColumnChart showPct data={strat.zones.map((z: any) => ({ label: z.zone, value: z.dayPct, pct: z.dayPct }))} />
           </div>
         </div>
       )}

@@ -25,6 +25,7 @@ import { TabBar } from '../components/TabBar';
 import StrategicAseDashboard from '../components/StrategicAseDashboard';
 import { DashboardHome, BottomNav } from '../components/DashboardHome';
 import NationalOverview from '../components/NationalOverview';
+import { ColumnChart } from '../components/charts';
 import { BarChart3, Target, MapPin, Users2, ShieldCheck, Flag, LayoutGrid } from 'lucide-react';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
@@ -566,61 +567,39 @@ export const HSDDashboardPage: React.FC = () => {
               ))}
             </div>
           </div>
-          <div className="space-y-2">
-            {sortedZones.map((z: ZoneStat, idx: number) => {
-              const sc   = zoneScore(z);
-              const band = getBand(sc);
-              const aTgt = z.targets?.agents    ?? prorateMtdTarget(96);
-              const vTgt = z.targets?.visits    ?? visitMtdTarget();
-              const aPct = Math.min(Math.round(z.agents    / Math.max(aTgt,1) * 100), 100);
-              const vPct = Math.min(Math.round(z.visits    / Math.max(vTgt,1) * 100), 100);
+          {/* Vertical bar chart — zone score % (tap a bar to drill into the zone) */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <ColumnChart
+              showPct
+              height={230}
+              data={sortedZones.map((z: ZoneStat) => ({
+                label: z.zone,
+                value: zoneScore(z),
+                pct: zoneScore(z),
+                onClick: () => setSelectedZone(z.zone),
+              }))}
+            />
+            <p className="text-center text-[10px] text-gray-400 mt-2">Bar height = zone performance score · tap a bar to open the zone</p>
+          </div>
+
+          {/* Compact zone list — ZBM, TDRs, float issues, open button */}
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            {sortedZones.map((z: ZoneStat) => {
+              const sc = zoneScore(z); const band = getBand(sc);
               return (
-                <div key={z.zone} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                  {/* Top strip — coloured by band */}
-                  <div className="h-1 w-full" style={{ background: band.ring }}/>
-                  <div className="p-4">
-                    <div className="flex items-center gap-3">
-                      {/* Ring */}
-                      <RingChart pct={sc} size={72} stroke={8} color={band.ring} sublabel={band.label.split(' ')[0]}/>
-                      {/* Zone info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-1">
-                          <div>
-                            <p className="font-bold text-gray-900 text-sm">{z.zone}</p>
-                            <p className="text-[10px] text-gray-500 truncate">{z.zbm} · {z.tdrs} TDRs</p>
-                          </div>
-                          <div className="flex gap-1 flex-shrink-0">
-                            {z.floatIssues > 0 && (
-                              <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                                <AlertTriangle size={9}/>{z.floatIssues}
-                              </span>
-                            )}
-                            <button onClick={() => setSelectedZone(z.zone)}
-                              className="bg-green-50 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 hover:bg-green-100 transition-colors">
-                              <Map size={9}/> Open
-                            </button>
-                          </div>
-                        </div>
-                        {/* Inline mini-bars */}
-                        <div className="mt-2 space-y-1">
-                          {([
-                            ['👤', z.agents,    aTgt, aPct, '#00843D'],
-                            ['📍', z.visits,    vTgt, vPct, '#00843D'],
-                          ] as [string,number,number,number,string][]).map(([icon,val,tgt,pct,col]) => (
-                            <div key={icon} className="flex items-center gap-1.5">
-                              <span className="text-[10px] w-4">{icon}</span>
-                              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,background:col}}/>
-                              </div>
-                              <span className="text-[10px] font-semibold text-gray-600 w-16 text-right">{val}/{tgt}</span>
-                              <span className="text-[10px] font-bold w-8 text-right" style={{color:col}}>{pct}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                <button key={z.zone} onClick={() => setSelectedZone(z.zone)}
+                  className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-left hover:border-zamtel-green/40 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-gray-900 text-xs truncate">{z.zone}</p>
+                    <span className="text-xs font-black" style={{ color: band.ring }}>{sc}%</span>
                   </div>
-                </div>
+                  <p className="text-[10px] text-gray-500 truncate">{z.zbm} · {z.tdrs} TDRs</p>
+                  {z.floatIssues > 0 && (
+                    <span className="inline-flex items-center gap-0.5 mt-1 bg-red-100 text-red-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                      <AlertTriangle size={8}/>{z.floatIssues} float
+                    </span>
+                  )}
+                </button>
               );
             })}
           </div>

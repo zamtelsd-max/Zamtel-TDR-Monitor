@@ -35,18 +35,25 @@ export const BarChart: React.FC<{ data: { label: string; value: number; sub?: st
   );
 };
 
-/* Vertical bar chart (columns) */
-export const ColumnChart: React.FC<{ data: { label: string; value: number; pct?: number }[]; height?: number }> = ({ data, height = 160 }) => {
+/* Vertical bar chart (columns) — colour-graded by pct, scrolls if many bars */
+export const ColumnChart: React.FC<{ data: { label: string; value: number; pct?: number; onClick?: () => void }[]; height?: number; showPct?: boolean }> = ({ data, height = 200, showPct }) => {
   const m = Math.max(1, ...data.map(d => d.value));
+  const barArea = height - 44; // room for value label on top + rotated label below
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height, padding: '0 2px' }}>
-      {data.map((d, i) => (
-        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: INK }}>{fmt(d.value)}</span>
-          <div style={{ width: '100%', maxWidth: 34, height: `${(d.value / m) * (height - 34)}px`, background: `linear-gradient(180deg,${GREEN},${GREEN_MID})`, borderRadius: '6px 6px 0 0', transition: 'height .6s ease' }} />
-          <span style={{ fontSize: 9.5, color: MUTE, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 46 }}>{d.label}</span>
-        </div>
-      ))}
+    <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height, padding: '0 2px', minWidth: data.length > 8 ? data.length * 46 : undefined }}>
+        {data.map((d, i) => {
+          const h = Math.max(3, (d.value / m) * barArea);
+          const col = d.pct != null ? attainColor(d.pct) : GREEN;
+          return (
+            <div key={i} onClick={d.onClick} style={{ flex: '1 0 34px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%', justifyContent: 'flex-end', cursor: d.onClick ? 'pointer' : 'default' }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{showPct && d.pct != null ? `${d.pct}%` : fmt(d.value)}</span>
+              <div title={`${d.label}: ${fmt(d.value)}${d.pct != null ? ` (${d.pct}%)` : ''}`} style={{ width: 30, height: `${h}px`, background: `linear-gradient(180deg,${col},${GREEN_MID})`, borderRadius: '7px 7px 0 0', transition: 'height .6s ease', boxShadow: '0 1px 2px rgba(0,80,40,.15)' }} />
+              <span style={{ fontSize: 9.5, color: MUTE, textAlign: 'center', lineHeight: 1.1, height: 22, overflow: 'hidden', width: 46, wordBreak: 'break-word' }}>{d.label}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
