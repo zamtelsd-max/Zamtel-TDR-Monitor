@@ -44,7 +44,7 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
     } finally { setExporting(false); }
   };
 
-  const scColor = (s: number) => s >= 70 ? '#00843D' : s >= 40 ? '#f59e0b' : '#ef4444';
+  const scColor = (s: number) => s >= 70 ? '#00843D' : s >= 40 ? '#4CAF7D' : '#ef4444';
   const totalSites = sites.length;
   const aseCount = new Set(sites.map(s => s.aseId)).size;
   const avgScore = totalSites > 0 ? Math.round(sites.reduce((a, s) => a + (s.siteScore || 0), 0) / totalSites) : 0;
@@ -133,11 +133,11 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
           {g.sites.map((s: any) => {
             const kpis = [
               { l: 'Agents', v: s.agentsRec, t: 3, c: '#00843D' },
-              { l: 'SSOs', v: s.ssosRec, t: 2, c: '#2563EB' },
-              { l: 'ODRs', v: s.odrsRec, t: 1, c: '#7C3AED' },
-              { l: 'Data', v: s.dataActs, t: 15, c: '#F97316' },
+              { l: 'SSOs', v: s.ssosRec, t: 2, c: '#006630' },
+              { l: 'ODRs', v: s.odrsRec, t: 1, c: '#00843D' },
+              { l: 'Data', v: s.dataActs, t: 15, c: '#1a9d54' },
               { l: 'DTU ZMW', v: s.dtuSold, t: 500, c: '#00843D' },
-              { l: 'ZM GA', v: s.zmGrossAdds ?? 0, t: (s.siteType === 'rural' ? 30 : 50), c: '#0891B2' },
+              { l: 'ZM GA', v: s.zmGrossAdds ?? 0, t: (s.siteType === 'rural' ? 30 : 50), c: '#4CAF7D' },
             ];
             const open = expanded === s.id;
             return (
@@ -176,7 +176,7 @@ export const SiteFocusPanel: React.FC<SiteFocusPanelProps> = ({ fetchSites, expo
                       <div className="mt-1 space-y-0.5">
                         {s.agentCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">Agents:</span> {s.agentCodes}</p>}
                         {s.ssoCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-blue-700">SSOs:</span> {s.ssoCodes}</p>}
-                        {s.odrCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-purple-700">ODRs:</span> {s.odrCodes}</p>}
+                        {s.odrCodes && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">ODRs:</span> {s.odrCodes}</p>}
                         {s.dtuAgentCode && <p className="text-[10px] text-gray-500"><span className="font-bold text-green-700">DTU from:</span> {s.dtuAgentCode} (K{s.dtuSold})</p>}
                       </div>
                     )}

@@ -4,7 +4,7 @@ import { Card } from './UI';
 
 interface Props { byAse: any[]; }
 
-const sc = (v: number) => v >= 70 ? '#00843D' : v >= 40 ? '#f59e0b' : '#ef4444';
+const sc = (v: number) => v >= 70 ? '#00843D' : v >= 40 ? '#4CAF7D' : '#ef4444';
 const pct = (a: number, t: number) => t > 0 ? Math.min(Math.round(a / t * 100), 100) : 0;
 
 // Clean per-ASE Planned vs Actual + Pending-to-target dashboard (ZBM/HSD)
@@ -13,11 +13,11 @@ export const AsePlannedVsActual: React.FC<Props> = ({ byAse }) => {
   if (!byAse || byAse.length === 0) return null;
   const KPIS = [
     { k: 'agents',   l: 'Agents',  c: '#00843D' },
-    { k: 'ssos',     l: 'SSOs',    c: '#2563EB' },
-    { k: 'odrs',     l: 'ODRs',    c: '#7C3AED' },
-    { k: 'dataActs', l: 'Data Acts', c: '#F97316' },
+    { k: 'ssos',     l: 'SSOs',    c: '#006630' },
+    { k: 'odrs',     l: 'ODRs',    c: '#00843D' },
+    { k: 'dataActs', l: 'Data Acts', c: '#1a9d54' },
     { k: 'dtu',      l: 'DTU (ZMW)', c: '#00843D' },
-    { k: 'zmGa',     l: 'ZM Gross Adds', c: '#0891B2' },
+    { k: 'zmGa',     l: 'ZM Gross Adds', c: '#4CAF7D' },
   ];
   return (
     <Card className="p-0 overflow-hidden">
@@ -61,7 +61,7 @@ export const AsePlannedVsActual: React.FC<Props> = ({ byAse }) => {
                     </div>
                     <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden flex">
                       <div className="h-full" style={{ width: `${sitesPct}%`, background: '#00843D' }} title="visited" />
-                      <div className="h-full" style={{ width: `${pct(a.planned, a.sitesTarget||5)}%`, background: '#0EA5E9', opacity: 0.5 }} title="planned" />
+                      <div className="h-full" style={{ width: `${pct(a.planned, a.sitesTarget||5)}%`, background: '#4CAF7D', opacity: 0.5 }} title="planned" />
                     </div>
                   </div>
                   {/* Deliverable table */}

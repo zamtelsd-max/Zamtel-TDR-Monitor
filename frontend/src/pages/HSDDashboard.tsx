@@ -24,6 +24,7 @@ import { FlaggedVisits } from '../components/FlaggedVisits';
 import { TabBar } from '../components/TabBar';
 import StrategicAseDashboard from '../components/StrategicAseDashboard';
 import { DashboardHome, BottomNav } from '../components/DashboardHome';
+import NationalOverview from '../components/NationalOverview';
 import { BarChart3, Target, MapPin, Users2, ShieldCheck, Flag, LayoutGrid } from 'lucide-react';
 
 type SortKey = 'agents' | 'merchants' | 'visits' | 'floatIssues' | 'pct' | 'tdrs' | 'score';
@@ -394,7 +395,7 @@ export const HSDDashboardPage: React.FC = () => {
                           <div key={f.tdrId} className={`rounded-xl p-3 mt-2 ${f.severity === 'critical' ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
                             <p className="font-bold text-sm text-gray-800 flex items-center gap-1">
                               {f.tdrName}
-                              <AlertTriangle className={`w-3 h-3 ${f.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
+                              <AlertTriangle className={`w-3 h-3 ${f.severity === 'critical' ? 'text-red-500' : 'text-green-600'}`} />
                             </p>
                             {f.flags.map((fl, i) => <p key={i} className="text-xs text-gray-700 mt-0.5">{fl}</p>)}
                             <div className="grid grid-cols-2 gap-1 mt-2 text-center text-xs">
@@ -437,6 +438,9 @@ export const HSDDashboardPage: React.FC = () => {
         );
       })() : null}
 
+      {/* Modern strategic overview — KPI cards, rings, bar charts (green/white) */}
+      {dashboard && <NationalOverview dashboard={dashboard} zones={zones} />}
+
       {/* National KPI — performance against target (built from zone targets) */}
       {loading && !dashboard ? (
         <div className="space-y-2 mb-4">{[0,1,2].map(i => <Skeleton key={i} className="h-8 rounded-xl" />)}</div>
@@ -464,8 +468,8 @@ export const HSDDashboardPage: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   <RingChart pct={overall}  color={band.ring || '#00843D'} label="Overall" sublabel="weighted"/>
                   <RingChart pct={Math.min(aPct,100)} color="#00843D" label="Agents" sublabel="50% wt"/>
-                  <RingChart pct={Math.min(pPct,100)} color="#0EA5E9" label="Prospects" sublabel="10% wt"/>
-                  <RingChart pct={Math.min(vPct,100)} color="#7c3aed" label="Visits" sublabel="10% wt"/>
+                  <RingChart pct={Math.min(pPct,100)} color="#4CAF7D" label="Prospects" sublabel="10% wt"/>
+                  <RingChart pct={Math.min(vPct,100)} color="#00843D" label="Visits" sublabel="10% wt"/>
                   <RingChart pct={Math.min(reactPct,100)} color="#8B5CF6" label="Reactivations" sublabel="15% wt"/>
                 </div>
                 {/* Overall score banner */}
@@ -477,7 +481,7 @@ export const HSDDashboardPage: React.FC = () => {
                   </div>
                   <div className="text-right text-xs text-gray-500 space-y-1">
                     <p>Open Float: <span className={`font-bold ${(kpis.openFloatIssues||0) > 0 ? 'text-red-600' : 'text-green-600'}`}>{kpis.openFloatIssues || 0}</span></p>
-                    <p>Conversion: <span className="font-bold text-purple-700">{kpis.conversionRate || 0}%</span></p>
+                    <p>Conversion: <span className="font-bold text-green-700">{kpis.conversionRate || 0}%</span></p>
                   </div>
                 </div>
                 {/* Per-KPI bars */}
@@ -594,7 +598,7 @@ export const HSDDashboardPage: React.FC = () => {
                         <div className="mt-2 space-y-1">
                           {([
                             ['👤', z.agents,    aTgt, aPct, '#00843D'],
-                            ['📍', z.visits,    vTgt, vPct, '#7c3aed'],
+                            ['📍', z.visits,    vTgt, vPct, '#00843D'],
                           ] as [string,number,number,number,string][]).map(([icon,val,tgt,pct,col]) => (
                             <div key={icon} className="flex items-center gap-1.5">
                               <span className="text-[10px] w-4">{icon}</span>
@@ -732,7 +736,7 @@ export const HSDDashboardPage: React.FC = () => {
               const stages = [
                 { s:'identified', emoji:'🔍', color:'#6366f1' },
                 { s:'contacted',  emoji:'📞', color:'#3b82f6' },
-                { s:'interested', emoji:'⭐', color:'#f59e0b' },
+                { s:'interested', emoji:'⭐', color:'#4CAF7D' },
                 { s:'converted',  emoji:'✅', color:'#00843D' },
                 { s:'rejected',   emoji:'❌', color:'#ef4444' },
               ];
@@ -818,7 +822,7 @@ export const HSDDashboardPage: React.FC = () => {
                   pct={asePerf.summary?.totalDevices > 0
                     ? Math.round((asePerf.summary?.totalKycReg||0)/(asePerf.summary?.totalDevices||1)*100)
                     : 0}
-                  size={100} stroke={11} color="#7c3aed"
+                  size={100} stroke={11} color="#00843D"
                   label="KYC Rate" sublabel={`${asePerf.summary?.totalKycReg?.toLocaleString()} KYC`}
                 />
               </div>
@@ -828,7 +832,7 @@ export const HSDDashboardPage: React.FC = () => {
                   ['Total Devices', asePerf.summary?.totalDevices?.toLocaleString(), 'text-green-700'],
                   ['Active',        asePerf.summary?.activeDevices?.toLocaleString(), 'text-green-600'],
                   ['Inactive',      asePerf.summary?.inactiveDevices?.toLocaleString(), 'text-red-500'],
-                  ['Gross Adds',    asePerf.summary?.totalGA?.toLocaleString(), 'text-amber-600'],
+                  ['Gross Adds',    asePerf.summary?.totalGA?.toLocaleString(), 'text-green-700'],
                 ].map(([l,v,c])=>(
                   <div key={l as string} className="bg-gray-50 rounded-xl p-2">
                     <p className={`text-lg font-black ${c}`}>{v}</p>
@@ -852,17 +856,17 @@ export const HSDDashboardPage: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-gray-500">{z.active}/{z.total}</span>
                           <span className={`text-sm font-black ${
-                            z.pct >= 70 ? 'text-green-600' : z.pct >= 40 ? 'text-amber-500' : 'text-red-500'
+                            z.pct >= 70 ? 'text-green-600' : z.pct >= 40 ? 'text-green-600' : 'text-red-500'
                           }`}>{z.pct}%</span>
                         </div>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all"
-                          style={{width:`${z.pct}%`, background: z.pct>=70?'#00843D':z.pct>=40?'#f59e0b':'#ef4444'}}/>
+                          style={{width:`${z.pct}%`, background: z.pct>=70?'#00843D':z.pct>=40?'#4CAF7D':'#ef4444'}}/>
                       </div>
                       <div className="flex gap-3 mt-1 text-[10px] text-gray-500">
-                        <span>KYC: <b className="text-purple-600">{z.kyc.toLocaleString()}</b></span>
-                        <span>GA: <b className="text-amber-600">{z.ga.toLocaleString()}</b></span>
+                        <span>KYC: <b className="text-green-700">{z.kyc.toLocaleString()}</b></span>
+                        <span>GA: <b className="text-green-700">{z.ga.toLocaleString()}</b></span>
                       </div>
                     </div>
                   ))}
@@ -895,7 +899,7 @@ export const HSDDashboardPage: React.FC = () => {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className={`text-lg font-black ${
-                            ase.finalScore >= 70 ? 'text-green-600' : ase.finalScore >= 40 ? 'text-amber-500' : 'text-red-500'
+                            ase.finalScore >= 70 ? 'text-green-600' : ase.finalScore >= 40 ? 'text-green-600' : 'text-red-500'
                           }`}>{ase.finalScore}%</p>
                           <p className="text-[10px] text-gray-400">KPI Score</p>
                         </div>
@@ -918,8 +922,8 @@ export const HSDDashboardPage: React.FC = () => {
                           <p className="text-xs font-bold text-gray-700">{ase.devices.total}</p>
                           <p className="text-[8px] text-gray-400">Devices</p>
                         </div>
-                        <div className="bg-purple-50 rounded-lg py-1">
-                          <p className="text-xs font-bold text-purple-700">{ase.devices.active}</p>
+                        <div className="bg-green-50 rounded-lg py-1">
+                          <p className="text-xs font-bold text-green-700">{ase.devices.active}</p>
                           <p className="text-[8px] text-gray-400">Active</p>
                         </div>
                       </div>

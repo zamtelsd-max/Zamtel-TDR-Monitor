@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from './UI';
 
 interface Props { byAse: any[]; }
-const sc = (v: number) => v >= 70 ? '#00843D' : v >= 40 ? '#f59e0b' : '#ef4444';
+const sc = (v: number) => v >= 70 ? '#00843D' : v >= 40 ? '#4CAF7D' : '#ef4444';
 
 // ASE ranking grouped by Zone (ZBM/HSD)
 export const AseRankingByZone: React.FC<Props> = ({ byAse }) => {

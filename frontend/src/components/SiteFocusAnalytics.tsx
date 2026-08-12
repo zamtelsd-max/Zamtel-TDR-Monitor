@@ -17,7 +17,7 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
   if (loading && !a) return <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}</div>;
   if (!a) return <Card className="text-center py-6 text-gray-400 text-sm">No analytics available.</Card>;
   const s = a.summary || {}; const t = a.totals || {}; const at = a.attainment || {};
-  const scColor = (v: number) => v >= 70 ? '#00843D' : v >= 40 ? '#f59e0b' : '#ef4444';
+  const scColor = (v: number) => v >= 70 ? '#00843D' : v >= 40 ? '#4CAF7D' : '#ef4444';
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -27,7 +27,7 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
       {/* Summary tiles */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: '#00843D' }}>{s.visitedSites ?? 0}</p><p className="text-[10px] text-gray-400">Visited</p></div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: '#0EA5E9' }}>{s.plannedSites ?? 0}</p><p className="text-[10px] text-gray-400">Planned</p></div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: '#4CAF7D' }}>{s.plannedSites ?? 0}</p><p className="text-[10px] text-gray-400">Planned</p></div>
         <div className="rounded-2xl border border-gray-100 bg-white p-3 text-center"><p className="text-2xl font-black" style={{ color: scColor(s.completionRate ?? 0) }}>{s.completionRate ?? 0}%</p><p className="text-[10px] text-gray-400">Completion</p></div>
       </div>
       <div className="grid grid-cols-3 gap-2">
@@ -40,11 +40,11 @@ export const SiteFocusAnalytics: React.FC<Props> = ({ fetchAnalytics }) => {
         <p className="text-xs font-bold text-gray-700 mb-2">Deliverables (visited sites)</p>
         {([
           ['Agents', t.agents, at.agents, '#00843D'],
-          ['SSOs', t.ssos, at.ssos, '#2563EB'],
-          ['ODRs', t.odrs, at.odrs, '#7C3AED'],
-          ['Data Acts', t.dataActs, at.dataActs, '#F97316'],
+          ['SSOs', t.ssos, at.ssos, '#006630'],
+          ['ODRs', t.odrs, at.odrs, '#00843D'],
+          ['Data Acts', t.dataActs, at.dataActs, '#1a9d54'],
           ['DTU (ZMW)', t.dtu, at.dtu, '#00843D'],
-          ['ZM Gross Adds', t.zmGa, at.zmGa, '#0891B2'],
+          ['ZM Gross Adds', t.zmGa, at.zmGa, '#4CAF7D'],
         ] as [string, number, number, string][]).map(([l, val, pct, c]) => (
           <div key={l} className="flex items-center gap-2 mb-1.5">
             <span className="text-[10px] text-gray-500 w-20 shrink-0">{l}</span>
