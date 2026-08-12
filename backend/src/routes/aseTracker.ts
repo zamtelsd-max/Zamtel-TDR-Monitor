@@ -29,6 +29,8 @@ function weekStart(dateStr: string) {
   return d.toISOString().slice(0, 10);
 }
 function status(pct: number): string { return pct >= 95 ? 'green' : pct >= 75 ? 'amber' : 'red'; }
+const ZN: Record<string,string> = { "eastern":"Eastern","central":"Central","copperbelt":"Copperbelt","lusaka central":"Lusaka Central","lusaka north":"Lusaka North","lusaka south":"Lusaka South","luapula":"Luapula","muchinga":"Muchinga","northern":"Northern","southern":"Southern","western":"Western","north western":"North Western","north-west":"North Western" };
+function normZoneName(z: any): string | null { if (!z) return null; const k = String(z).trim().toLowerCase().replace(/\s+province$/, "").trim(); return ZN[k] || (String(z).charAt(0).toUpperCase() + String(z).slice(1).toLowerCase()); }
 function norm(s: string) { return (s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 
 // Seed / refresh zone targets (admin/hsd)
@@ -357,4 +359,66 @@ aseTrackerRouter.get('/effectiveness', requireAuth('HSD', 'ZBM', 'DM'), async (r
       band: effScore >= 70 ? 'high' : effScore >= 45 ? 'medium' : 'low' };
   }).sort((a, b) => b.efficiencyScore - a.efficiencyScore);
   res.json({ count: rows.length, avgEfficiency: rows.length ? Math.round(rows.reduce((s, r) => s + r.efficiencyScore, 0) / rows.length) : 0, rows });
+});
+
+// ── Upload daily registration report (xlsx) — incremental, multi-day ──────────
+// Body: { fileBase64 }. Auto-detects Approved vs Rejected by columns. Attributes
+// each registration to Agent code + ASE (dealer_code → KYC master, supervisor
+// fallback). Incremental: re-uploading a day refreshes it; new days accumulate.
+aseTrackerRouter.post('/upload-registrations', requireAuth('HSD', 'ZBM', 'DM'), async (req: Request, res: Response) => {
+  try {
+    const XLSX = await import('xlsx');
+    const { fileBase64 } = req.body as { fileBase64?: string };
+    if (!fileBase64) { res.status(400).json({ error: 'fileBase64 is required' }); return; }
+    const b64 = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
+    const wb = XLSX.read(Buffer.from(b64, 'base64'), { type: 'buffer' });
+    const raw: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+    if (!raw.length) { res.status(400).json({ error: 'No rows found in file' }); return; }
+
+    // Detect report type: Rejected has REJECTED_DATE / REJECTED_REASON
+    const cols = Object.keys(raw[0]).map(k => k.toLowerCase());
+    const isRejected = cols.some(c => c.includes('rejected'));
+    const st = isRejected ? 'REJECTED' : 'APPROVED';
+
+    const get = (r: any, ...names: string[]) => {
+      const keys = Object.keys(r);
+      for (const n of names) { const k = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === n.toLowerCase().replace(/[^a-z0-9]/g, '')); if (k && r[k] !== '') return r[k]; }
+      return undefined;
+    };
+    const ymd = (v: any): string | null => { if (!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? (String(v).slice(0, 10) || null) : d.toISOString().slice(0, 10); };
+
+    // attribution maps
+    const devices = await prisma.kycDevice.findMany({ select: { dealerCode: true, aseName: true, zone: true, region: true } });
+    const map: Record<string, any> = {}; const aseByName: Record<string, any> = {};
+    devices.forEach(d => { if (d.dealerCode) map[String(d.dealerCode).trim().toUpperCase()] = d; if (d.aseName) aseByName[d.aseName.trim().toLowerCase()] = d; });
+
+    const data: any[] = []; const seen = new Set<string>();
+    let credited = 0, viaSupervisor = 0, unmapped = 0, skipped = 0;
+    const dates = new Set<string>();
+    for (const r of raw) {
+      const dc = String(get(r, 'dealer_code', 'dealercode') || '').trim().toUpperCase();
+      const txnDate = ymd(isRejected ? get(r, 'REJECTED_DATE') : get(r, 'APPROVED_DATE')) || ymd(get(r, 'UPLOADED_DATETIME'));
+      if (!dc || !txnDate) { skipped++; continue; }
+      dates.add(txnDate);
+      const supervisor = get(r, 'SUPERVISOR');
+      const location = get(r, 'LOCATION') || get(r, 'PROVINCE');
+      let dev = map[dc];
+      if (!dev && supervisor) { const s = aseByName[String(supervisor).trim().toLowerCase()]; if (s) { dev = s; viaSupervisor++; } }
+      const isUn = !dev; if (isUn) unmapped++; else credited++;
+      const cm = String(get(r, 'CUSTOMER_MSISDN') || (dc + txnDate));
+      const cid = String(get(r, 'CUSTOMER_ID') || '');
+      const key = `${cm}|${cid}|${st}|${txnDate}`;
+      if (seen.has(key)) continue; seen.add(key);
+      data.push({ dealerCode: dc, aseName: dev?.aseName || null, zone: dev?.zone || normZoneName(location), region: dev?.region || normZoneName(location), status: st, rejectReason: get(r, 'REJECTED_REASON') || null, customerMsisdn: cm, customerId: cid, supervisor: supervisor || null, location: location || null, txnDate, unmapped: isUn, duplicate: false });
+    }
+    // Incremental: refresh only the days present in THIS upload for this status
+    const dayList = [...dates];
+    await prisma.aseTransaction.deleteMany({ where: { status: st, txnDate: { in: dayList } } });
+    for (let i = 0; i < data.length; i += 500) await prisma.aseTransaction.createMany({ data: data.slice(i, i + 500), skipDuplicates: true });
+
+    res.json({ success: true, data: { report: st, rows: raw.length, inserted: data.length, attributed: credited, viaDealerCode: credited - viaSupervisor, viaSupervisor, unmapped, skipped, days: dayList.sort() } });
+  } catch (err) {
+    console.error('registration upload error:', err);
+    res.status(500).json({ error: 'Upload failed — check the file (must be an Approved or Rejected dump xlsx)' });
+  }
 });
