@@ -245,3 +245,116 @@ aseTrackerRouter.get('/unmapped', requireAuth('HSD', 'ZBM', 'DM'), async (_req: 
   const rows = await prisma.aseTransaction.findMany({ where: { unmapped: true }, distinct: ['dealerCode'], select: { dealerCode: true, supervisor: true, location: true, txnDate: true }, take: 200 });
   res.json({ count: rows.length, rows });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRATEGIC / DEVICE-ATTACHMENT / SIM-EFFECTIVENESS / ML  (additive, 2026-08)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Strategic HSD dashboard: high-level KPIs + charts data ─────────────────────
+aseTrackerRouter.get('/strategic', requireAuth('HSD', 'DM', 'ZBM'), async (req: Request, res: Response) => {
+  const date = (req.query.date as string) || '2026-08-07';
+  const ms = monthStart(date), ws = weekStart(date);
+  const zones = await prisma.aseZoneTarget.findMany();
+  const totalMonthly = zones.reduce((s, z) => s + z.monthlyTarget, 0);
+  const totalDaily = zones.reduce((s, z) => s + z.dailyTarget, 0);
+
+  const [dayA, wtdA, mtdA, dayR, wtdR] = await Promise.all([
+    prisma.aseTransaction.count({ where: { status: 'APPROVED', txnDate: date, duplicate: false } }),
+    prisma.aseTransaction.count({ where: { status: 'APPROVED', txnDate: { gte: ws, lte: date }, duplicate: false } }),
+    prisma.aseTransaction.count({ where: { status: 'APPROVED', txnDate: { gte: ms, lte: date }, duplicate: false } }),
+    prisma.aseTransaction.count({ where: { status: 'REJECTED', txnDate: date } }),
+    prisma.aseTransaction.count({ where: { status: 'REJECTED', txnDate: { gte: ws, lte: date } } }),
+  ]);
+
+  // Zone leaderboard vs DAILY target
+  const zoneAgg = await prisma.aseTransaction.groupBy({ by: ['zone'], where: { status: 'APPROVED', txnDate: date, duplicate: false, zone: { not: null } }, _count: true });
+  const zm: Record<string, number> = {}; zoneAgg.forEach(z => { if (z.zone) zm[z.zone] = z._count; });
+  const zoneMtdAgg = await prisma.aseTransaction.groupBy({ by: ['zone'], where: { status: 'APPROVED', txnDate: { gte: ms, lte: date }, duplicate: false, zone: { not: null } }, _count: true });
+  const zmMtd: Record<string, number> = {}; zoneMtdAgg.forEach(z => { if (z.zone) zmMtd[z.zone] = z._count; });
+
+  const zoneRows = zones.map(z => {
+    const actual = zm[z.zone] || 0;
+    const pct = z.dailyTarget ? Math.round(actual / z.dailyTarget * 100) : 0;
+    return { zone: z.zone, zbm: z.zbmName, dayActual: actual, dayTarget: Math.round(z.dailyTarget), dayPct: pct,
+      mtdActual: zmMtd[z.zone] || 0, mtdTarget: Math.round(z.monthlyTarget), mtdPct: z.monthlyTarget ? Math.round((zmMtd[z.zone] || 0) / z.monthlyTarget * 100) : 0,
+      status: status(pct) };
+  }).sort((a, b) => b.dayPct - a.dayPct);
+
+  // Daily trend (last 14 days approved)
+  const trendRaw = await prisma.aseTransaction.groupBy({ by: ['txnDate'], where: { status: 'APPROVED', duplicate: false }, _count: true, orderBy: { txnDate: 'asc' } });
+  const trend = trendRaw.map(t => ({ date: t.txnDate, actual: t._count, target: Math.round(totalDaily) })).slice(-14);
+
+  // Device fleet snapshot
+  const totalDevices = await prisma.kycDevice.count();
+  const activeDevices = await prisma.kycDevice.count({ where: { grossAdds: { gt: 0 } } });
+
+  // Insight rollup
+  const insights = await prisma.aseInsight.groupBy({ by: ['severity'], _count: true });
+  const insMap: Record<string, number> = {}; insights.forEach(i => insMap[i.severity] = i._count);
+
+  const dayPct = totalDaily ? Math.round(dayA / totalDaily * 100) : 0;
+  const rejRate = (dayA + dayR) ? +(dayR / (dayA + dayR) * 100).toFixed(1) : 0;
+
+  res.json({
+    date,
+    national: {
+      day: { actual: dayA, target: Math.round(totalDaily), pct: dayPct, status: status(dayPct) },
+      wtd: { actual: wtdA, target: Math.round(totalDaily * 5), pct: totalDaily ? Math.round(wtdA / (totalDaily * 5) * 100) : 0 },
+      mtd: { actual: mtdA, target: Math.round(totalMonthly), pct: totalMonthly ? Math.round(mtdA / totalMonthly * 100) : 0 },
+    },
+    quality: { rejectionRate: rejRate, dayRejected: dayR, wtdRejected: wtdR, approvalRate: +(100 - rejRate).toFixed(1) },
+    fleet: { total: totalDevices, active: activeDevices, idle: totalDevices - activeDevices, utilisation: totalDevices ? Math.round(activeDevices / totalDevices * 100) : 0 },
+    insights: { critical: insMap['critical'] || 0, warning: insMap['warning'] || 0, watch: insMap['watch'] || 0 },
+    zones: zoneRows,
+    topZones: zoneRows.slice(0, 3),
+    bottomZones: zoneRows.slice(-3).reverse(),
+    trend,
+  });
+});
+
+// ── Devices attached to an ASE (fleet + SIM effectiveness) ─────────────────────
+aseTrackerRouter.get('/ase/:name/devices', requireAuth('HSD', 'ZBM', 'ASE', 'DM'), async (req: Request, res: Response) => {
+  const name = decodeURIComponent(req.params.name);
+  const devices = await prisma.kycDevice.findMany({ where: { aseName: name }, orderBy: { grossAdds: 'desc' } });
+  const total = devices.length;
+  const active = devices.filter(d => d.grossAdds > 0).length;
+  const totalGA = devices.reduce((s, d) => s + d.grossAdds, 0);
+  const totalRecharge = devices.reduce((s, d) => s + d.recharges, 0);
+  // SIM effectiveness: recharges per GA (>=0.5 healthy per SRS); device utilisation
+  const rechargePerGA = totalGA ? +(totalRecharge / totalGA).toFixed(2) : 0;
+  res.json({
+    ase: name,
+    fleet: { total, active, idle: total - active, utilisation: total ? Math.round(active / total * 100) : 0 },
+    simEffectiveness: { totalGA, totalRecharge: Math.round(totalRecharge), rechargePerGA, healthy: rechargePerGA >= 0.5 },
+    devices: devices.map(d => ({
+      dealerCode: d.dealerCode, deviceType: d.deviceSource, siteId: d.siteId, teamLead: d.teamLead,
+      status: d.status, grossAdds: d.grossAdds, recharges: Math.round(d.recharges),
+      active: d.grossAdds > 0, msisdn: d.msisdn,
+    })),
+  });
+});
+
+// ── SIM / device effectiveness leaderboard (ML-scored) ─────────────────────────
+aseTrackerRouter.get('/effectiveness', requireAuth('HSD', 'ZBM', 'DM'), async (req: Request, res: Response) => {
+  const zone = req.query.zone as string | undefined;
+  const where: any = { aseName: { not: null } }; if (zone) where.zone = zone;
+  const devices = await prisma.kycDevice.findMany({ where });
+  // group by ASE
+  const byAse: Record<string, any> = {};
+  for (const d of devices) {
+    const k = d.aseName!;
+    if (!byAse[k]) byAse[k] = { ase: k, zone: d.zone, total: 0, active: 0, ga: 0, recharge: 0 };
+    byAse[k].total++; if (d.grossAdds > 0) byAse[k].active++;
+    byAse[k].ga += d.grossAdds; byAse[k].recharge += d.recharges;
+  }
+  const rows = Object.values(byAse).map((a: any) => {
+    const util = a.total ? a.active / a.total : 0;
+    const rpg = a.ga ? a.recharge / a.ga : 0;
+    // Composite efficiency score (0-100): 50% device utilisation, 30% recharge/GA (capped at 1), 20% GA volume vs peers
+    const effScore = Math.round((util * 50) + (Math.min(rpg, 1) * 30) + (Math.min(a.ga / 200, 1) * 20));
+    return { ase: a.ase, zone: a.zone, devices: a.total, activeDevices: a.active, utilisation: Math.round(util * 100),
+      ga: a.ga, recharge: Math.round(a.recharge), rechargePerGA: +rpg.toFixed(2), efficiencyScore: effScore,
+      band: effScore >= 70 ? 'high' : effScore >= 45 ? 'medium' : 'low' };
+  }).sort((a, b) => b.efficiencyScore - a.efficiencyScore);
+  res.json({ count: rows.length, avgEfficiency: rows.length ? Math.round(rows.reduce((s, r) => s + r.efficiencyScore, 0) / rows.length) : 0, rows });
+});
