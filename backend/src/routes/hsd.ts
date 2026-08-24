@@ -269,11 +269,13 @@ hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
     const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const { start, end } = monthRange(period);
 
+    // All datasets scoped to the selected period so the export stays fast & memory-safe.
+    // (Previously prospects & floatIssues loaded ALL history → OOM/timeout crash on large DBs.)
     const [agents, visits, floatIssues, prospects] = await Promise.all([
       prisma.agent.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: [{ zone: 'asc' }, { createdAt: 'desc' }] }),
       prisma.visit.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
-      prisma.floatIssue.findMany({ orderBy: { reportedAt: 'desc' } }),
-      prisma.prospect.findMany({ orderBy: { createdAt: 'desc' } }),
+      prisma.floatIssue.findMany({ where: { reportedAt: { gte: start, lte: end } }, orderBy: { reportedAt: 'desc' } }),
+      prisma.prospect.findMany({ where: { createdAt: { gte: start, lte: end } }, orderBy: { createdAt: 'desc' } }),
     ]);
 
     const wb = XLSX.utils.book_new();

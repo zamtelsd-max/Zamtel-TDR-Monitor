@@ -356,11 +356,11 @@ zbmRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
         orderBy: { createdAt: 'desc' },
       }),
       prisma.floatIssue.findMany({
-        where: zoneWhere,
+        where: { ...zoneWhere, reportedAt: { gte: start, lte: end } },
         orderBy: { reportedAt: 'desc' },
       }),
       prisma.prospect.findMany({
-        where: zoneWhere,
+        where: { ...zoneWhere, createdAt: { gte: start, lte: end } },
         orderBy: { createdAt: 'desc' },
       }),
     ]);
