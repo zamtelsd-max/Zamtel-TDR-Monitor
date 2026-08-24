@@ -298,6 +298,12 @@ export const hsdApi = {
 
   export: (period?: string) =>
     client.get('/hsd/export', { params: period ? { period } : {}, responseType: 'blob' }),
+  exportAgents: (period?: string) =>
+    client.get('/hsd/export/agents', { params: period ? { period } : {}, responseType: 'blob' }),
+  exportVisits: (period?: string) =>
+    client.get('/hsd/export/visits', { params: period ? { period } : {}, responseType: 'blob' }),
+  exportProspects: (period?: string) =>
+    client.get('/hsd/export/prospects', { params: period ? { period } : {}, responseType: 'blob' }),
 
   getSiteFocus: (period?: string) =>
     client.get<{ success: boolean; period: string; data: any[] }>('/hsd/site-focus', { params: period ? { period } : {} }),

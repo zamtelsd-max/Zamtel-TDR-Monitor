@@ -289,6 +289,29 @@ export const HSDDashboardPage: React.FC = () => {
     }
   };
 
+  // Focused, reliable single-dataset downloads (Agents / Visitations / Prospects)
+  const [dsExporting, setDsExporting] = useState<string | null>(null);
+  const downloadDataset = async (
+    kind: 'agents' | 'visits' | 'prospects',
+    fetcher: (p?: string) => Promise<{ data: unknown }>,
+    fname: string,
+  ) => {
+    setDsExporting(kind);
+    try {
+      const res = await fetcher(period);
+      const url = window.URL.createObjectURL(new Blob([res.data as BlobPart]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fname}-${period}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error(`${kind} export failed`);
+    } finally {
+      setDsExporting(null);
+    }
+  };
+
   const SortIcon: React.FC<{ col: SortKey }> = ({ col }) => {
     if (sortKey !== col) return null;
     return sortDir === 'asc' ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />;
@@ -310,9 +333,20 @@ export const HSDDashboardPage: React.FC = () => {
     <Layout
       title={authUser ? `${getUserTitle(authUser.id, authUser.role)} — Dashboard` : 'National Dashboard'}
       actions={
-        <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}>
-          <Download className="w-3.5 h-3.5 mr-1" /> Export
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" loading={dsExporting === 'agents'} onClick={() => downloadDataset('agents', hsdApi.exportAgents, 'zamtel-agents')}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Agents
+          </Button>
+          <Button size="sm" variant="secondary" loading={dsExporting === 'visits'} onClick={() => downloadDataset('visits', hsdApi.exportVisits, 'zamtel-visitations')}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Visitations
+          </Button>
+          <Button size="sm" variant="secondary" loading={dsExporting === 'prospects'} onClick={() => downloadDataset('prospects', hsdApi.exportProspects, 'zamtel-prospects')}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Prospects
+          </Button>
+          <Button size="sm" variant="secondary" loading={exporting} onClick={handleExport}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Full Report
+          </Button>
+        </div>
       }
     >
       <PageHeader

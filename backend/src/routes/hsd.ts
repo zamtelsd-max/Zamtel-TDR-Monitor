@@ -262,6 +262,61 @@ hsdRouter.post('/targets', async (req: Request, res: Response): Promise<void> =>
   res.json(target);
 });
 
+// ─── Focused, memory-safe single-dataset exports (Agents / Visits / Prospects) ──
+// Split out because the combined /export builds 7 heavy sheets (incl. all 55k agents
+// + 371k visits) which OOMs the 512MB instance. These stream one lean sheet each.
+async function sendSheet(res: Response, rows: any[], sheetName: string, fileName: string) {
+  const XLSX = await import('xlsx');
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ Status: 'No records for this period' }]), sheetName);
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  res.send(buf);
+}
+
+hsdRouter.get('/export/agents', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end } = monthRange(period);
+    const agents = await prisma.agent.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      orderBy: [{ zone: 'asc' }, { createdAt: 'desc' }],
+      select: { zone: true, zbmName: true, tdrName: true, agentName: true, agentCode: true, contactPhone: true, type: true, merchantCategory: true, initialFloat: true, town: true, address: true, cluster: true, market: true, latitude: true, longitude: true, notes: true, createdAt: true },
+    });
+    const rows = agents.map(a => ({ 'Zone': a.zone, 'ZBM': a.zbmName, 'TDR Name': a.tdrName, 'Agent Name': a.agentName, 'Agent Code': a.agentCode, 'Phone': a.contactPhone, 'Type': a.type, 'Category': a.merchantCategory || '', 'Initial Float': a.initialFloat, 'Town': a.town, 'Address': a.address || '', 'Cluster': a.cluster || '', 'Market': a.market || '', 'Latitude': a.latitude || '', 'Longitude': a.longitude || '', 'Notes': a.notes || '', 'Date': a.createdAt.toISOString().split('T')[0] }));
+    await sendSheet(res, rows, 'Agents', `zamtel-agents-${period}.xlsx`);
+  } catch (err) { console.error('agents export error:', err); res.status(500).json({ error: 'Export failed' }); }
+});
+
+hsdRouter.get('/export/visits', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end } = monthRange(period);
+    const visits = await prisma.visit.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      orderBy: { createdAt: 'desc' },
+      select: { zone: true, zbmName: true, tdrName: true, outletName: true, agentCode: true, contactPhone: true, town: true, cluster: true, market: true, floatAmount: true, latitude: true, longitude: true, notes: true, createdAt: true },
+    });
+    const rows = visits.map(v => ({ 'Zone': v.zone, 'ZBM': v.zbmName, 'TDR Name': v.tdrName, 'Outlet Name': v.outletName, 'Agent Code': v.agentCode, 'Phone': v.contactPhone, 'Town': v.town, 'Cluster': v.cluster || '', 'Market': v.market || '', 'Float Amount': v.floatAmount, 'Latitude': v.latitude || '', 'Longitude': v.longitude || '', 'Notes': v.notes || '', 'Date': v.createdAt.toISOString().split('T')[0] }));
+    await sendSheet(res, rows, 'Visits', `zamtel-visitations-${period}.xlsx`);
+  } catch (err) { console.error('visits export error:', err); res.status(500).json({ error: 'Export failed' }); }
+});
+
+hsdRouter.get('/export/prospects', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { start, end } = monthRange(period);
+    const prospects = await prisma.prospect.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      orderBy: { createdAt: 'desc' },
+      select: { zone: true, tdrName: true, prospectType: true, businessName: true, ownerName: true, contactPhone: true, town: true, merchantCategory: true, estimatedFloat: true, status: true, followUpDate: true, convertedAt: true, notes: true, createdAt: true },
+    });
+    const rows = prospects.map(p => ({ 'Zone': p.zone, 'TDR Name': p.tdrName, 'Prospect Type': p.prospectType, 'Business Name': p.businessName, 'Owner Name': p.ownerName, 'Phone': p.contactPhone, 'Town': p.town, 'Category': p.merchantCategory || '', 'Est. Float': p.estimatedFloat || '', 'Status': p.status, 'Follow-up Date': p.followUpDate?.toISOString().split('T')[0] || '', 'Converted At': p.convertedAt?.toISOString().split('T')[0] || '', 'Notes': p.notes || '', 'Date': p.createdAt.toISOString().split('T')[0] }));
+    await sendSheet(res, rows, 'Prospects', `zamtel-prospects-${period}.xlsx`);
+  } catch (err) { console.error('prospects export error:', err); res.status(500).json({ error: 'Export failed' }); }
+});
+
 // ─── GET /hsd/export ──────────────────────────────────────────────────────────
 hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -328,9 +383,11 @@ hsdRouter.get('/export', async (req: Request, res: Response): Promise<void> => {
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prospectRows.length > 0 ? prospectRows : [{}]), 'Prospects');
 
-    // Sheet 5: Unvisited Outlets — single batched query (no N+1)
+    // Sheet 5: Unvisited Outlets — capped to protect the 512MB instance from OOM
     const allAgents = await prisma.agent.findMany({
       orderBy: [{ zone: 'asc' }, { tdrName: 'asc' }, { agentName: 'asc' }],
+      select: { zone: true, zbmName: true, tdrName: true, agentName: true, agentCode: true, type: true, contactPhone: true, town: true, cluster: true, market: true },
+      take: 5000,
     });
     // Get latest visit per agent in one query
     const latestVisits = await prisma.visit.groupBy({
