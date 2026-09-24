@@ -289,18 +289,53 @@ hsdRouter.get('/export/agents', async (req: Request, res: Response): Promise<voi
   } catch (err) { console.error('agents export error:', err); res.status(500).json({ error: 'Export failed' }); }
 });
 
+// Visits are the largest dataset (~28k+ rows/month). Buffering them into an XLSX
+// OOMs/times-out the 512MB instance (>30s = Cloudflare edge kills it). Instead we
+// STREAM CSV row-by-row using a keyset cursor, so memory stays flat and bytes
+// start flowing immediately. CSV opens directly in Excel.
+function csvCell(val: any): string {
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
 hsdRouter.get('/export/visits', async (req: Request, res: Response): Promise<void> => {
+  const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const { start, end } = monthRange(period);
   try {
-    const period = (req.query.period as string) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const { start, end } = monthRange(period);
-    const visits = await prisma.visit.findMany({
-      where: { createdAt: { gte: start, lte: end } },
-      orderBy: { createdAt: 'desc' },
-      select: { zone: true, zbmName: true, tdrName: true, outletName: true, agentCode: true, contactPhone: true, town: true, cluster: true, market: true, floatAmount: true, latitude: true, longitude: true, notes: true, createdAt: true },
-    });
-    const rows = visits.map(v => ({ 'Zone': v.zone, 'ZBM': v.zbmName, 'TDR Name': v.tdrName, 'Outlet Name': v.outletName, 'Agent Code': v.agentCode, 'Phone': v.contactPhone, 'Town': v.town, 'Cluster': v.cluster || '', 'Market': v.market || '', 'Float Amount': v.floatAmount, 'Latitude': v.latitude || '', 'Longitude': v.longitude || '', 'Notes': v.notes || '', 'Date': v.createdAt.toISOString().split('T')[0] }));
-    await sendSheet(res, rows, 'Visits', `zamtel-visitations-${period}.xlsx`);
-  } catch (err) { console.error('visits export error:', err); res.status(500).json({ error: 'Export failed' }); }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="zamtel-visitations-${period}.csv"`);
+    res.setHeader('Cache-Control', 'no-store');
+    // header row (BOM so Excel reads UTF-8 correctly)
+    const cols = ['Zone', 'ZBM', 'TDR Name', 'Outlet Name', 'Agent Code', 'Phone', 'Town', 'Cluster', 'Market', 'Float Amount', 'Latitude', 'Longitude', 'Notes', 'Date'];
+    res.write('\uFEFF' + cols.join(',') + '\r\n');
+
+    const BATCH = 2000;
+    let cursorId: string | undefined = undefined;
+    // keyset pagination on id (stable) — pull lean batches until exhausted
+    for (;;) {
+      const batch: any[] = await prisma.visit.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        orderBy: { id: 'asc' },
+        ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+        take: BATCH,
+        select: { id: true, zone: true, zbmName: true, tdrName: true, outletName: true, agentCode: true, contactPhone: true, town: true, cluster: true, market: true, floatAmount: true, latitude: true, longitude: true, notes: true, createdAt: true },
+      });
+      if (batch.length === 0) break;
+      let chunk = '';
+      for (const v of batch) {
+        chunk += [v.zone, v.zbmName, v.tdrName, v.outletName, v.agentCode, v.contactPhone, v.town, v.cluster || '', v.market || '', v.floatAmount, v.latitude ?? '', v.longitude ?? '', v.notes || '', v.createdAt.toISOString().split('T')[0]].map(csvCell).join(',') + '\r\n';
+      }
+      res.write(chunk);
+      cursorId = batch[batch.length - 1].id;
+      if (batch.length < BATCH) break;
+    }
+    res.end();
+  } catch (err) {
+    console.error('visits export error:', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Export failed' });
+    else res.end();
+  }
 });
 
 hsdRouter.get('/export/prospects', async (req: Request, res: Response): Promise<void> => {

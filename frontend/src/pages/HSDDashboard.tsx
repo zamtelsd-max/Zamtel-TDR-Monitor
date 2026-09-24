@@ -299,10 +299,12 @@ export const HSDDashboardPage: React.FC = () => {
     setDsExporting(kind);
     try {
       const res = await fetcher(period);
+      // Visits stream as CSV (memory-safe for ~28k+ rows); agents/prospects stay XLSX.
+      const ext = kind === 'visits' ? 'csv' : 'xlsx';
       const url = window.URL.createObjectURL(new Blob([res.data as BlobPart]));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${fname}-${period}.xlsx`;
+      a.download = `${fname}-${period}.${ext}`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {
